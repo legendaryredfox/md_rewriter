@@ -96,7 +96,7 @@ Known limitation accepted under C1: a raw data packet that happens to match the 
 | REPO-3 | Linux support: udev rule file (`99-md-rewriter.rules`) that sets permissions and tells ModemManager to ignore the device; README section. | File exists, VID:PID read from the firmware USB descriptor. |
 | REPO-4 | README: remove "Windows only", add Linux build/run, add test instructions. | Review. |
 | REPO-5 | `tools/check-firmware.sh` runs the `-fsyntax-only -Wall -Wextra` check and `cppcheck` on the three application files, so the firmware can be validated without Keil. | Script exits 0. |
-| REPO-6 | No LICENSE is invented. Flagged to the maintainer. Vendor trees untouched (C5). | — |
+| REPO-6 | MIT `LICENSE` added at the maintainer's request (copyright line "md_rewriter contributors"). Vendor trees untouched and keep their own licenses (C5). | — |
 
 ## 5. Out of scope
 

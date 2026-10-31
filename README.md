@@ -118,6 +118,10 @@ cd ../.. && tools/check-firmware.sh                      # verificação estáti
 
 O firmware não pôde ser testado em hardware real nestas alterações: veja `docs/SPEC.md` e `docs/PLAN.md`.
 
+## Licença
+
+Licença [MIT](LICENSE). O código de terceiros em `Firmware/Drivers` e `Firmware/Middlewares` (STMicroelectronics, ARM) mantém as licenças originais.
+
 ---
 
 <a id="русский"></a>
@@ -232,6 +236,10 @@ cd ../.. && tools/check-firmware.sh                      # статическа�
 - `tst_e2e` — сквозные тесты (настоящее окно + настоящий последовательный порт на псевдотерминале + имитация прошивки; только Linux). Для запуска без экрана задайте `QT_QPA_PLATFORM=offscreen`.
 
 Изменения прошивки не проверялись на реальном оборудовании: см. `docs/SPEC.md` и `docs/PLAN.md`.
+
+## Лицензия
+
+Лицензия [MIT](LICENSE). Сторонний код в `Firmware/Drivers` и `Firmware/Middlewares` (STMicroelectronics, ARM) сохраняет исходные лицензии.
 
 ---
 
@@ -348,6 +356,10 @@ cd ../.. && tools/check-firmware.sh                      # 固件静态检查（
 
 固件的改动尚未在真实硬件上测试，详见 `docs/SPEC.md` 和 `docs/PLAN.md`。
 
+## 许可证
+
+采用 [MIT](LICENSE) 许可证。`Firmware/Drivers` 和 `Firmware/Middlewares` 中的第三方代码（STMicroelectronics、ARM）保留其原有许可证。
+
 ---
 
 <a id="english"></a>
@@ -462,3 +474,7 @@ cd ../.. && tools/check-firmware.sh                      # static firmware check
 - `tst_e2e`: end-to-end tests (real window + real serial port on a pseudo-terminal + simulated firmware; Linux only). Set `QT_QPA_PLATFORM=offscreen` to run without a display.
 
 The firmware changes could not be tested on real hardware: see `docs/SPEC.md` and `docs/PLAN.md`.
+
+## License
+
+[MIT](LICENSE) license. Third-party code in `Firmware/Drivers` and `Firmware/Middlewares` (STMicroelectronics, ARM) keeps its original licenses.
