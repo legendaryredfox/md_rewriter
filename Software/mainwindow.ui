@@ -6,316 +6,318 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>390</width>
-    <height>662</height>
+    <width>460</width>
+    <height>720</height>
    </rect>
   </property>
-  <property name="minimumSize">
-   <size>
-    <width>390</width>
-    <height>550</height>
-   </size>
-  </property>
   <property name="windowTitle">
-   <string>EpicJoy MD Rewriter</string>
-  </property>
-  <property name="styleSheet">
-   <string notr="true">color: rgb(85, 255, 0);
-selection-color: rgb(255, 255, 255);
-background-color: rgb(68, 68, 68);</string>
-  </property>
-  <property name="locale">
-   <locale language="English" country="UnitedStates"/>
+   <string notr="true">EpicJoy MD Rewriter</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QGroupBox" name="groupBox_2">
-    <property name="geometry">
-     <rect>
-      <x>20</x>
-      <y>20</y>
-      <width>351</width>
-      <height>381</height>
-     </rect>
-    </property>
-    <property name="locale">
-     <locale language="English" country="UnitedStates"/>
-    </property>
-    <property name="title">
-     <string>Function</string>
-    </property>
-    <widget class="QPushButton" name="duqu">
-     <property name="geometry">
-      <rect>
-       <x>190</x>
-       <y>250</y>
-       <width>141</width>
-       <height>31</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Read ROM</string>
-     </property>
-    </widget>
-    <widget class="QPushButton" name="shaolu">
-     <property name="geometry">
-      <rect>
-       <x>190</x>
-       <y>210</y>
-       <width>141</width>
-       <height>31</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Write ROM</string>
-     </property>
-    </widget>
-    <widget class="QPushButton" name="shibiekadai">
-     <property name="geometry">
-      <rect>
-       <x>20</x>
-       <y>210</y>
-       <width>141</width>
-       <height>31</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>ROM Detect</string>
-     </property>
-    </widget>
-    <widget class="QPushButton" name="cachu">
-     <property name="geometry">
-      <rect>
-       <x>20</x>
-       <y>290</y>
-       <width>141</width>
-       <height>31</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Erase Flash</string>
-     </property>
-    </widget>
-    <widget class="QPushButton" name="rongliangcachu">
-     <property name="geometry">
-      <rect>
-       <x>20</x>
-       <y>330</y>
-       <width>141</width>
-       <height>31</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Erase Flash Size</string>
-     </property>
-    </widget>
-    <widget class="QPushButton" name="shaolucundang">
-     <property name="geometry">
-      <rect>
-       <x>20</x>
-       <y>250</y>
-       <width>141</width>
-       <height>31</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Write SAVE</string>
-     </property>
-    </widget>
-    <widget class="QPushButton" name="duqucundang">
-     <property name="geometry">
-      <rect>
-       <x>190</x>
-       <y>290</y>
-       <width>141</width>
-       <height>31</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Read Save</string>
-     </property>
-    </widget>
-    <widget class="QComboBox" name="comliebiao">
-     <property name="geometry">
-      <rect>
-       <x>20</x>
-       <y>20</y>
-       <width>311</width>
-       <height>31</height>
-      </rect>
-     </property>
-    </widget>
-    <widget class="QPushButton" name="lianjie">
-     <property name="geometry">
-      <rect>
-       <x>190</x>
-       <y>70</y>
-       <width>141</width>
-       <height>31</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Connect</string>
-     </property>
-    </widget>
-    <widget class="QPushButton" name="shuaxin">
-     <property name="geometry">
-      <rect>
-       <x>20</x>
-       <y>70</y>
-       <width>141</width>
-       <height>31</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Refresh COM</string>
-     </property>
-    </widget>
-    <widget class="QLabel" name="label">
-     <property name="geometry">
-      <rect>
-       <x>40</x>
-       <y>120</y>
-       <width>81</width>
-       <height>31</height>
-      </rect>
-     </property>
-     <property name="font">
-      <font>
-       <family>AdLib WGL4 BT</family>
-       <pointsize>10</pointsize>
-      </font>
-     </property>
-     <property name="text">
-      <string>ROM SIZE</string>
-     </property>
-    </widget>
-    <widget class="QComboBox" name="flashsize">
-     <property name="geometry">
-      <rect>
-       <x>130</x>
-       <y>120</y>
-       <width>191</width>
-       <height>31</height>
-      </rect>
-     </property>
-     <item>
-      <property name="text">
-       <string>512K</string>
+   <layout class="QVBoxLayout" name="mainLayout">
+    <item>
+     <widget class="QGroupBox" name="connectionGroup">
+      <property name="title">
+       <string>Connection</string>
       </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>1M</string>
+      <layout class="QHBoxLayout" name="connectionLayout">
+       <item>
+        <widget class="QComboBox" name="portCombo">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed"/>
+         </property>
+         <property name="toolTip">
+          <string>Serial port of the MD Rewriter. It appears when the device is plugged in.</string>
+         </property>
+         <property name="accessibleName">
+          <string>Serial port</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="refreshButton">
+         <property name="toolTip">
+          <string>Look for serial ports again.</string>
+         </property>
+         <property name="text">
+          <string>&amp;Refresh</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="connectButton">
+         <property name="toolTip">
+          <string>Open or close the connection to the selected port.</string>
+         </property>
+         <property name="text">
+          <string>&amp;Connect</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QGroupBox" name="toolsGroup">
+      <property name="title">
+       <string>Cartridge and tools</string>
       </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>2M</string>
+      <layout class="QHBoxLayout" name="toolsLayout">
+       <item>
+        <widget class="QPushButton" name="detectButton">
+         <property name="toolTip">
+          <string>Identify the flash chip of the inserted cartridge.</string>
+         </property>
+         <property name="text">
+          <string>&amp;Detect cartridge</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="compareButton">
+         <property name="toolTip">
+          <string>Compare two files byte by byte, for example a dump and the original ROM. No device needed.</string>
+         </property>
+         <property name="text">
+          <string>Co&amp;mpare files…</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="romSaveLayout">
+      <item>
+     <widget class="QGroupBox" name="romGroup">
+      <property name="title">
+       <string>Game (ROM)</string>
       </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>4M</string>
+      <layout class="QGridLayout" name="romLayout">
+       <item row="0" column="0">
+        <widget class="QLabel" name="romSizeLabel">
+         <property name="text">
+          <string>Cartridge &amp;size:</string>
+         </property>
+         <property name="buddy">
+          <cstring>romSizeCombo</cstring>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QComboBox" name="romSizeCombo">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed"/>
+         </property>
+         <property name="toolTip">
+          <string>Size of the ROM on the cartridge. Used by Read ROM and by Erase by size. Writing uses the size of the file you choose.</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QPushButton" name="readRomButton">
+         <property name="toolTip">
+          <string>Copy the game from the cartridge to a file on this computer.</string>
+         </property>
+         <property name="text">
+          <string>Read R&amp;OM…</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QPushButton" name="writeRomButton">
+         <property name="toolTip">
+          <string>Write a ROM file to a rewritable flash cartridge. Erase the cartridge first if it is not blank.</string>
+         </property>
+         <property name="text">
+          <string>&amp;Write ROM…</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+      </item>
+      <item>
+     <widget class="QGroupBox" name="saveGroup">
+      <property name="title">
+       <string>Save data (SRAM)</string>
       </property>
-     </item>
-    </widget>
-    <widget class="QComboBox" name="sramsize">
-     <property name="geometry">
-      <rect>
-       <x>130</x>
-       <y>160</y>
-       <width>191</width>
-       <height>31</height>
-      </rect>
-     </property>
-     <item>
-      <property name="text">
-       <string>32K</string>
+      <layout class="QGridLayout" name="saveLayout">
+       <item row="0" column="0">
+        <widget class="QLabel" name="saveSizeLabel">
+         <property name="text">
+          <string>Save si&amp;ze:</string>
+         </property>
+         <property name="buddy">
+          <cstring>saveSizeCombo</cstring>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QComboBox" name="saveSizeCombo">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed"/>
+         </property>
+         <property name="toolTip">
+          <string>Size of the save memory. Used by Read save. Writing uses the size of the file you choose.</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QPushButton" name="readSaveButton">
+         <property name="toolTip">
+          <string>Copy the saved games from the cartridge to a file on this computer.</string>
+         </property>
+         <property name="text">
+          <string>Read &amp;save…</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QPushButton" name="writeSaveButton">
+         <property name="toolTip">
+          <string>Replace the saved games on the cartridge with the contents of a file.</string>
+         </property>
+         <property name="text">
+          <string>Write sa&amp;ve…</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QGroupBox" name="eraseGroup">
+      <property name="title">
+       <string>Erase (destroys data on the cartridge)</string>
       </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>8K</string>
+      <layout class="QGridLayout" name="eraseLayout">
+       <item row="0" column="0" colspan="2">
+        <widget class="QPushButton" name="eraseSizeButton">
+         <property name="toolTip">
+          <string>Erase only the flash sectors covered by the cartridge size selected above. Faster than erasing everything.</string>
+         </property>
+         <property name="text">
+          <string>Erase by si&amp;ze…</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="2">
+        <widget class="QPushButton" name="eraseAllButton">
+         <property name="toolTip">
+          <string>Erase the whole flash chip and the save memory. This can take several minutes and cannot be interrupted.</string>
+         </property>
+         <property name="text">
+          <string>Erase &amp;all…</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QGroupBox" name="logGroup">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Expanding"/>
       </property>
-     </item>
-    </widget>
-    <widget class="QLabel" name="label_2">
-     <property name="geometry">
-      <rect>
-       <x>40</x>
-       <y>160</y>
-       <width>81</width>
-       <height>31</height>
-      </rect>
-     </property>
-     <property name="font">
-      <font>
-       <family>AdLib WGL4 BT</family>
-       <pointsize>10</pointsize>
-      </font>
-     </property>
-     <property name="text">
-      <string>SRAM SIZE</string>
-     </property>
-    </widget>
-   </widget>
-   <widget class="QGroupBox" name="groupBox_3">
-    <property name="geometry">
-     <rect>
-      <x>20</x>
-      <y>410</y>
-      <width>351</width>
-      <height>181</height>
-     </rect>
-    </property>
-    <property name="title">
-     <string>Information</string>
-    </property>
-    <widget class="QPushButton" name="qingkong">
-     <property name="geometry">
-      <rect>
-       <x>250</x>
-       <y>360</y>
-       <width>91</width>
-       <height>31</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>清空信息</string>
-     </property>
-    </widget>
-    <widget class="QTextBrowser" name="xinxi">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>20</y>
-       <width>331</width>
-       <height>151</height>
-      </rect>
-     </property>
-    </widget>
-   </widget>
-   <widget class="QProgressBar" name="jindutiao">
-    <property name="geometry">
-     <rect>
-      <x>20</x>
-      <y>600</y>
-      <width>351</width>
-      <height>41</height>
-     </rect>
-    </property>
-    <property name="value">
-     <number>0</number>
-    </property>
-    <property name="textVisible">
-     <bool>true</bool>
-    </property>
-    <property name="invertedAppearance">
-     <bool>false</bool>
-    </property>
-   </widget>
+      <property name="title">
+       <string>Log</string>
+      </property>
+      <layout class="QVBoxLayout" name="logLayout">
+       <item>
+        <widget class="QPlainTextEdit" name="logView">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>100</height>
+          </size>
+         </property>
+         <property name="accessibleName">
+          <string>Log</string>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="logButtonsLayout">
+         <item>
+          <spacer name="logSpacer">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="clearLogButton">
+           <property name="text">
+            <string>C&amp;lear log</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="progressLayout">
+      <item>
+       <widget class="QProgressBar" name="progressBar">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed"/>
+        </property>
+        <property name="value">
+         <number>0</number>
+        </property>
+        <property name="accessibleName">
+         <string>Progress</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="cancelButton">
+        <property name="toolTip">
+         <string>Stop the current read, write or comparison.</string>
+        </property>
+        <property name="text">
+         <string>Ca&amp;ncel</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+   </layout>
   </widget>
+  <widget class="QStatusBar" name="statusbar"/>
  </widget>
+ <tabstops>
+  <tabstop>portCombo</tabstop>
+  <tabstop>refreshButton</tabstop>
+  <tabstop>connectButton</tabstop>
+  <tabstop>detectButton</tabstop>
+  <tabstop>compareButton</tabstop>
+  <tabstop>romSizeCombo</tabstop>
+  <tabstop>readRomButton</tabstop>
+  <tabstop>writeRomButton</tabstop>
+  <tabstop>saveSizeCombo</tabstop>
+  <tabstop>readSaveButton</tabstop>
+  <tabstop>writeSaveButton</tabstop>
+  <tabstop>eraseSizeButton</tabstop>
+  <tabstop>eraseAllButton</tabstop>
+  <tabstop>logView</tabstop>
+  <tabstop>clearLogButton</tabstop>
+  <tabstop>cancelButton</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

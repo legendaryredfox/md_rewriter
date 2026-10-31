@@ -1,0 +1,438 @@
+#include "devicesession.h"
+
+#include <QCoreApplication>
+#include <QIODevice>
+
+using Protocol::LineKind;
+
+DeviceSession::DeviceSession(QObject *parent)
+    : QObject(parent)
+    , m_parser(this)
+{
+    m_idle.setSingleShot(true);
+    connect(&m_idle, &QTimer::timeout, this, &DeviceSession::onIdleTimeout);
+    connect(&m_parser, &StreamParser::lineReceived, this, &DeviceSession::onLine);
+    connect(&m_parser, &StreamParser::textReceived, this, &DeviceSession::onText);
+    connect(&m_parser, &StreamParser::dumpData, this, &DeviceSession::onDumpData);
+    connect(&m_parser, &StreamParser::dumpComplete, this, &DeviceSession::onDumpComplete);
+    connect(&m_parser, &StreamParser::outOfSync, this, &DeviceSession::onOutOfSync);
+}
+
+void DeviceSession::setDevice(QIODevice *device)
+{
+    if (m_io)
+        disconnect(m_io, nullptr, this, nullptr);
+    m_io = device;
+    m_parser.reset();
+    if (m_io)
+        connect(m_io, &QIODevice::readyRead, this, &DeviceSession::onReadyRead);
+}
+
+bool DeviceSession::canCancel() const
+{
+    return m_op == Op::ReadRom || m_op == Op::ReadSave || m_op == Op::WriteRom || m_op == Op::WriteSave;
+}
+
+// ---------------------------------------------------------------- starting operations
+
+bool DeviceSession::begin(Op op, int idleMs)
+{
+    if (m_op != Op::None) {
+        emit message(Severity::Error, tr("Another operation is still running."));
+        return false;
+    }
+    if (!m_io || !m_io->isOpen()) {
+        emit message(Severity::Error, tr("Device not connected."));
+        return false;
+    }
+    m_parser.reset();
+    m_op = op;
+    m_cancelled = false;
+    m_finishing = false;
+    m_lastPercent = -2;
+    m_dumpComplete = false;
+    m_outOfSync = false;
+    m_writeFailed = false;
+    m_out = nullptr;
+    m_in = nullptr;
+    m_received = 0;
+    m_expected = 0;
+    m_awaitingAck = false;
+    m_clearSent = false;
+    m_dots = 0;
+    m_eraseSteps = 0;
+    m_idleMs = m_idleOverrideMs > 0 ? m_idleOverrideMs : idleMs;
+    m_idle.start(m_idleMs);
+    emit started(op);
+    return true;
+}
+
+bool DeviceSession::send(const QByteArray &bytes)
+{
+    if (!m_io || !m_io->isOpen() || m_io->write(bytes) != bytes.size()) {
+        fail(tr("Could not write to the device."));
+        return false;
+    }
+    return true;
+}
+
+bool DeviceSession::connectDevice()
+{
+    if (!begin(Op::Connect, 3000))
+        return false;
+    setProgress(-1);
+    return send(Protocol::buildCommand(Protocol::Connect));
+}
+
+bool DeviceSession::detect()
+{
+    if (!begin(Op::Detect, 5000))
+        return false;
+    setProgress(-1);
+    return send(Protocol::buildCommand(Protocol::Detect));
+}
+
+bool DeviceSession::startRead(Op op, quint32 bytes, Protocol::Command cmd, quint8 code, QIODevice *out)
+{
+    if (!out || !out->isOpen() || !out->isWritable()) {
+        emit message(Severity::Error, tr("The output file is not open for writing."));
+        return false;
+    }
+    if (!begin(op, 10000))
+        return false;
+    m_out = out;
+    m_expected = bytes;
+    m_parser.expectDump(bytes);
+    setProgress(0);
+    QByteArray args;
+    args.append(static_cast<char>(code));
+    return send(Protocol::buildCommand(cmd, args));
+}
+
+bool DeviceSession::readRom(const Protocol::RomSize &size, QIODevice *out)
+{
+    return startRead(Op::ReadRom, size.bytes, Protocol::DumpRom, size.code, out);
+}
+
+bool DeviceSession::readSave(const Protocol::SramSize &size, QIODevice *out)
+{
+    return startRead(Op::ReadSave, size.bytes, Protocol::DumpSram, size.code, out);
+}
+
+bool DeviceSession::startWrite(Op op, QIODevice *in, Protocol::Command cmd)
+{
+    if (!in || !in->isOpen() || !in->isReadable()) {
+        emit message(Severity::Error, tr("The input file is not open for reading."));
+        return false;
+    }
+    const qint64 size = in->size();
+    const bool isRom = (op == Op::WriteRom);
+    if (isRom ? !Protocol::isWritableRomSize(size) : !Protocol::isWritableSramSize(size)) {
+        emit message(Severity::Error,
+                     isRom ? tr("The file size (%1 bytes) is not supported. ROM files must be 512 KiB, 1 MiB, 2 MiB, 3 MiB or 4 MiB.").arg(size)
+                           : tr("The file size (%1 bytes) is not supported. Save files must be 8 KiB or 32 KiB.").arg(size));
+        return false;
+    }
+    if (!begin(op, 10000))
+        return false;
+    m_in = in;
+    m_blockCmd = cmd;
+    m_totalBlocks = Protocol::blockCount(size);
+    m_nextBlock = 0;
+    m_acked = 0;
+    setProgress(0);
+    sendNextBlock();
+    return true;
+}
+
+bool DeviceSession::writeRom(QIODevice *in)
+{
+    return startWrite(Op::WriteRom, in, Protocol::WriteRomBlock);
+}
+
+bool DeviceSession::writeSave(QIODevice *in)
+{
+    return startWrite(Op::WriteSave, in, Protocol::WriteSramBlock);
+}
+
+bool DeviceSession::eraseAll()
+{
+    if (!begin(Op::EraseAll, 20000))
+        return false;
+    setProgress(-1);
+    return send(Protocol::buildCommand(Protocol::EraseAll));
+}
+
+bool DeviceSession::eraseBySize(const Protocol::RomSize &size)
+{
+    if (!begin(Op::EraseBySize, 30000))
+        return false;
+    m_eraseSteps = size.eraseSectors;
+    setProgress(0);
+    QByteArray args;
+    args.append(static_cast<char>(size.code));
+    return send(Protocol::buildCommand(Protocol::EraseBySize, args));
+}
+
+// ---------------------------------------------------------------- cancelling and failing
+
+void DeviceSession::cancel()
+{
+    if (!canCancel() || m_cancelled)
+        return;
+    m_cancelled = true;
+    emit message(Severity::Info, tr("Cancelling..."));
+    if (m_op == Op::WriteRom || m_op == Op::WriteSave) {
+        // Stop after the block in flight, or right now if none is.
+        if (!m_awaitingAck)
+            finishWrite();
+    }
+    // Reads cannot be interrupted in the firmware: keep consuming (and discarding) the
+    // announced bytes so the stream stays in sync, then finish.
+}
+
+void DeviceSession::deviceLost(const QString &reason)
+{
+    if (m_op == Op::None)
+        return;
+    fail(reason);
+}
+
+void DeviceSession::fail(const QString &reason)
+{
+    emit message(Severity::Error, reason);
+    finish(false);
+}
+
+void DeviceSession::finish(bool ok, const QString &okMessage)
+{
+    if (m_op == Op::None || m_finishing)
+        return;
+    m_finishing = true;
+    m_idle.stop();
+    const Op op = m_op;
+    const bool cancelled = m_cancelled;
+    m_op = Op::None;
+    m_parser.reset();
+    m_out = nullptr;
+    m_in = nullptr;
+    if (ok && !okMessage.isEmpty())
+        emit message(Severity::Success, okMessage);
+    if (ok)
+        setProgress(100);
+    emit finished(op, ok && !cancelled, cancelled);
+}
+
+void DeviceSession::onIdleTimeout()
+{
+    if (m_op == Op::None)
+        return;
+    if (m_cancelled) {
+        if ((m_op == Op::WriteRom || m_op == Op::WriteSave) && m_clearSent)
+            finishWrite();
+        else
+            finish(false);
+        return;
+    }
+    // A dump whose data is all here but whose FINISH line got lost is still a good dump.
+    if ((m_op == Op::ReadRom || m_op == Op::ReadSave) && m_dumpComplete && !m_outOfSync && !m_writeFailed) {
+        emit message(Severity::Warning, tr("The device did not send the final confirmation, but all data was received."));
+        finish(true, tr("Read complete: %1 bytes.").arg(m_received));
+        return;
+    }
+    if ((m_op == Op::WriteRom || m_op == Op::WriteSave) && m_clearSent) {
+        finishWrite();
+        return;
+    }
+    switch (m_op) {
+    case Op::ReadRom:
+    case Op::ReadSave:
+        fail(tr("The device stopped answering after %1 of %2 bytes.").arg(m_received).arg(m_expected));
+        break;
+    case Op::WriteRom:
+    case Op::WriteSave:
+        fail(tr("The device did not confirm block %1 of %2.").arg(m_acked + 1).arg(m_totalBlocks));
+        break;
+    case Op::Connect:
+        emit message(Severity::Warning, tr("The port opened, but the device did not answer. Check that this is the right port and that the firmware is installed."));
+        finish(false);
+        break;
+    default:
+        fail(tr("The device did not answer."));
+        break;
+    }
+}
+
+// ---------------------------------------------------------------- receiving
+
+void DeviceSession::onReadyRead()
+{
+    if (!m_io)
+        return;
+    const QByteArray bytes = m_io->readAll();
+    if (bytes.isEmpty())
+        return;
+    if (m_op != Op::None)
+        m_idle.start(m_idleMs);
+    m_parser.feed(bytes);
+}
+
+void DeviceSession::onText(const QString &text)
+{
+    emit deviceText(text);
+    if (m_op == Op::EraseBySize && m_eraseSteps > 0) {
+        m_dots += Protocol::countDots(text);
+        setProgress(qMin(99, m_dots * 100 / m_eraseSteps));
+    }
+}
+
+void DeviceSession::onDumpData(const QByteArray &data)
+{
+    if (m_op != Op::ReadRom && m_op != Op::ReadSave)
+        return;
+    m_received += static_cast<quint32>(data.size());
+    if (m_cancelled || m_writeFailed)
+        return;
+    if (m_out->write(data) != data.size()) {
+        m_writeFailed = true;
+        emit message(Severity::Error, tr("Could not write to the output file (disk full?)."));
+        return;
+    }
+    if (m_expected > 0)
+        setProgress(static_cast<int>(static_cast<qint64>(m_received) * 100 / m_expected));
+}
+
+void DeviceSession::onDumpComplete()
+{
+    m_dumpComplete = true;
+}
+
+void DeviceSession::onOutOfSync(const QString &line)
+{
+    if (m_op == Op::ReadRom || m_op == Op::ReadSave) {
+        m_outOfSync = true;
+        emit message(Severity::Warning, tr("Unexpected data from the device after the dump: \"%1\".").arg(line));
+    }
+}
+
+void DeviceSession::onLine(const QString &line)
+{
+    if (m_op == Op::None)
+        return;
+    const LineKind kind = Protocol::classifyLine(line);
+
+    switch (m_op) {
+    case Op::Connect:
+        if (kind == LineKind::ConnectBanner)
+            finish(true, tr("Device identified."));
+        break;
+    case Op::Detect:
+        if (kind == LineKind::DetectDone)
+            finish(true);
+        break;
+    case Op::ReadRom:
+    case Op::ReadSave: {
+        const LineKind want = (m_op == Op::ReadRom) ? LineKind::DumpRomFinished : LineKind::DumpSramFinished;
+        if (kind != want)
+            break;
+        if (m_cancelled || m_writeFailed) {
+            finish(false);
+        } else if (m_outOfSync || m_received != m_expected) {
+            fail(tr("The data from the device is incomplete or out of sync (%1 of %2 bytes). The file was not saved.")
+                     .arg(m_received).arg(m_expected));
+        } else {
+            finish(true, tr("Read complete: %1 bytes.").arg(m_received));
+        }
+        break;
+    }
+    case Op::WriteRom:
+        if (kind == LineKind::RomBlockAck)
+            onWriteAck();
+        else if (kind == LineKind::BuffersCleared && m_clearSent)
+            finishWrite();
+        break;
+    case Op::WriteSave:
+        if (kind == LineKind::SramBlockAck)
+            onWriteAck();
+        else if (kind == LineKind::BuffersCleared && m_clearSent)
+            finishWrite();
+        break;
+    case Op::EraseAll:
+        if (kind == LineKind::EraseDone)
+            finish(true, tr("Erase complete."));
+        else if (kind == LineKind::EraseFailed)
+            fail(tr("The cartridge did not finish erasing in time. It may be faulty or not a flash cartridge."));
+        break;
+    case Op::EraseBySize:
+        if (kind == LineKind::EraseDone)
+            finish(true, tr("Erase complete."));
+        else if (kind == LineKind::EraseFailed)
+            fail(tr("A sector did not finish erasing in time. The cartridge may be faulty or not a flash cartridge."));
+        break;
+    case Op::None:
+        break;
+    }
+}
+
+// ---------------------------------------------------------------- writing
+
+void DeviceSession::sendNextBlock()
+{
+    QByteArray block = m_in->read(Protocol::kBlockSize);
+    if (block.isEmpty()) {
+        fail(tr("Could not read block %1 from the file.").arg(m_nextBlock + 1));
+        return;
+    }
+    QByteArray packet = Protocol::padBlock(block);
+    packet.append(Protocol::buildWriteBlockCommand(m_blockCmd, m_nextBlock));
+    m_awaitingAck = true;
+    ++m_nextBlock;
+    send(packet);
+}
+
+void DeviceSession::onWriteAck()
+{
+    if (!m_awaitingAck) {
+        emit message(Severity::Warning, tr("Ignoring an unexpected confirmation from the device."));
+        return;
+    }
+    m_awaitingAck = false;
+    ++m_acked;
+    setProgress(static_cast<int>(static_cast<qint64>(m_acked) * 100 / m_totalBlocks));
+    if (m_cancelled || m_acked >= m_totalBlocks)
+        finishWrite();
+    else
+        sendNextBlock();
+}
+
+// Sends the "clear buffers" command, then finishes when the device confirms (or goes quiet).
+void DeviceSession::finishWrite()
+{
+    if (m_op == Op::None)
+        return;
+    if (!m_clearSent) {
+        m_clearSent = true;
+        if (!send(Protocol::buildCommand(Protocol::ClearBuffers)))
+            return;
+        // Wait for "BUFF IS CLEAR"; the idle timeout covers firmware that does not send it.
+        m_idle.start(2000);
+        return;
+    }
+    if (m_cancelled) {
+        emit message(Severity::Warning, tr("Cancelled after %1 of %2 blocks. The cartridge now holds a partial image.")
+                         .arg(m_acked).arg(m_totalBlocks));
+        finish(false);
+    } else {
+        finish(true, m_op == Op::WriteRom ? tr("Game written: %1 blocks.").arg(m_totalBlocks)
+                                          : tr("Save written: %1 blocks.").arg(m_totalBlocks));
+    }
+}
+
+void DeviceSession::setProgress(int percent)
+{
+    percent = percent < 0 ? -1 : qMin(percent, 100);
+    if (percent == m_lastPercent)
+        return;
+    m_lastPercent = percent;
+    emit progress(percent);
+}

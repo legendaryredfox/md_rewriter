@@ -1,0 +1,70 @@
+#ifndef FAKEFIRMWARE_H
+#define FAKEFIRMWARE_H
+
+#include <QByteArray>
+#include <QIODevice>
+#include <QRandomGenerator>
+#include <QStringList>
+#include <QTimer>
+
+// An in-memory stand-in for the md_rewriter firmware 1.0, seen from the PC side as a QIODevice.
+// It parses the bytes the app writes exactly as the real firmware would (command header
+// AA 55 AA BB, 1 KiB write blocks followed by a 7-byte command) and answers with the same
+// strings, in randomly sized fragments to mimic a serial driver.
+// The behaviour is derived from Firmware/Core/Src/main.c; keep both in sync.
+class FakeFirmware : public QIODevice
+{
+    Q_OBJECT
+public:
+    explicit FakeFirmware(QObject *parent = nullptr);
+
+    // Content of the cartridge ROM / save RAM the fake serves and receives.
+    QByteArray rom;
+    QByteArray sram;
+
+    // Fragmentation of the answers: 0 = deliver each answer in one piece, otherwise chunks
+    // of 1..maxChunk bytes chosen by a generator seeded with `seed`.
+    void setFragmentation(int maxChunk, quint32 seed);
+
+    // Fault injection
+    bool silent = false;           // never answer
+    bool sendBanner = true;        // answer to Connect
+    int dropDumpBlock = -1;        // old-firmware bug: this dump block is not sent
+    int stopAfterDumpBlocks = -1;  // stop answering after this many dump blocks
+    bool eraseFails = false;       // answer to erase with a timeout line
+
+    // What the fake observed
+    QList<QByteArray> commands;    // every command packet received, verbatim
+    QStringList errors;            // protocol violations seen from the app
+    int blocksWritten = 0;
+
+    bool isSequential() const override { return true; }
+    qint64 bytesAvailable() const override;
+
+    // Inject bytes as if the firmware had sent them (for parser tests).
+    void inject(const QByteArray &bytes);
+    // Drop the connection from the device side.
+    void unplug();
+
+protected:
+    qint64 readData(char *data, qint64 maxlen) override;
+    qint64 writeData(const char *data, qint64 len) override;
+
+private:
+    void process();
+    void reply(const QString &text);
+    void replyRaw(const QByteArray &bytes);
+    void pump();
+    void dump(const QByteArray &image, bool isRom, int sizeCode);
+    void handle(const QByteArray &cmd, const QByteArray &blockData);
+
+    QByteArray m_rx;        // bytes from the app not yet consumed
+    QByteArray m_pending;   // answers not yet delivered
+    QByteArray m_ready;     // answers the app can read now
+    QTimer m_timer;
+    int m_maxChunk = 0;
+    QRandomGenerator m_rng;
+    int m_dumpBlocksSent = 0;
+};
+
+#endif // FAKEFIRMWARE_H

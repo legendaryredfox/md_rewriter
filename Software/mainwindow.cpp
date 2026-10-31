@@ -1,795 +1,649 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include <QtSerialPort/QtSerialPort>
-#include <QtSerialPort/QSerialPortInfo>
-#include <QDebug>
-#include <QThread>
+
+#include <QCloseEvent>
+#include <QDir>
+#include <climits>
 #include <QFile>
 #include <QFileDialog>
+#include <QFileInfo>
+#include <QFontDatabase>
+#include <QLabel>
+#include <QLocale>
 #include <QMessageBox>
+#include <QPushButton>
+#include <QSaveFile>
+#include <QSerialPortInfo>
+#include <QSettings>
+#include <QStatusBar>
+#include <QStyle>
+#include <QTextCharFormat>
+#include <QTextCursor>
+#include <QTextDocument>
 
-// Define a serial port pointer
-QSerialPort *COM = new QSerialPort();
+namespace {
 
-void delay(int milliseconds) {
-    QThread::msleep(milliseconds);
-}
+constexpr quint16 kStmVendorId = 0x0483;   // USB descriptor of the firmware (STM32 Virtual ComPort)
+constexpr quint16 kStmProductId = 0x5740;
+constexpr int kBaudRate = 1000000;
+
+using Severity = DeviceSession::Severity;
+
+} // namespace
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
-    , receivedDataLength(0)
-    , address(0)
-    , waitingForResponse(false)
+    , m_session(this)
 {
     ui->setupUi(this);
-}
 
+    m_statusLabel = new QLabel(this);
+    statusBar()->addWidget(m_statusLabel, 1);
+
+    // Sizes come from the protocol tables, so the UI cannot offer what the firmware cannot do.
+    for (const auto &s : Protocol::romSizes())
+        ui->romSizeCombo->addItem(humanSize(s.bytes));
+    for (const auto &s : Protocol::sramSizes())
+        ui->saveSizeCombo->addItem(humanSize(s.bytes));
+
+    const QIcon warn = style()->standardIcon(QStyle::SP_MessageBoxWarning);
+    ui->eraseSizeButton->setIcon(warn);
+    ui->eraseAllButton->setIcon(warn);
+
+    ui->logView->setMaximumBlockCount(5000);
+    ui->logView->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+
+    m_session.setDevice(&m_serial);
+
+    connect(ui->refreshButton, &QPushButton::clicked, this, &MainWindow::refreshPorts);
+    connect(ui->connectButton, &QPushButton::clicked, this, &MainWindow::toggleConnection);
+    connect(ui->detectButton, &QPushButton::clicked, this, &MainWindow::detectCartridge);
+    connect(ui->compareButton, &QPushButton::clicked, this, &MainWindow::compareFiles);
+    connect(ui->readRomButton, &QPushButton::clicked, this, &MainWindow::readRom);
+    connect(ui->writeRomButton, &QPushButton::clicked, this, &MainWindow::writeRom);
+    connect(ui->readSaveButton, &QPushButton::clicked, this, &MainWindow::readSave);
+    connect(ui->writeSaveButton, &QPushButton::clicked, this, &MainWindow::writeSave);
+    connect(ui->eraseSizeButton, &QPushButton::clicked, this, &MainWindow::eraseBySize);
+    connect(ui->eraseAllButton, &QPushButton::clicked, this, &MainWindow::eraseAll);
+    connect(ui->cancelButton, &QPushButton::clicked, this, &MainWindow::cancelCurrent);
+    connect(ui->clearLogButton, &QPushButton::clicked, this, &MainWindow::clearLog);
+
+    connect(&m_session, &DeviceSession::started, this, &MainWindow::onSessionStarted);
+    connect(&m_session, &DeviceSession::finished, this, &MainWindow::onSessionFinished);
+    connect(&m_session, &DeviceSession::message, this, &MainWindow::onSessionMessage);
+    connect(&m_session, &DeviceSession::deviceText, this, &MainWindow::onDeviceText);
+    connect(&m_session, &DeviceSession::progress, this, &MainWindow::onProgress);
+
+    connect(&m_serial, &QSerialPort::errorOccurred, this, &MainWindow::onSerialError);
+
+    // Pick up a device that is plugged in or removed while the window is open.
+    m_portTimer.setInterval(2000);
+    connect(&m_portTimer, &QTimer::timeout, this, [this]() {
+        if (!connected())
+            refreshPorts();
+    });
+    m_portTimer.start();
+
+    m_cmpTimer.setSingleShot(false);
+    m_cmpTimer.setInterval(0);
+    connect(&m_cmpTimer, &QTimer::timeout, this, &MainWindow::stepCompare);
+
+    refreshPorts();
+    updateUi();
+}
 
 MainWindow::~MainWindow()
 {
-    if (COM->isOpen())
-        {
-            COM->close();
-        }
-    delete ui;
+    if (m_serial.isOpen())
+        m_serial.close();
 }
 
+// ------------------------------------------------------------------ helpers
 
-void MainWindow::on_shuaxin_clicked()
+bool MainWindow::connected() const
 {
-    ui->jindutiao->setValue(0);
-    jindu=0;
-    ui->comliebiao->clear();
-    foreach (const QSerialPortInfo &info, QSerialPortInfo::availablePorts())//Get available serial ports
-       {
-        ui->comliebiao->addItem(info.portName());
-       }
-
-     connect(COM, &QSerialPort::readyRead, this, &MainWindow::readSerialData);
+    return m_serial.isOpen();
 }
 
-
-void MainWindow::on_lianjie_clicked()
+bool MainWindow::working() const
 {
-    ui->jindutiao->setValue(0);
-    jindu = 0;
-    ui->xinxi->clear();
-    if (COM->isOpen())
-    {
-       COM->close();
-       ui->lianjie->setText("connect");
-       ui->xinxi->append("Device disconnected");
+    return m_session.busy() || m_comparer != nullptr;
+}
+
+QString MainWindow::humanSize(qint64 bytes)
+{
+    return QLocale().formattedDataSize(bytes, 0, QLocale::DataSizeIecFormat);
+}
+
+const Protocol::RomSize &MainWindow::selectedRomSize() const
+{
+    const auto &v = Protocol::romSizes();
+    return v[qBound(0, ui->romSizeCombo->currentIndex(), v.size() - 1)];
+}
+
+const Protocol::SramSize &MainWindow::selectedSramSize() const
+{
+    const auto &v = Protocol::sramSizes();
+    return v[qBound(0, ui->saveSizeCombo->currentIndex(), v.size() - 1)];
+}
+
+QString MainWindow::lastDir() const
+{
+    QSettings s;
+    const QString d = s.value(QStringLiteral("lastDir")).toString();
+    return (!d.isEmpty() && QFileInfo(d).isDir()) ? d : QDir::homePath();
+}
+
+void MainWindow::rememberDir(const QString &path)
+{
+    QSettings s;
+    s.setValue(QStringLiteral("lastDir"), QFileInfo(path).absolutePath());
+}
+
+QString MainWindow::askOpenFile(const QString &title, const QString &filter)
+{
+    const QString path = m_hooks.openFile ? m_hooks.openFile(title, filter)
+                                          : QFileDialog::getOpenFileName(this, title, lastDir(), filter);
+    if (!path.isEmpty())
+        rememberDir(path);
+    return path;
+}
+
+QString MainWindow::askSaveFile(const QString &title, const QString &filter, const QString &suffix)
+{
+    QString path = m_hooks.saveFile ? m_hooks.saveFile(title, filter)
+                                    : QFileDialog::getSaveFileName(this, title, lastDir(), filter);
+    if (path.isEmpty())
+        return path;
+    if (QFileInfo(path).suffix().isEmpty())
+        path += QLatin1Char('.') + suffix;
+    rememberDir(path);
+    return path;
+}
+
+bool MainWindow::confirm(const QString &title, const QString &text, const QString &acceptText)
+{
+    if (m_hooks.confirm)
+        return m_hooks.confirm(title, text);
+    QMessageBox box(QMessageBox::Warning, title, text, QMessageBox::NoButton, this);
+    QPushButton *accept = box.addButton(acceptText, QMessageBox::DestructiveRole);
+    QPushButton *cancel = box.addButton(QMessageBox::Cancel);
+    box.setDefaultButton(cancel);
+    box.setEscapeButton(cancel);
+    box.exec();
+    return box.clickedButton() == accept;
+}
+
+// ------------------------------------------------------------------ log
+
+void MainWindow::log(Severity severity, const QString &text)
+{
+    const bool dark = palette().color(QPalette::Base).lightness() < 128;
+    QColor color = palette().color(QPalette::Text);
+    QString prefix;
+    switch (severity) {
+    case Severity::Success:
+        color = dark ? QColor(0x6f, 0xd3, 0x6f) : QColor(0x1a, 0x7f, 0x37);
+        prefix = QStringLiteral("[ok] ");
+        break;
+    case Severity::Warning:
+        color = dark ? QColor(0xf0, 0xb4, 0x29) : QColor(0x9a, 0x67, 0x00);
+        prefix = QStringLiteral("[warning] ");
+        break;
+    case Severity::Error:
+        color = dark ? QColor(0xff, 0x7b, 0x72) : QColor(0xc6, 0x28, 0x28);
+        prefix = QStringLiteral("[error] ");
+        break;
+    case Severity::Info:
+        break;
     }
+    QTextCharFormat fmt;
+    fmt.setForeground(color);
+    if (severity != Severity::Info)
+        fmt.setFontWeight(QFont::DemiBold);
+
+    ui->logView->moveCursor(QTextCursor::End);
+    QTextDocument *doc = ui->logView->document();
+    QTextCursor c = ui->logView->textCursor();
+    if (doc->characterCount() > 1 && doc->characterAt(doc->characterCount() - 2) != QLatin1Char('\n'))
+        c.insertText(QStringLiteral("\n"));
+    c.insertText(prefix + text + QLatin1Char('\n'), fmt);
+    ui->logView->ensureCursorVisible();
+}
+
+void MainWindow::onDeviceText(const QString &raw)
+{
+    QString text = raw;
+    text.remove(QLatin1Char('\r'));
+    ui->logView->moveCursor(QTextCursor::End);
+    QTextDocument *doc = ui->logView->document();
+    // Firmware messages often start or end with an empty line; do not stack blank lines.
+    const bool atLineStart = doc->characterCount() <= 1 || doc->characterAt(doc->characterCount() - 2) == QLatin1Char('\n');
+    if (atLineStart) {
+        int i = 0;
+        while (i < text.size() && text.at(i) == QLatin1Char('\n'))
+            ++i;
+        text.remove(0, i);
+    }
+    if (text.isEmpty())
+        return;
+    QTextCharFormat fmt;
+    fmt.setForeground(palette().color(QPalette::Text));
+    ui->logView->textCursor().insertText(text, fmt);
+    ui->logView->ensureCursorVisible();
+}
+
+void MainWindow::onSessionMessage(Severity severity, const QString &text)
+{
+    log(severity, text);
+}
+
+void MainWindow::clearLog()
+{
+    ui->logView->clear();
+}
+
+// ------------------------------------------------------------------ ports
+
+void MainWindow::refreshPorts()
+{
+    QStringList locations;
+    QStringList labels;
+    int preferred = -1;
+    const auto ports = QSerialPortInfo::availablePorts();
+    for (const QSerialPortInfo &info : ports) {
+        QString label = info.portName();
+        if (!info.description().isEmpty())
+            label += QStringLiteral(" - ") + info.description();
+        if (info.hasVendorIdentifier() && info.hasProductIdentifier())
+            label += QStringLiteral(" (%1:%2)").arg(info.vendorIdentifier(), 4, 16, QLatin1Char('0'))
+                         .arg(info.productIdentifier(), 4, 16, QLatin1Char('0'));
+        if (preferred < 0 && info.vendorIdentifier() == kStmVendorId && info.productIdentifier() == kStmProductId)
+            preferred = locations.size();
+        locations << info.systemLocation();
+        labels << label;
+    }
+
+    // Lets a user (or a test) point the app at a port the OS does not enumerate, such as a
+    // symlink or a pseudo-terminal: MD_REWRITER_EXTRA_PORT=/path/to/tty
+    const QString extra = qEnvironmentVariable("MD_REWRITER_EXTRA_PORT");
+    if (!extra.isEmpty() && !locations.contains(extra)) {
+        locations << extra;
+        labels << extra;
+    }
+
+    QStringList current;
+    for (int i = 0; i < ui->portCombo->count(); ++i)
+        current << ui->portCombo->itemData(i).toString();
+    if (current == locations) {
+        updateUi();
+        return;
+    }
+
+    const QString keep = ui->portCombo->currentData().toString();
+    ui->portCombo->clear();
+    for (int i = 0; i < locations.size(); ++i)
+        ui->portCombo->addItem(labels[i], locations[i]);
+    int idx = ui->portCombo->findData(keep);
+    if (idx < 0)
+        idx = preferred;
+    if (idx >= 0)
+        ui->portCombo->setCurrentIndex(idx);
+    if (locations.isEmpty())
+        ui->portCombo->setPlaceholderText(tr("No serial port found. Plug in the device."));
+    updateUi();
+}
+
+void MainWindow::closePort()
+{
+    if (m_session.busy())
+        m_session.deviceLost(tr("The connection was closed."));
+    if (m_serial.isOpen())
+        m_serial.close();
+}
+
+void MainWindow::toggleConnection()
+{
+    if (working())
+        return;
+    if (connected()) {
+        closePort();
+        log(Severity::Info, tr("Device disconnected."));
+        updateUi();
+        return;
+    }
+    const QString location = ui->portCombo->currentData().toString();
+    if (location.isEmpty()) {
+        log(Severity::Error, tr("Choose a serial port first."));
+        return;
+    }
+    m_serial.setPortName(location);
+    m_serial.setBaudRate(kBaudRate);
+    m_serial.setDataBits(QSerialPort::Data8);
+    m_serial.setParity(QSerialPort::NoParity);
+    m_serial.setStopBits(QSerialPort::OneStop);
+    m_serial.setFlowControl(QSerialPort::NoFlowControl);
+    if (!m_serial.open(QIODevice::ReadWrite)) {
+        log(Severity::Error, Protocol::describeOpenError(QSerialPortInfo(m_serial).portName(),
+                                                        m_serial.error(), m_serial.errorString()));
+        updateUi();
+        return;
+    }
+    log(Severity::Info, tr("Opened %1.").arg(ui->portCombo->currentText()));
+    updateUi();
+    m_session.connectDevice();
+}
+
+void MainWindow::onSerialError(QSerialPort::SerialPortError error)
+{
+    if (error == QSerialPort::NoError || !m_serial.isOpen())
+        return;
+    const QString reason = tr("Lost the connection to the device: %1").arg(m_serial.errorString());
+    log(Severity::Error, reason);
+    if (m_session.busy())
+        m_session.deviceLost(tr("The operation was interrupted."));
+    m_serial.close();
+    updateUi();
+}
+
+// ------------------------------------------------------------------ device operations
+
+void MainWindow::detectCartridge()
+{
+    m_session.detect();
+}
+
+void MainWindow::readRom()
+{
+    const auto &size = selectedRomSize();
+    const QString path = askSaveFile(tr("Save the ROM as"), tr("ROM files (*.bin *.md *.gen);;All files (*)"), QStringLiteral("bin"));
+    if (path.isEmpty())
+        return;
+    m_outFile = std::make_unique<QSaveFile>(path);
+    if (!m_outFile->open(QIODevice::WriteOnly)) {
+        log(Severity::Error, tr("Cannot create \"%1\": %2").arg(path, m_outFile->errorString()));
+        m_outFile.reset();
+        return;
+    }
+    m_outPath = path;
+    if (!m_session.readRom(size, m_outFile.get())) {
+        m_outFile->cancelWriting();
+        m_outFile.reset();
+    }
+}
+
+void MainWindow::readSave()
+{
+    const auto &size = selectedSramSize();
+    const QString path = askSaveFile(tr("Save the save data as"), tr("Save files (*.srm *.sav);;All files (*)"), QStringLiteral("srm"));
+    if (path.isEmpty())
+        return;
+    m_outFile = std::make_unique<QSaveFile>(path);
+    if (!m_outFile->open(QIODevice::WriteOnly)) {
+        log(Severity::Error, tr("Cannot create \"%1\": %2").arg(path, m_outFile->errorString()));
+        m_outFile.reset();
+        return;
+    }
+    m_outPath = path;
+    if (!m_session.readSave(size, m_outFile.get())) {
+        m_outFile->cancelWriting();
+        m_outFile.reset();
+    }
+}
+
+void MainWindow::writeRom()
+{
+    const QString path = askOpenFile(tr("Select the ROM file to write"), tr("ROM files (*.bin *.md *.smd *.gen);;All files (*)"));
+    if (path.isEmpty())
+        return;
+    m_inFile = std::make_unique<QFile>(path);
+    if (!m_inFile->open(QIODevice::ReadOnly)) {
+        log(Severity::Error, tr("Cannot open \"%1\": %2").arg(path, m_inFile->errorString()));
+        m_inFile.reset();
+        return;
+    }
+    if (Protocol::isWritableRomSize(m_inFile->size())
+        && !confirm(tr("Write ROM"),
+                    tr("Write \"%1\" (%2) to the cartridge?\n\nThe cartridge must be erased first. "
+                       "Anything already on it will be overwritten.")
+                        .arg(QFileInfo(path).fileName(), humanSize(m_inFile->size())),
+                    tr("Write"))) {
+        m_inFile.reset();
+        return;
+    }
+    if (!m_session.writeRom(m_inFile.get()))
+        m_inFile.reset();
+}
+
+void MainWindow::writeSave()
+{
+    const QString path = askOpenFile(tr("Select the save file to write"), tr("Save files (*.srm *.sav);;All files (*)"));
+    if (path.isEmpty())
+        return;
+    m_inFile = std::make_unique<QFile>(path);
+    if (!m_inFile->open(QIODevice::ReadOnly)) {
+        log(Severity::Error, tr("Cannot open \"%1\": %2").arg(path, m_inFile->errorString()));
+        m_inFile.reset();
+        return;
+    }
+    if (Protocol::isWritableSramSize(m_inFile->size())
+        && !confirm(tr("Write save"),
+                    tr("Replace the save data on the cartridge with \"%1\"?\n\nThe saved games currently on the cartridge will be lost.")
+                        .arg(QFileInfo(path).fileName()),
+                    tr("Replace"))) {
+        m_inFile.reset();
+        return;
+    }
+    if (!m_session.writeSave(m_inFile.get()))
+        m_inFile.reset();
+}
+
+void MainWindow::eraseBySize()
+{
+    const auto &size = selectedRomSize();
+    if (!confirm(tr("Erase by size"),
+                 tr("Erase the first %1 of the cartridge flash?\n\nAll game data in that area will be lost.")
+                     .arg(humanSize(size.bytes)),
+                 tr("Erase")))
+        return;
+    m_session.eraseBySize(size);
+}
+
+void MainWindow::eraseAll()
+{
+    if (!confirm(tr("Erase all"),
+                 tr("Erase the entire flash chip and the save memory of the cartridge?\n\n"
+                    "Everything on the cartridge will be lost. This can take several minutes and cannot be interrupted.\n"
+                    "Do not unplug the device while it runs."),
+                 tr("Erase everything")))
+        return;
+    m_session.eraseAll();
+}
+
+void MainWindow::cancelCurrent()
+{
+    if (m_comparer)
+        finishCompare(true);
     else
-    {
-        COM->setPortName(ui->comliebiao->currentText());
-        COM->setBaudRate(1000000);
-        COM->setDataBits(QSerialPort::Data8);
-        COM->setParity(QSerialPort::NoParity);
-        COM->setStopBits(QSerialPort::OneStop);
-        COM->setFlowControl(QSerialPort::NoFlowControl);
-        if (COM->open(QIODevice::ReadWrite))
-        {
-            ui->lianjie->setText("disconnect");
-            ui->xinxi->append("Device connected\r\n");
-            const uint8_t controlByte = 0x0C;
-            const uint8_t controlByte1 = 0xAA;
-            const uint8_t controlByte2 = 0x55;
-            const uint8_t controlByte3 = 0xBB;
-            QByteArray packet;
-            packet.append(controlByte);
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte2); // 24-bit address high byte
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte3);  // 24-bit address middle byte
-            COM->write(packet);
-        }
-        else
-        {
-            ui->xinxi->append("Unable to connect to device\r\n");
-        }
-     }
+        m_session.cancel();
 }
 
-void MainWindow::on_qingkong_clicked()
+void MainWindow::onSessionStarted(DeviceSession::Op op)
 {
-    ui->jindutiao->setValue(0);
-    jindu=0;
-    ui->xinxi->clear();
+    m_lastOp = op;
+    updateUi();
 }
 
-void MainWindow::readSerialData()
+void MainWindow::onSessionFinished(DeviceSession::Op op, bool ok, bool cancelled)
 {
-   QByteArray response = COM->readAll();
-   QString str_rev;
-   if(response.size()>256){
-       if (file.isOpen()) {
-            file.write(response);
-            QString selectedItem = ui->flashsize->currentText();
-            if(selectedItem == "512K"){
-                jindu=jindu+1;
-                ui->jindutiao->setValue(jindu/5.12+1);
-                }
-            else if(selectedItem == "1M"){
-                jindu=jindu+1;
-                ui->jindutiao->setValue(jindu/10.24+1);
-                }
-            else if(selectedItem == "2M"){
-                jindu=jindu+1;
-                ui->jindutiao->setValue(jindu/20.48+1);
-                }
-            else if(selectedItem == "128K"){
-                jindu=jindu+1;
-                ui->jindutiao->setValue(jindu/1.28+1);
-                }
-            else if(selectedItem == "256K"){
-                jindu=jindu+1;
-                ui->jindutiao->setValue(jindu/2.56+1);
-                }
-            else{
-                jindu=jindu+1;
-                ui->jindutiao->setValue(jindu/40.96+1);
-                }
-           }
-       }
-   else{
-       if (response.contains("OK\r\n")) {
-           if (!waitingForResponse) {
-               return;
-           }
-           //str_rev = QString(response);
-           //ui->xinxi->insertPlainText(str_rev);
-           //ui->xinxi->moveCursor(QTextCursor::End);
-           waitingForResponse = false;
-           address += 1024;
-           addj = addj+1;
-           cnt = cnt+1;
-           if(cnt==0x40){
-               bank=bank+1;
-               addj = 0;
-               cnt = 0;
-           }
-           sendData();
-       }
-       else if (response.contains("GK\r\n")) {
-           if (!waitingForResponse) {
-               return;
-           }
-           //str_rev = QString(response);
-           //ui->xinxi->insertPlainText(str_rev);
-           //ui->xinxi->moveCursor(QTextCursor::End);
-           waitingForResponse = false;
-           address += 1024;
-           addj = addj+1;
-           cnt = cnt+1;
-           if(cnt==0x40){
-               bank=bank+1;
-               addj = 0;
-               cnt = 0;
-           }
-           sendsramData();
-       }
-       else{
-               str_rev = QString(response);
-               ui->xinxi->insertPlainText(str_rev);
-               ui->xinxi->moveCursor(QTextCursor::End);
-               if (response.contains("s\r\n")){
-                   jindu=jindu+1;
-                   ui->jindutiao->setValue(jindu*2.2);
-                   }
-               if (response.contains("FINISH!!!\r\n")){
-                   ui->jindutiao->setValue(100);
-                   if (isSaving) {
-                           file.close();
-                           isSaving = false;
-                           ui->xinxi->append("File saved\r\n");
-                       }
-                   }
-            }
-       }
-    //QString hexString = response.toHex(' ').toUpper();
-    //ui->shujuxianshi->append(hexString);
-}
-
-void MainWindow::on_shibiekadai_clicked()
-{
-    ui->jindutiao->setValue(0);
-    jindu=0;
-    ui->xinxi->clear();
-    if (COM->isOpen()) {
-            const uint8_t controlByte = 0x0D;
-            const uint8_t controlByte1 = 0xAA;
-            const uint8_t controlByte2 = 0x55;
-            const uint8_t controlByte3 = 0xBB;
-            QByteArray packet;
-            packet.append(controlByte);
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte2); // 24-bit address high byte
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte3);  // 24-bit address middle byte
-            COM->write(packet);
+    Q_UNUSED(op);
+    if (m_outFile) {
+        if (ok) {
+            if (m_outFile->commit())
+                log(Severity::Success, tr("Saved to \"%1\".").arg(m_outPath));
+            else
+                log(Severity::Error, tr("Could not save \"%1\": %2").arg(m_outPath, m_outFile->errorString()));
         } else {
-            ui->xinxi->append("Device not connected\r\n");
+            m_outFile->cancelWriting();
+            log(Severity::Warning, cancelled ? tr("Cancelled. The incomplete file was not saved.")
+                                             : tr("The incomplete file was not saved."));
         }
+        m_outFile.reset();
+    }
+    m_inFile.reset();
+    updateUi();
 }
 
-void MainWindow::on_cachu_clicked()
+void MainWindow::onProgress(int percent)
 {
-    ui->jindutiao->setValue(0);
-    jindu=0;
-    ui->xinxi->clear();
-    if (COM->isOpen()) {
-            const uint8_t controlByte = 0x0E;
-            const uint8_t controlByte1 = 0xAA;
-            const uint8_t controlByte2 = 0x55;
-            const uint8_t controlByte3 = 0xBB;
-            QByteArray packet;
-            packet.append(controlByte);
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte2); // 24-bit address high byte
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte3);  // 24-bit address middle byte
-            COM->write(packet);
-        } else {
-            ui->xinxi->append("Device not connected\r\n");
-        }
-
-}
-
-
-void MainWindow::on_shaolu_clicked()
-{
-    ui->jindutiao->setValue(0);
-    jindu=0;
-    ui->xinxi->clear();
-    if (COM->isOpen()){
-            QString fileName = QFileDialog::getOpenFileName(this, tr("Please select the ROM file to Write"), "", tr("MDROM files (*.bin *.md *.smd);;All files (*.*)"));
-               if (!fileName.isEmpty()) {
-                   file.setFileName(fileName);
-                   if (file.open(QIODevice::ReadOnly)) {
-                       fileSize = file.size();
-                       address = 0x0;
-                       addj = 0x0;
-                       cnt = 0x0;
-                       bank = 0x0;
-                       sendData();
-                       }
-           } else {
-                ui->xinxi->append("File open failed!\r\n");
-           }
+    if (percent < 0) {
+        ui->progressBar->setRange(0, 0);   // busy indicator
     } else {
-        ui->xinxi->append("Device not connected!\r\n");
+        ui->progressBar->setRange(0, 100);
+        ui->progressBar->setValue(percent);
     }
 }
 
+// ------------------------------------------------------------------ comparison
 
-void MainWindow::sendData()
+void MainWindow::compareFiles()
 {
-    if(fileSize==0x80000){
-        jindu=jindu+1;
-        ui->jindutiao->setValue(jindu/5.12+1);
-         if(address >= 0x80000){
-            const uint8_t controlByte = 0x0F;
-            const uint8_t controlByte1 = 0xAA;
-            const uint8_t controlByte2 = 0x55;
-            const uint8_t controlByte3 = 0xBB;
-            QByteArray packet;
-            packet.append(controlByte);
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte2); // 24-bit address high byte
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte3);  // 24-bit address middle byte
-            COM->write(packet);
-            file.close();
-            ui->xinxi->append("Game burning completed\r\n");
-            return;
-            }
-        }
-    else if(fileSize==0x100000){
-        jindu=jindu+1;
-        ui->jindutiao->setValue(jindu/10.24+1);
-        if(address >= 0x100000){
-            const uint8_t controlByte = 0x0F;
-            const uint8_t controlByte1 = 0xAA;
-            const uint8_t controlByte2 = 0x55;
-            const uint8_t controlByte3 = 0xBB;
-            QByteArray packet;
-            packet.append(controlByte);
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte2); // 24-bit address high byte
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte3);  // 24-bit address middle byte
-            COM->write(packet);
-            file.close();
-            ui->xinxi->append("Game burning completed\r\n");
-            return;
-            }
-        }
-    else if(fileSize==0x200000){
-        jindu=jindu+1;
-        ui->jindutiao->setValue(jindu/20.48+1);
-        if(address >= 0x200000){
-            const uint8_t controlByte = 0x0F;
-            const uint8_t controlByte1 = 0xAA;
-            const uint8_t controlByte2 = 0x55;
-            const uint8_t controlByte3 = 0xBB;
-            QByteArray packet;
-            packet.append(controlByte);
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte2); // 24-bit address high byte
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte3);  // 24-bit address middle byte
-            COM->write(packet);
-            file.close();
-            ui->xinxi->append("Game burning completed\r\n");
-            return;
-            }
-        }
-    else if(fileSize==0x300000){
-        jindu=jindu+1;
-        ui->jindutiao->setValue(jindu/30.72+1);
-        if(address >= 0x300000){
-            const uint8_t controlByte = 0x0F;
-            const uint8_t controlByte1 = 0xAA;
-            const uint8_t controlByte2 = 0x55;
-            const uint8_t controlByte3 = 0xBB;
-            QByteArray packet;
-            packet.append(controlByte);
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte2); // 24-bit address high byte
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte3);  // 24-bit address middle byte
-            COM->write(packet);
-            file.close();
-            ui->xinxi->append("Game burning completed\r\n");
-            return;
-            }
-        }
-    else if(fileSize==0x400000){
-        jindu=jindu+1;
-        ui->jindutiao->setValue(jindu/40.96+1);
-        if(address >= 0x400000){
-            const uint8_t controlByte = 0x0F;
-            const uint8_t controlByte1 = 0xAA;
-            const uint8_t controlByte2 = 0x55;
-            const uint8_t controlByte3 = 0xBB;
-            QByteArray packet;
-            packet.append(controlByte);
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte2); // 24-bit address high byte
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte3);  // 24-bit address middle byte
-            COM->write(packet);
-            file.close();
-            ui->xinxi->append("Game burning completed\r\n");
-            return;
-            }
-        }
-    else {
-        ui->jindutiao->setValue(0);
-            const uint8_t controlByte = 0x0F;
-            const uint8_t controlByte1 = 0xAA;
-            const uint8_t controlByte2 = 0x55;
-            const uint8_t controlByte3 = 0xBB;
-            QByteArray packet;
-            packet.append(controlByte);
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte2); // 24-bit address high byte
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte3);  // 24-bit address middle byte
-            COM->write(packet);
-            file.close();
-            ui->xinxi->append("The file size is not supported by the system\r\n");
-            return;
-        }
-    const uint8_t controlByte = 0x0B;
-    const uint8_t controlByte1 = 0xAA;
-    const uint8_t controlByte2 = 0x55;
-    const uint8_t controlByte3 = 0xBB;
-    QByteArray data = file.read(1024);
-    COM->write(data);
-    QByteArray packet = 0;
-    packet.append(controlByte);
-    packet.append(controlByte1);
-    packet.append(controlByte2);
-    packet.append(controlByte1);
-    packet.append(controlByte3);
-    packet.append(addj&0xff);
-    packet.append(bank&0xff);
-    COM->write(packet);
-    waitingForResponse = true;
-}
-
-void MainWindow::sendsramData()
-{
-   if(fileSize==0x2000){
-        jindu=jindu+1;
-        ui->jindutiao->setValue(jindu/0.08+1);
-        if(address >= 0x2000){
-            const uint8_t controlByte = 0x0F;
-            const uint8_t controlByte1 = 0xAA;
-            const uint8_t controlByte2 = 0x55;
-            const uint8_t controlByte3 = 0xBB;
-            QByteArray packet;
-            packet.append(controlByte);
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte2); // 24-bit address high byte
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte3);  // 24-bit address middle byte
-            COM->write(packet);
-            file.close();
-            ui->xinxi->append("Archive burning completed\r\n");
-            return;
-            }
-        }
-    else if(fileSize==0x8000){
-        jindu=jindu+1;
-        ui->jindutiao->setValue(jindu/0.32+1);
-        if(address >= 0x8000){
-            const uint8_t controlByte = 0x0F;
-            const uint8_t controlByte1 = 0xAA;
-            const uint8_t controlByte2 = 0x55;
-            const uint8_t controlByte3 = 0xBB;
-            QByteArray packet;
-            packet.append(controlByte);
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte2); // 24-bit address high byte
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte3);  // 24-bit address middle byte
-            COM->write(packet);
-            file.close();
-            ui->xinxi->append("Archive burning completed\r\n");
-            return;
-            }
-        }
-    else {
-        ui->jindutiao->setValue(0);
-            const uint8_t controlByte = 0x0F;
-            const uint8_t controlByte1 = 0xAA;
-            const uint8_t controlByte2 = 0x55;
-            const uint8_t controlByte3 = 0xBB;
-            QByteArray packet;
-            packet.append(controlByte);
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte2); // 24-bit address high byte
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte3);  // 24-bit address middle byte
-            COM->write(packet);
-            file.close();
-            ui->xinxi->append("The file size is not supported by the system\r\n");
-            return;
-        }
-    const uint8_t controlByte = 0x1B;
-    const uint8_t controlByte1 = 0xAA;
-    const uint8_t controlByte2 = 0x55;
-    const uint8_t controlByte3 = 0xBB;
-    QByteArray data = file.read(1024);
-    COM->write(data);
-    QByteArray packet = 0;
-    packet.append(controlByte);
-    packet.append(controlByte1);
-    packet.append(controlByte2);
-    packet.append(controlByte1);
-    packet.append(controlByte3);
-    packet.append(addj&0xff);
-    packet.append(bank&0xff);
-    COM->write(packet);
-    waitingForResponse = true;
-}
-
-
-QByteArray MainWindow::hexStringToByteArray(const QString &hex)
-{
-    QByteArray byteArray;
-    QStringList hexList = hex.split(" ");
-    for (const QString &hexByte : hexList) {
-        bool ok;
-        byteArray.append(static_cast<char>(hexByte.toInt(&ok, 16)));
+    if (working())
+        return;
+    const QString a = askOpenFile(tr("Select the first file"), tr("All files (*)"));
+    if (a.isEmpty())
+        return;
+    const QString b = askOpenFile(tr("Select the second file"), tr("All files (*)"));
+    if (b.isEmpty())
+        return;
+    m_cmpA = std::make_unique<QFile>(a);
+    m_cmpB = std::make_unique<QFile>(b);
+    if (!m_cmpA->open(QIODevice::ReadOnly) || !m_cmpB->open(QIODevice::ReadOnly)) {
+        log(Severity::Error, tr("Could not open both files."));
+        m_cmpA.reset();
+        m_cmpB.reset();
+        return;
     }
-    return byteArray;
+    log(Severity::Info, tr("Comparing \"%1\" with \"%2\"...").arg(QFileInfo(a).fileName(), QFileInfo(b).fileName()));
+    m_comparer = std::make_unique<FileComparer>(m_cmpA.get(), m_cmpB.get(), 20);
+    ui->progressBar->setRange(0, 100);
+    ui->progressBar->setValue(0);
+    m_cmpTimer.start();
+    updateUi();
 }
 
-
-void MainWindow::on_duqu_clicked()
+void MainWindow::stepCompare()
 {
-    ui->jindutiao->setValue(0);
-    jindu=0;
-    QString fileName;
-    ui->xinxi->clear();
-    if (COM->isOpen()){
-       fileName = QFileDialog::getSaveFileName(this, tr("Please select the ROM file to burn"), "", tr("MDROM files (*.bin);;All files (*.*)"));
-       if (!fileName.isEmpty()) {
-           file.setFileName(fileName);
-           if (file.open(QIODevice::WriteOnly)) {
-               isSaving = true;
-               const uint8_t controlByte = 0x0A;
-               const uint8_t controlByte1 = 0xAA;
-               const uint8_t controlByte2 = 0x55;
-               const uint8_t controlByte3 = 0xBB;
-               const uint8_t FLASHSIZE512K = 0x01;
-               const uint8_t FLASHSIZE1M = 0x02;
-               const uint8_t FLASHSIZE2M = 0x03;
-               const uint8_t FLASHSIZE4M = 0x04;
-               QString selectedItem = ui->flashsize->currentText();
-               if(selectedItem == "512K"){
-                   QByteArray packet;
-                   packet.append(controlByte);
-                   packet.append(controlByte1);
-                   packet.append(controlByte2);
-                   packet.append(controlByte1);
-                   packet.append(controlByte3);
-                   packet.append(FLASHSIZE512K);
-                   COM->write(packet);
-               }
-               if(selectedItem == "1M"){
-                   QByteArray packet;
-                   packet.append(controlByte);
-                   packet.append(controlByte1); // 24-bit address high byte
-                   packet.append(controlByte2); // 24-bit address high byte
-                   packet.append(controlByte1); // 24-bit address high byte
-                   packet.append(controlByte3);  // 24-bit address middle byte
-                   packet.append(FLASHSIZE1M);
-                   COM->write(packet);
-               }
-               if(selectedItem == "2M"){
-                   QByteArray packet;
-                   packet.append(controlByte);
-                   packet.append(controlByte1); // 24-bit address high byte
-                   packet.append(controlByte2); // 24-bit address high byte
-                   packet.append(controlByte1); // 24-bit address high byte
-                   packet.append(controlByte3);  // 24-bit address middle byte
-                   packet.append(FLASHSIZE2M);
-                   COM->write(packet);
-               }
-               if(selectedItem == "4M"){
-                   QByteArray packet;
-                   packet.append(controlByte);
-                   packet.append(controlByte1); // 24-bit address high byte
-                   packet.append(controlByte2); // 24-bit address high byte
-                   packet.append(controlByte1); // 24-bit address high byte
-                   packet.append(controlByte3);  // 24-bit address middle byte
-                   packet.append(FLASHSIZE4M);
-                   COM->write(packet);
-               }
-           } else {
-               ui->xinxi->append("Error opening file\r\n");
-           }
+    if (!m_comparer)
+        return;
+    const bool done = m_comparer->step(1 << 20);
+    ui->progressBar->setValue(m_comparer->percent());
+    if (done)
+        finishCompare(false);
+}
 
-       }
-       else{
-         ui->xinxi->append("No file selected\r\n");
-       }
+void MainWindow::finishCompare(bool cancelled)
+{
+    m_cmpTimer.stop();
+    if (!m_comparer)
+        return;
+    if (cancelled) {
+        log(Severity::Warning, tr("Comparison cancelled."));
+    } else if (m_comparer->failed()) {
+        log(Severity::Error, tr("Could not read one of the files."));
+    } else if (m_comparer->differenceCount() == 0) {
+        log(Severity::Success, tr("The two files are identical (%1 bytes).").arg(m_comparer->sizeA()));
+        ui->progressBar->setValue(100);
     } else {
-        ui->xinxi->append("Device not connected\r\n");
+        if (m_comparer->sizeA() != m_comparer->sizeB())
+            log(Severity::Warning, tr("The files have different sizes: %1 and %2 bytes.")
+                                       .arg(m_comparer->sizeA()).arg(m_comparer->sizeB()));
+        log(Severity::Warning, tr("%n difference(s) found.", nullptr, static_cast<int>(qMin<quint64>(m_comparer->differenceCount(), INT_MAX))));
+        QString list;
+        for (quint64 off : m_comparer->firstDifferences())
+            list += tr("  byte at offset %1 (0x%2) differs").arg(off).arg(QString::number(off, 16).toUpper()) + QLatin1Char('\n');
+        onDeviceText(list);
+        if (m_comparer->differenceCount() > static_cast<quint64>(m_comparer->firstDifferences().size()))
+            log(Severity::Info, tr("Only the first %1 differences are listed.").arg(m_comparer->firstDifferences().size()));
+        ui->progressBar->setValue(100);
     }
-
+    m_comparer.reset();
+    m_cmpA.reset();
+    m_cmpB.reset();
+    updateUi();
 }
 
-void MainWindow::on_jiaoyanwenjian_clicked()
+// ------------------------------------------------------------------ state
+
+void MainWindow::updateUi()
 {
-    ui->jindutiao->setValue(0);
-    jindu=0;
-    ui->xinxi->clear();
-    filePath1 = QFileDialog::getOpenFileName(this, "Select file 1", "", "All files (*.*)");
-    ui->xinxi-> append(filePath1);
-    ui->xinxi-> append("File Opened\r\n");
-    delay(100);
-    filePath2 = QFileDialog::getOpenFileName(this, "Select file 2", "", "All files (*.*)");
-    ui->xinxi-> append(filePath2);
-    ui->xinxi-> append("File Opened\r\n");
-    delay(100);
-    if (filePath1.isEmpty() || filePath2.isEmpty()) {
-            ui->xinxi->append("Please select two files for comparison first.\r\n");
+    const bool conn = connected();
+    const bool busy = working();
+    const bool idleDevice = conn && !busy;
+
+    ui->portCombo->setEnabled(!conn && !busy);
+    ui->refreshButton->setEnabled(!conn && !busy);
+    ui->connectButton->setText(conn ? tr("Dis&connect") : tr("&Connect"));
+    ui->connectButton->setEnabled(!busy && (conn || ui->portCombo->count() > 0));
+
+    ui->detectButton->setEnabled(idleDevice);
+    ui->readRomButton->setEnabled(idleDevice);
+    ui->writeRomButton->setEnabled(idleDevice);
+    ui->readSaveButton->setEnabled(idleDevice);
+    ui->writeSaveButton->setEnabled(idleDevice);
+    ui->eraseSizeButton->setEnabled(idleDevice);
+    ui->eraseAllButton->setEnabled(idleDevice);
+    ui->romSizeCombo->setEnabled(!busy);
+    ui->saveSizeCombo->setEnabled(!busy);
+    ui->compareButton->setEnabled(!busy);
+
+    ui->cancelButton->setEnabled(m_comparer != nullptr || (m_session.busy() && m_session.canCancel()));
+
+    if (!busy) {
+        ui->progressBar->setRange(0, 100);
+    }
+    setStatus();
+}
+
+void MainWindow::setStatus()
+{
+    QString text = connected() ? tr("Connected to %1").arg(m_serial.portName()) : tr("Not connected");
+    if (m_comparer) {
+        text += tr(" - comparing files");
+    } else if (m_session.busy()) {
+        QString what;
+        switch (m_session.currentOp()) {
+        case DeviceSession::Op::Connect: what = tr("connecting"); break;
+        case DeviceSession::Op::Detect: what = tr("detecting the cartridge"); break;
+        case DeviceSession::Op::ReadRom: what = tr("reading the ROM"); break;
+        case DeviceSession::Op::WriteRom: what = tr("writing the ROM"); break;
+        case DeviceSession::Op::ReadSave: what = tr("reading the save data"); break;
+        case DeviceSession::Op::WriteSave: what = tr("writing the save data"); break;
+        case DeviceSession::Op::EraseAll: what = tr("erasing the cartridge"); break;
+        case DeviceSession::Op::EraseBySize: what = tr("erasing sectors"); break;
+        case DeviceSession::Op::None: break;
+        }
+        if (!what.isEmpty())
+            text += QStringLiteral(" - ") + what;
+    }
+    m_statusLabel->setText(text);
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    if (m_session.busy()) {
+        const bool isErase = m_session.currentOp() == DeviceSession::Op::EraseAll
+                          || m_session.currentOp() == DeviceSession::Op::EraseBySize;
+        const QString text = isErase
+            ? tr("The cartridge is being erased. Closing now does not stop the erase, but you will not see the result.")
+            : tr("An operation is still running. Closing now will abort it; a partly written cartridge or an unsaved file will be left unfinished.");
+        if (!confirm(tr("Operation in progress"), text, tr("Close anyway"))) {
+            event->ignore();
             return;
         }
-        QByteArray fileContent1 = readFile(filePath1);
-        QByteArray fileContent2 = readFile(filePath2);
-        compareFiles(fileContent1, fileContent2);
-}
-
-
-QByteArray MainWindow::readFile(const QString &filePath)
-{
-    QFile file(filePath);
-    if (!file.open(QIODevice::ReadOnly)) {
-        return QByteArray();
     }
-
-    QByteArray fileContent = file.readAll();
-    file.close();
-
-    return fileContent;
-}
-
-void MainWindow::compareFiles(const QByteArray &fileContent1, const QByteArray &fileContent2)
-{
-    QString result;
-    uint8_t cnt = 0;
-    int maxSize = qMax(fileContent1.size(), fileContent2.size());
-    for (int i = 0; i < maxSize; ++i) {
-        char byte1 = (i < fileContent1.size()) ? fileContent1[i] : 0;
-        char byte2 = (i < fileContent2.size()) ? fileContent2[i] : 0;
-        if (byte1 != byte2) {
-            result += QString("Different byte position: %1\n").arg(i);
-            cnt=cnt+1;
-        }
-    }
-
-    if (result.isEmpty()) {
-        result = "The contents of the two files are the same.\r\n";
-    }
-
-    if(cnt<=20){
-        ui->xinxi->append(result);
-    }
-
-    else{
-        ui->xinxi->append("More than 20 differences, not listing them all\r\n");
-    }
-}
-
-void MainWindow::on_rongliangcachu_clicked()
-{
-    ui->jindutiao->setValue(0);
-    jindu=0;
-    ui->xinxi->clear();
-    if (COM->isOpen()){
-        const uint8_t controlByte = 0x1E;
-        const uint8_t controlByte1 = 0xAA;
-        const uint8_t controlByte2 = 0x55;
-        const uint8_t controlByte3 = 0xBB;
-        const uint8_t FLASHSIZE512K = 0x01;
-        const uint8_t FLASHSIZE1M = 0x02;
-        const uint8_t FLASHSIZE2M = 0x03;
-        const uint8_t FLASHSIZE4M = 0x04;
-        const uint8_t FLASHSIZE128K = 0x05;
-        const uint8_t FLASHSIZE256K = 0x06;
-        QString selectedItem = ui->flashsize->currentText();
-        if(selectedItem == "128K"){
-            QByteArray packet;
-            packet.append(controlByte);
-            packet.append(controlByte1);
-            packet.append(controlByte2);
-            packet.append(controlByte1);
-            packet.append(controlByte3);
-            packet.append(FLASHSIZE128K);
-            COM->write(packet);
-        }
-        if(selectedItem == "256K"){
-            QByteArray packet;
-            packet.append(controlByte);
-            packet.append(controlByte1);
-            packet.append(controlByte2);
-            packet.append(controlByte1);
-            packet.append(controlByte3);
-            packet.append(FLASHSIZE256K);
-            COM->write(packet);
-        }
-        if(selectedItem == "512K"){
-            QByteArray packet;
-            packet.append(controlByte);
-            packet.append(controlByte1);
-            packet.append(controlByte2);
-            packet.append(controlByte1);
-            packet.append(controlByte3);
-            packet.append(FLASHSIZE512K);
-            COM->write(packet);
-        }
-        if(selectedItem == "1M"){
-            QByteArray packet;
-            packet.append(controlByte);
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte2); // 24-bit address high byte
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte3);  // 24-bit address middle byte
-            packet.append(FLASHSIZE1M);
-            COM->write(packet);
-        }
-        if(selectedItem == "2M"){
-            QByteArray packet;
-            packet.append(controlByte);
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte2); // 24-bit address high byte
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte3);  // 24-bit address middle byte
-            packet.append(FLASHSIZE2M);
-            COM->write(packet);
-        }
-        if(selectedItem == "4M"){
-            QByteArray packet;
-            packet.append(controlByte);
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte2); // 24-bit address high byte
-            packet.append(controlByte1); // 24-bit address high byte
-            packet.append(controlByte3);  // 24-bit address middle byte
-            packet.append(FLASHSIZE4M);
-            COM->write(packet);
-        }
-      } else {
-       ui->xinxi->append("Device not connected\r\n");
-    }
-}
-
-
-
-void MainWindow::on_shaolucundang_clicked()
-{
-    ui->jindutiao->setValue(0);
-    jindu = 0;
-    ui->xinxi->clear();
-    if (COM->isOpen()){
-            QString fileName = QFileDialog::getOpenFileName(this, tr("Please select the Save file to Write"), "", tr("SAV files (*.srm *.sav);;All files (*.*)"));
-               if (!fileName.isEmpty()) {
-                   file.setFileName(fileName);
-                   if (file.open(QIODevice::ReadOnly)) {
-                       fileSize = file.size();
-                       address = 0x0;
-                       addj = 0x0;
-                       cnt = 0x0;
-                       bank = 0x0;
-                       sendsramData();
-                       }
-                    }
-           else {
-                ui->xinxi->append("File Open Failed\r\n");
-           }
-    } else {
-        ui->xinxi->append("Device not connected\r\n");
-    }
-}
-
-void MainWindow::on_duqucundang_clicked()
-{
-    ui->jindutiao->setValue(0);
-    jindu=0;
-    ui->xinxi->clear();
-    if (COM->isOpen()){
-            QString fileName = QFileDialog::getSaveFileName(this, tr("Please select the file to Save"), "", tr("SAV files (*.srm);;All files (*.*)"));
-            if (!fileName.isEmpty())
-                {
-                    file.setFileName(fileName);
-                    if (file.open(QIODevice::WriteOnly))
-                        {
-                            isSaving = true;
-                            const uint8_t controlByte = 0x1A;
-                            const uint8_t controlByte1 = 0xAA;
-                            const uint8_t controlByte2 = 0x55;
-                            const uint8_t controlByte3 = 0xBB;
-                            const uint8_t SRAMSIZE256K = 0x01;
-                            const uint8_t SRAMSIZE64K = 0x02;
-                            QString selectedItem = ui->sramsize->currentText();
-                            if(selectedItem == "8K")
-                                {
-                                    QByteArray packet;
-                                    packet.append(controlByte);
-                                    packet.append(controlByte1);
-                                    packet.append(controlByte2);
-                                    packet.append(controlByte1);
-                                    packet.append(controlByte3);
-                                    packet.append(SRAMSIZE64K);
-                                    COM->write(packet);
-                                }
-                            if(selectedItem == "32K")
-                                {
-                                    QByteArray packet;
-                                    packet.append(controlByte);
-                                    packet.append(controlByte1);
-                                    packet.append(controlByte2);
-                                    packet.append(controlByte1);
-                                    packet.append(controlByte3);
-                                    packet.append(SRAMSIZE256K);
-                                    COM->write(packet);
-                                }
-                        }
-                   else
-                        {
-                        ui->xinxi->append("File Open Failed\r\n");
-                        }
-                }
-        }
-    else
-        {
-            ui->xinxi->append("Device not connected\r\n");
-        }
+    m_cmpTimer.stop();
+    closePort();
+    event->accept();
 }

@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=MD Rewriter
+GenericName=Mega Drive cartridge reader and writer
+GenericName[pt_BR]=Leitor e gravador de cartuchos de Mega Drive
+Comment=Back up and write Sega Mega Drive cartridges
+Comment[pt_BR]=Faça backup e grave cartuchos de Sega Mega Drive
+Exec=MDRewriter
+Icon=mdrewriter
+Terminal=false
+Categories=Utility;Electronics;
+Keywords=Mega Drive;Genesis;cartridge;ROM;flash;

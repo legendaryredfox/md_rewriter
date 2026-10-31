@@ -3,9 +3,17 @@
 
 #include <QMainWindow>
 #include <QSerialPort>
-#include <QFileDialog>
-#include <QFile>
+#include <QTimer>
 
+#include <functional>
+#include <memory>
+
+#include "devicesession.h"
+#include "filecompare.h"
+
+class QFile;
+class QLabel;
+class QSaveFile;
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -16,44 +24,78 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    MainWindow(QWidget *parent = nullptr);
-    ~MainWindow();
+    explicit MainWindow(QWidget *parent = nullptr);
+    ~MainWindow() override;
+
+    // Replace the modal dialogs, so tests can drive the window without a human.
+    struct DialogHooks {
+        std::function<QString(const QString &title, const QString &filter)> openFile;
+        std::function<QString(const QString &title, const QString &filter)> saveFile;
+        std::function<bool(const QString &title, const QString &text)> confirm;
+    };
+    void setDialogHooks(const DialogHooks &hooks) { m_hooks = hooks; }
+
+protected:
+    void closeEvent(QCloseEvent *event) override;
 
 private slots:
-    void on_shuaxin_clicked();
-    void on_lianjie_clicked();
-    void on_qingkong_clicked();
-    void readSerialData();
-    void on_shibiekadai_clicked();
-    void on_cachu_clicked();
-    void on_shaolu_clicked();
-    void on_duqu_clicked();
-    void on_jiaoyanwenjian_clicked();
-    void on_rongliangcachu_clicked();
-    void on_shaolucundang_clicked();
-    void on_duqucundang_clicked();
+    void refreshPorts();
+    void toggleConnection();
+    void detectCartridge();
+    void readRom();
+    void writeRom();
+    void readSave();
+    void writeSave();
+    void eraseBySize();
+    void eraseAll();
+    void compareFiles();
+    void cancelCurrent();
+    void clearLog();
+
+    void onSessionStarted(DeviceSession::Op op);
+    void onSessionFinished(DeviceSession::Op op, bool ok, bool cancelled);
+    void onSessionMessage(DeviceSession::Severity severity, const QString &text);
+    void onDeviceText(const QString &text);
+    void onProgress(int percent);
+    void onSerialError(QSerialPort::SerialPortError error);
+    void stepCompare();
 
 private:
-    Ui::MainWindow *ui;
-    QSerialPort *serial;
-    QString filePath;
-    QByteArray hexStringToByteArray(const QString &hex);
-    qint64 receivedDataLength;
-    qint64 fileSize;
-    QFile file;
-    QByteArray buffer;
-    bool isSaving;
-    uint32_t address;
-    uint32_t addj;
-    uint32_t cnt;
-    uint32_t bank;
-    uint32_t jindu;
-    bool waitingForResponse;
-    void sendData();
-    void sendsramData();
-    QString filePath1;
-    QString filePath2;
-    QByteArray readFile(const QString &filePath);
-    void compareFiles(const QByteArray &fileContent1, const QByteArray &fileContent2);
+    bool connected() const;
+    bool working() const;
+    void updateUi();
+    void setStatus();
+    bool confirm(const QString &title, const QString &text, const QString &acceptText);
+    QString askOpenFile(const QString &title, const QString &filter);
+    QString askSaveFile(const QString &title, const QString &filter, const QString &suffix);
+    void rememberDir(const QString &path);
+    QString lastDir() const;
+    void log(DeviceSession::Severity severity, const QString &text);
+    void closePort();
+    void finishCompare(bool cancelled);
+    const Protocol::RomSize &selectedRomSize() const;
+    const Protocol::SramSize &selectedSramSize() const;
+    static QString humanSize(qint64 bytes);
+
+    std::unique_ptr<Ui::MainWindow> ui;
+    QSerialPort m_serial;
+    DeviceSession m_session;
+    QTimer m_portTimer;
+    QLabel *m_statusLabel = nullptr;
+
+    // file of the running read or write
+    std::unique_ptr<QSaveFile> m_outFile;
+    std::unique_ptr<QFile> m_inFile;
+    QString m_outPath;
+
+    // running comparison
+    std::unique_ptr<QFile> m_cmpA;
+    std::unique_ptr<QFile> m_cmpB;
+    std::unique_ptr<FileComparer> m_comparer;
+    QTimer m_cmpTimer;
+
+    DeviceSession::Op m_lastOp = DeviceSession::Op::None;
+    DialogHooks m_hooks;
 };
+
 #endif // MAINWINDOW_H
