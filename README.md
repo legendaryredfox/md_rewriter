@@ -29,6 +29,7 @@ Gostou do projeto? Apoie: [Buy Me a Coffee](https://buymeacoffee.com/legendaryre
 - Lê e grava os dados de save (SRAM) do cartucho.
 - Compara dois arquivos byte a byte (por exemplo, uma leitura e a ROM original), sem precisar do dispositivo.
 - Interface que segue o tema do sistema (claro ou escuro), com confirmação antes de qualquer operação destrutiva e botão Cancelar para leituras e gravações.
+- Guia do usuário embutido (menu **Ajuda → Guia do usuário** ou **F1**): receitas de uso, o que cada mensagem do registro significa e solução de problemas, com busca. Disponível em português e inglês.
 - Código aberto.
 
 ![Janela principal](docs/images/ui-main.png)
@@ -116,6 +117,7 @@ cd ../.. && tools/check-firmware.sh                      # verificação estáti
 
 - `tst_protocol`: unitários (comandos, tabelas de tamanhos, analisador de fluxo, comparador).
 - `tst_session`: integração (sessão do dispositivo contra um firmware simulado, com respostas fragmentadas, falhas e cancelamento).
+- `tst_help`: guia embutido (estrutura, idiomas, links) e verificação de que as mensagens e teclas citadas no guia existem no programa.
 - `tst_e2e`: ponta a ponta (janela real + porta serial real em um pseudo-terminal + firmware simulado; apenas Linux). Defina `QT_QPA_PLATFORM=offscreen` para rodar sem tela.
 
 O firmware não pôde ser testado em hardware real nestas alterações: veja `docs/SPEC.md` e `docs/PLAN.md`.
@@ -151,6 +153,7 @@ Licença [MIT](LICENSE). O código de terceiros em `Firmware/Drivers` e `Firmwar
 - Чтение и запись сохранений (SRAM) картриджа.
 - Побайтовое сравнение двух файлов (например, дампа и оригинальной ROM) — устройство не нужно.
 - Интерфейс использует системную тему (светлую или тёмную), запрашивает подтверждение перед любой разрушающей операцией, а чтение и запись можно отменить кнопкой «Cancel».
+- Встроенное руководство (меню **Help → User guide** или **F1**): сценарии использования, значение сообщений журнала и устранение неполадок, с поиском. Доступно на португальском и английском.
 - Открытый исходный код.
 
 ![Главное окно](docs/images/ui-main.png)
@@ -237,6 +240,7 @@ cd ../.. && tools/check-firmware.sh                      # статическа�
 
 - `tst_protocol` — модульные тесты (команды, таблицы размеров, разбор потока, сравнение файлов).
 - `tst_session` — интеграционные тесты (сессия устройства с имитацией прошивки: фрагментация ответов, сбои, отмена).
+- `tst_help` — встроенное руководство (структура, языки, ссылки) и проверка того, что сообщения и клавиши из руководства есть в программе.
 - `tst_e2e` — сквозные тесты (настоящее окно + настоящий последовательный порт на псевдотерминале + имитация прошивки; только Linux). Для запуска без экрана задайте `QT_QPA_PLATFORM=offscreen`.
 
 Изменения прошивки не проверялись на реальном оборудовании: см. `docs/SPEC.md` и `docs/PLAN.md`.
@@ -272,6 +276,7 @@ Epicjoy 官方速卖通店铺：[购买](https://www.aliexpress.us/item/32568095
 - 读取并备份卡带存档（SRAM），方便管理。
 - 逐字节比较两个文件（例如读出的文件与原始 ROM），无需连接设备。
 - 界面跟随系统主题（浅色或深色）；任何破坏性操作前都会确认，读写过程可点击“Cancel”取消。
+- 内置用户指南（菜单 **Help → User guide** 或按 **F1**）：使用场景、日志信息含义和故障排除，支持搜索。提供葡萄牙语和英语版本。
 - 开源。
 
 ![主窗口](docs/images/ui-main.png)
@@ -358,6 +363,7 @@ cd ../.. && tools/check-firmware.sh                      # 固件静态检查（
 
 - `tst_protocol`：单元测试（命令、容量表、数据流解析器、文件比较）。
 - `tst_session`：集成测试（设备会话对接模拟固件，含分片应答、故障和取消）。
+- `tst_help`：内置指南（结构、语言、链接），并检查指南中引用的信息和快捷键确实存在于程序中。
 - `tst_e2e`：端到端测试（真实窗口 + 伪终端上的真实串口 + 模拟固件；仅限 Linux）。设置 `QT_QPA_PLATFORM=offscreen` 可无显示运行。
 
 固件的改动尚未在真实硬件上测试，详见 `docs/SPEC.md` 和 `docs/PLAN.md`。
@@ -393,6 +399,7 @@ Like the project? Support it: [Buy Me a Coffee](https://buymeacoffee.com/legenda
 - Read and back up the cartridge save data (SRAM).
 - Compare two files byte by byte (for example a dump and the original ROM), no device needed.
 - Follows the system theme (light or dark), asks for confirmation before any destructive operation, and has a Cancel button for reads and writes.
+- Built-in user guide (menu **Help → User guide** or **F1**): usage recipes, what each log message means and troubleshooting, with search. Available in Portuguese and English.
 - Open source.
 
 ![Main window](docs/images/ui-main.png)
@@ -479,6 +486,7 @@ cd ../.. && tools/check-firmware.sh                      # static firmware check
 
 - `tst_protocol`: unit tests (commands, size tables, stream parser, file comparer).
 - `tst_session`: integration tests (device session against a simulated firmware, with fragmented replies, faults and cancellation).
+- `tst_help`: built-in guide (structure, languages, links) and a check that the messages and keys quoted in the guide exist in the program.
 - `tst_e2e`: end-to-end tests (real window + real serial port on a pseudo-terminal + simulated firmware; Linux only). Set `QT_QPA_PLATFORM=offscreen` to run without a display.
 
 The firmware changes could not be tested on real hardware: see `docs/SPEC.md` and `docs/PLAN.md`.

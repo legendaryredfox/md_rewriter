@@ -1,0 +1,175 @@
+<h1 id="top">MD Rewriter - Guia do usuário</h1>
+<p>O MD Rewriter lê e grava <b>cartuchos de Sega Mega Drive / Genesis</b> por meio do dispositivo USB MD Rewriter. Com ele você faz backup de jogos e saves no computador, grava jogos em cartuchos flash regraváveis e compara arquivos.</p>
+<p>Ir para: <a href="#quick-start">Início rápido</a> &middot; <a href="#recipes">Receitas</a> &middot; <a href="#messages">O que o registro diz</a> &middot; <a href="#troubleshooting">Solução de problemas</a> &middot; <a href="#safety">Segurança</a></p>
+
+<h2 id="quick-start">Início rápido</h2>
+<ol>
+<li>Conecte o <b>MD Rewriter</b> ao computador com um cabo USB de <b>dados</b> e insira o cartucho (veja <a href="#safety">Segurança</a>).</li>
+<li>Em <b>Conexão</b>, escolha a porta do dispositivo. Ela é escolhida automaticamente quando reconhecida (USB <code>0483:5740</code>, "STM32 Virtual ComPort"). A lista se atualiza sozinha; clique em <b>Atualizar</b> se precisar.</li>
+<li>Clique em <b>Conectar</b>. O registro mostra <code>Dispositivo identificado.</code> e os botões de ação são habilitados.</li>
+<li>Clique em <b>Detectar cartucho</b> para conferir se o dispositivo enxerga o cartucho.</li>
+<li>Escolha o que fazer: <a href="#recipe-backup">backup de um jogo</a>, <a href="#recipe-flash">gravar um jogo</a>, <a href="#recipe-saves">saves</a>, <a href="#recipe-erase">apagar</a> ou <a href="#recipe-compare">comparar arquivos</a>.</li>
+</ol>
+
+<h2 id="window">A janela, grupo por grupo</h2>
+<table border="1" cellspacing="0" cellpadding="5" width="100%">
+<tr><th align="left">Grupo</th><th align="left">O que faz</th></tr>
+<tr><td><b>Conexão</b></td><td>Lista de portas, <b>Atualizar</b> e <b>Conectar</b>/<b>Desconectar</b>. A porta só pode ser trocada com o dispositivo desconectado.</td></tr>
+<tr><td><b>Cartucho e ferramentas</b></td><td><b>Detectar cartucho</b> identifica o chip flash. <b>Comparar arquivos</b> compara dois arquivos quaisquer e não precisa do dispositivo.</td></tr>
+<tr><td><b>Jogo (ROM)</b></td><td><b>Tamanho do cartucho</b> é usado por <b>Ler ROM</b> e <b>Apagar por tamanho</b>. <b>Gravar ROM</b> ignora esse campo e usa o tamanho do arquivo escolhido.</td></tr>
+<tr><td><b>Dados de save (SRAM)</b></td><td><b>Tamanho do save</b> (32 KiB ou 8 KiB) é usado por <b>Ler save</b>. <b>Gravar save</b> usa o tamanho do arquivo.</td></tr>
+<tr><td><b>Apagar</b></td><td>Destrutivo. <b>Apagar por tamanho</b> apaga só os setores flash cobertos pelo tamanho do cartucho; <b>Apagar tudo</b> apaga o chip inteiro e a memória de save.</td></tr>
+<tr><td><b>Registro</b></td><td>Tudo o que acontece. O <span style="color:gray">texto simples</span> vem do dispositivo; linhas coloridas são mensagens do programa: verde para sucesso, âmbar para avisos, vermelho para erros.</td></tr>
+<tr><td><b>Barra de progresso e Cancelar</b></td><td>Progresso da operação em andamento (barra em movimento = duração desconhecida). <b>Cancelar</b> interrompe leituras, gravações e comparações. O apagamento não pode ser cancelado.</td></tr>
+</table>
+<p>Botões ficam desabilitados quando não podem ser usados: a maioria exige conexão e, durante uma operação, só <b>Cancelar</b> está disponível. Passe o mouse sobre qualquer controle para ver a dica.</p>
+
+<h2 id="recipes">Receitas (casos de uso comuns)</h2>
+
+<h3 id="recipe-backup">Fazer backup de um jogo</h3>
+<ol>
+<li>Conecte e, se quiser, clique em <b>Detectar cartucho</b>.</li>
+<li>Defina o <b>Tamanho do cartucho</b> como o tamanho real da ROM (512 KiB, 1 MiB, 2 MiB ou 4 MiB). O tamanho costuma constar na documentação do jogo ou em bancos de dados de ROMs.</li>
+<li>Clique em <b>Ler ROM...</b> e escolha um nome de arquivo (<code>.bin</code>).</li>
+<li>Aguarde 100%. O registro mostra <code>Leitura concluída</code> e <code>Salvo em "..."</code>.</li>
+</ol>
+<p>O arquivo só aparece quando a leitura termina por completo. Se você cancelar, ou algo der errado, <b>nenhum arquivo parcial é deixado</b>, e um arquivo existente com o mesmo nome não é alterado.</p>
+<p>Dica: se não tiver certeza do tamanho, confira o resultado: um tamanho errado, maior que o real, pode gerar um arquivo que se repete ou com dados sem relação. Compare com uma ROM conhecida (veja <a href="#recipe-verify">Conferir</a>).</p>
+
+<h3 id="recipe-verify">Conferir se uma leitura está correta</h3>
+<ol>
+<li>Clique em <b>Comparar arquivos...</b>, escolha sua leitura e depois uma ROM conhecida do mesmo jogo.</li>
+<li>O registro diz <code>Os dois arquivos são idênticos</code>, ou informa quantos bytes diferem e as posições das 20 primeiras.</li>
+</ol>
+<p>Ler o mesmo cartucho duas vezes e comparar os dois arquivos é um bom teste do cabo e dos contatos.</p>
+
+<h3 id="recipe-flash">Gravar um jogo em um cartucho flash</h3>
+<ol>
+<li><b>Apague antes</b>, a menos que o cartucho esteja vazio (veja <a href="#recipe-erase">Apagar</a>). A memória flash só consegue mudar bits de 1 para 0; gravar sobre dados antigos sem apagar gera um jogo corrompido.</li>
+<li>Clique em <b>Gravar ROM...</b> e escolha o arquivo. Tamanhos aceitos: <b>512 KiB, 1 MiB, 2 MiB, 3 MiB, 4 MiB</b>. Apenas arquivos de ROM simples (<code>.bin</code>, <code>.md</code>, <code>.gen</code>). Arquivos <code>.smd</code> (intercalados) são gravados como estão e não vão iniciar; converta-os para <code>.bin</code> simples antes.</li>
+<li>Confirme o aviso. A barra de progresso enche conforme os blocos são gravados.</li>
+<li>Aguarde <code>Jogo gravado</code>.</li>
+<li><b>Confira:</b> clique em <b>Ler ROM...</b> com o mesmo tamanho e depois em <b>Comparar arquivos...</b> com o original. Deve dizer que os arquivos são idênticos.</li>
+</ol>
+<p><b>Cancelar</b> durante a gravação deixa o cartucho com uma imagem parcial. Apague e grave de novo.</p>
+<p>Só há suporte a cartuchos flash regraváveis com o chip que o dispositivo reconhece (o <b>Detectar cartucho</b> mostra <code>FLASHID:C2CB</code>, <code>MX29LV640EB MD FLASH CART</code>). <code>NO FIND NGP CARD</code> significa que o dispositivo não reconheceu o chip; não tente gravar nele.</p>
+
+<h3 id="recipe-saves">Backup, restauração e transferência de saves</h3>
+<ol>
+<li>Defina o <b>Tamanho do save</b> como o tamanho da memória de save do jogo: <b>32 KiB</b> ou <b>8 KiB</b>. Se não tiver certeza, consulte a documentação do jogo ou um banco de dados; não adivinhe se for gravar o save de volta.</li>
+<li><b>Ler save...</b> copia os saves para um arquivo <code>.srm</code>.</li>
+<li><b>Gravar save...</b> substitui os saves do cartucho por um arquivo de exatamente 8 KiB ou 32 KiB.</li>
+</ol>
+<p><b>Leia sempre o save atual primeiro</b> e guarde esse arquivo: gravar um save substitui tudo o que está no cartucho.</p>
+<p>Para levar um save para outro cartucho do mesmo jogo, leia do primeiro e grave no segundo. Só há suporte a saves em <b>SRAM</b> com bateria; jogos que guardam o save em EEPROM ou no próprio chip flash não podem ser lidos nem gravados com este dispositivo.</p>
+<p>Antes de apagar ou regravar um cartucho flash que contém um jogo com save em bateria, leia o save primeiro.</p>
+
+<h3 id="recipe-erase">Apagar um cartucho</h3>
+<ul>
+<li><b>Apagar por tamanho...</b> - apaga só os setores cobertos pelo <b>Tamanho do cartucho</b>. Mais rápido: use antes de gravar uma ROM desse tamanho ou menor. A barra de progresso enche conforme os setores são apagados.</li>
+<li><b>Apagar tudo...</b> - apaga o chip flash inteiro e a memória de save. Pode levar <b>vários minutos</b>, mostra uma barra em movimento e <b>não pode ser cancelado</b>. Não desconecte o dispositivo até o registro dizer <code>Apagamento concluído</code>.</li>
+</ul>
+<p>Ambos pedem confirmação porque destroem dados. Não há como desfazer.</p>
+
+<h3 id="recipe-identify">Identificar um cartucho</h3>
+<p><b>Detectar cartucho</b> mostra o ID do chip. Um cartucho flash reconhecido mostra <code>FLASHID:C2CB</code> e <code>MX29LV640EB MD FLASH CART</code>. Para um cartucho de jogo comum (não flash) a mensagem é <code>NO FIND NGP CARD</code>: é esperado, e você ainda pode lê-lo.</p>
+
+<h3 id="recipe-compare">Comparar dois arquivos quaisquer (sem dispositivo)</h3>
+<p><b>Comparar arquivos...</b> funciona sem conexão. Usos típicos: conferir uma leitura contra uma referência, ver exatamente quais bytes um patch ou ROM hack altera (original contra modificada), ou confirmar que uma gravação deu certo.</p>
+<ul>
+<li>Resultado <code>idênticos</code>: mesmo tamanho, mesmos bytes.</li>
+<li>Caso contrário, o registro informa o número de diferenças, avisa se os tamanhos diferem e lista as 20 primeiras posições em decimal e hexadecimal.</li>
+</ul>
+
+<h2 id="messages">O que o registro diz</h2>
+<table border="1" cellspacing="0" cellpadding="5" width="100%">
+<tr><th align="left">Mensagem</th><th align="left">Significado e o que fazer</th></tr>
+<tr><td><code>Dispositivo identificado.</code></td><td>O dispositivo respondeu. Tudo certo.</td></tr>
+<tr><td><code>A porta abriu, mas o dispositivo não respondeu...</code></td><td>Porta errada, ou o firmware não está instalado. Tente outra porta da lista.</td></tr>
+<tr><td><code>Não foi possível abrir ...: permissão negada...</code></td><td>Linux: veja <a href="#problem-permission">permissões</a>.</td></tr>
+<tr><td><code>A conexão com o dispositivo foi perdida</code></td><td>O cabo foi desconectado ou o dispositivo reiniciou. Reconecte; a operação em andamento foi abortada. Se era uma gravação, o cartucho contém uma imagem parcial.</td></tr>
+<tr><td><code>Leitura concluída: N bytes.</code> / <code>Salvo em ...</code></td><td>Sucesso. O arquivo está completo.</td></tr>
+<tr><td><code>Os dados do dispositivo estão incompletos ou fora de sincronia...</code></td><td>A leitura foi danificada no caminho. <b>O arquivo não foi salvo.</b> Tente outro cabo ou porta USB e leia de novo.</td></tr>
+<tr><td><code>O dispositivo parou de responder após X de Y bytes.</code></td><td>O dispositivo ou o cabo parou no meio da leitura. Reconecte e tente de novo.</td></tr>
+<tr><td><code>O dispositivo não confirmou o bloco N de M.</code></td><td>Um bloco de gravação não foi confirmado. Verifique o cabo e os contatos do cartucho, apague e grave de novo.</td></tr>
+<tr><td><code>O tamanho do arquivo (N bytes) não é suportado...</code></td><td>O arquivo não tem 512 KiB, 1 MiB, 2 MiB, 3 MiB ou 4 MiB (ROM), nem 8 KiB ou 32 KiB (save). Nada foi enviado ao dispositivo.</td></tr>
+<tr><td><code>... não terminou de apagar a tempo...</code></td><td>O cartucho pode estar com defeito ou não ser flash. (Só aparece com o firmware atualizado.)</td></tr>
+<tr><td><code>Cancelado após N de M blocos. O cartucho agora contém uma imagem parcial.</code></td><td>Você cancelou uma gravação. Apague e grave de novo antes de usar o cartucho.</td></tr>
+<tr><td><code>O dispositivo não enviou a confirmação final, mas todos os dados foram recebidos.</code></td><td>Os dados estão completos. O aviso é inofensivo.</td></tr>
+<tr><td><code>Outra operação ainda está em andamento.</code></td><td>Aguarde terminar, ou clique em <b>Cancelar</b>.</td></tr>
+<tr><td><code>FLASHID:...</code>, <code>PUSH SAVE GAME BUTTON!!!</code>, <code>USE TIME n s</code></td><td>Texto simples do dispositivo (em inglês). <code>USE TIME</code> conta os segundos de um apagamento total.</td></tr>
+</table>
+
+<h2 id="troubleshooting">Solução de problemas</h2>
+
+<h3 id="problem-permission">Linux: "permissão negada" ao conectar</h3>
+<p>Seu usuário precisa ter permissão para usar a porta serial. Adicione-se ao grupo <code>dialout</code> e faça login de novo:</p>
+<p><code>sudo usermod -aG dialout $USER</code></p>
+<p>ou instale a regra udev que acompanha o programa (<code>99-md-rewriter.rules</code>) e reconecte o dispositivo:</p>
+<p><code>sudo cp 99-md-rewriter.rules /etc/udev/rules.d/ &amp;&amp; sudo udevadm control --reload &amp;&amp; sudo udevadm trigger</code></p>
+<p>Se a porta estiver "ocupada", outro programa (geralmente o ModemManager) a está usando. A regra udev manda o ModemManager ignorar o dispositivo.</p>
+
+<h3 id="problem-noport">A porta não aparece</h3>
+<ul>
+<li>Use um cabo USB que transmita <b>dados</b>; muitos cabos só carregam.</li>
+<li>Reconecte o dispositivo e clique em <b>Atualizar</b>. A lista também se atualiza sozinha a cada dois segundos enquanto desconectado.</li>
+<li>Windows: o dispositivo aparece como porta COM. Instale o driver "STM32 Virtual ComPort" se o Windows não o reconhecer.</li>
+<li>Para uma porta que o sistema não lista (um link simbólico ou pseudo-terminal), inicie o programa com <code>MD_REWRITER_EXTRA_PORT=/caminho/da/porta</code>.</li>
+</ul>
+
+<h3 id="problem-noanswer">Conectado, mas "o dispositivo não respondeu"</h3>
+<p>Porta errada, ou sem firmware no dispositivo. Escolha a entrada que menciona <code>0483:5740</code>. Se você tem vários dispositivos seriais, desconecte os outros.</p>
+
+<h3 id="problem-readbad">Leituras incompletas, fora de sincronia ou diferentes a cada vez</h3>
+<ul>
+<li>Limpe os contatos do cartucho (álcool isopropílico) e confira se ele está bem encaixado.</li>
+<li>Tente outra porta USB direto no computador (sem hub) e outro cabo.</li>
+<li>Leia duas vezes e <a href="#recipe-compare">compare</a> os dois arquivos. Se diferirem, o problema é a conexão, não o jogo.</li>
+<li>Confira se o <b>Tamanho do cartucho</b> corresponde ao tamanho real da ROM.</li>
+</ul>
+
+<h3 id="problem-writebad">O jogo não inicia depois de gravar</h3>
+<ul>
+<li>Você apagou antes? Gravar sobre dados antigos gera um jogo corrompido.</li>
+<li>O arquivo é uma ROM simples (não <code>.smd</code> intercalado) e funciona em um emulador?</li>
+<li>Leia o cartucho de volta e <a href="#recipe-compare">compare</a> com o arquivo. Se diferirem, repita com outro cabo e confira os contatos.</li>
+<li>O jogo pode precisar de um mapeador de save ou de um tipo de cartucho que o cartucho flash não oferece.</li>
+</ul>
+
+<h3 id="problem-detect">"NO FIND NGP CARD" em um cartucho flash</h3>
+<p>O chip não é o que o dispositivo suporta, ou o cartucho não está bem encaixado. Reinsira, limpe os contatos e clique em <b>Detectar cartucho</b> de novo. Se continuar falhando, não há suporte à gravação nesse cartucho.</p>
+
+<h3 id="problem-closed">Fechei o programa ou faltou energia durante uma operação</h3>
+<p>Leitura: nada foi salvo, é só ler de novo. Gravação ou apagamento: o cartucho está em estado desconhecido. Apague e grave de novo. Saves: restaure o arquivo de save do seu backup.</p>
+
+<h2 id="safety">Segurança e boas práticas</h2>
+<ul>
+<li><b>Faça backup antes.</b> Leia a ROM e o save de um cartucho antes de apagar ou gravar qualquer coisa nele.</li>
+<li><b>Nunca desconecte</b> o dispositivo, nem retire o cartucho, durante uma operação, principalmente apagar e gravar.</li>
+<li>Conecte e retire cartuchos com o cabo USB <b>desconectado</b>; é a forma segura de tratar qualquer slot de cartucho.</li>
+<li>Apagar e gravar <b>destroem dados</b> e não podem ser desfeitos. O programa pede confirmação todas as vezes.</li>
+<li>Confira toda gravação lendo de volta e comparando.</li>
+<li>Copie apenas jogos e saves que você possui ou tem permissão para copiar.</li>
+</ul>
+
+<h2 id="shortcuts">Atalhos de teclado</h2>
+<p>Todo botão tem uma tecla de acesso (segure <b>Alt</b> e pressione a letra sublinhada). <b>F1</b> abre este guia.</p>
+<table border="1" cellspacing="0" cellpadding="5">
+<tr><th align="left">Tecla</th><th align="left">Ação</th><th align="left">Tecla</th><th align="left">Ação</th></tr>
+<tr><td>Alt+A</td><td>Atualizar</td><td>Alt+O</td><td>Ler ROM</td></tr>
+<tr><td>Alt+C</td><td>Conectar / Desconectar</td><td>Alt+G</td><td>Gravar ROM</td></tr>
+<tr><td>Alt+D</td><td>Detectar cartucho</td><td>Alt+S</td><td>Ler save</td></tr>
+<tr><td>Alt+M</td><td>Comparar arquivos</td><td>Alt+V</td><td>Gravar save</td></tr>
+<tr><td>Alt+T</td><td>Apagar por tamanho</td><td>Alt+U</td><td>Apagar tudo</td></tr>
+<tr><td>Alt+L</td><td>Limpar registro</td><td>Alt+N</td><td>Cancelar</td></tr>
+</table>
+
+<h2 id="technical">Notas técnicas</h2>
+<ul>
+<li>Enlace: porta serial virtual USB, 1.000.000 de baud, 8 bits de dados, sem paridade, 1 stop bit, sem controle de fluxo.</li>
+<li>Tamanhos de leitura de ROM: 512 KiB, 1 MiB, 2 MiB, 4 MiB. Tamanhos de gravação: 512 KiB, 1 MiB, 2 MiB, 3 MiB, 4 MiB. Tamanhos de save: 8 KiB, 32 KiB. Cartuchos maiores que 4 MiB não são suportados.</li>
+<li>Os dados são gravados em blocos de 1 KiB, cada um confirmado pelo dispositivo antes do próximo. O último bloco de um arquivo é completado com <code>0xFF</code> (que significa "não programar" na flash).</li>
+<li>As leituras são salvas de forma atômica: o programa escreve um arquivo temporário e só o renomeia quando a leitura termina.</li>
+<li>O programa funciona com o firmware 1.0 e posteriores. Algumas mensagens (tempo esgotado ao apagar) só aparecem com o firmware atualizado.</li>
+</ul>
+<p>Projeto, código-fonte e releases: <a href="https://github.com/legendaryredfox/md_rewriter">github.com/legendaryredfox/md_rewriter</a>. Apoie o projeto: <a href="https://buymeacoffee.com/legendaryredfox">Buy Me a Coffee</a>.</p>

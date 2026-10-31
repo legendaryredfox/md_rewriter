@@ -11,6 +11,7 @@
 #include "devicesession.h"
 #include "filecompare.h"
 
+class HelpDialog;
 class QFile;
 class QLabel;
 class QSaveFile;
@@ -51,6 +52,8 @@ private slots:
     void compareFiles();
     void cancelCurrent();
     void clearLog();
+    void showGuide();
+    void showAbout();
 
     void onSessionStarted(DeviceSession::Op op);
     void onSessionFinished(DeviceSession::Op op, bool ok, bool cancelled);
@@ -96,6 +99,7 @@ private:
 
     DeviceSession::Op m_lastOp = DeviceSession::Op::None;
     DialogHooks m_hooks;
+    HelpDialog *m_help = nullptr;
 };
 
 #endif // MAINWINDOW_H

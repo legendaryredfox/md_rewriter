@@ -1,6 +1,8 @@
 include(app.pri)
 
 TARGET = MDRewriter
+VERSION = 1.1.0
+DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 TEMPLATE = app
 
 # Written for Qt 6 (tested with 6.4). Qt 5.15 is intended to work but is untested. Qt Creator users: open this file.

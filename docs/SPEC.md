@@ -85,6 +85,7 @@ Known limitation accepted under C1: a raw data packet that happens to match the 
 | UX-8 | Port list shows port name plus description and VID:PID, refreshes on demand and when the dialog opens, and pre-selects the only device matching the firmware. | Screenshot with a fake list where possible. |
 | UX-9 | All user-visible strings go through `tr()`. Translation files are in `TRANSLATIONS`, `.qm` generated at build time, loaded from the resource system according to the system locale. English is the source language; a pt_BR file is added (Russian and Chinese exist only in the README). | Build produces `.qm`; `QT_LANGUAGE` check. |
 | UX-10 | Permission problems on Linux (`dialout` group) and busy ports are explained in the error text with the exact fix command. | Unit test of the message mapper. |
+| UX-12 | Built-in user guide (Help > User guide, F1): quick start, window reference, use-case recipes, log message reference, troubleshooting, safety, shortcuts, technical notes; English and pt_BR; searchable with a table of contents; follows the system theme. Every message and access key it quotes exists in the program (checked by a test). | `tst_help`, e2e F1 test, screenshots in light and dark. |
 | UX-11 | Mnemonics, tab order, accessible names. | Reviewed in `.ui`. |
 
 ### 4.4 Repository and build

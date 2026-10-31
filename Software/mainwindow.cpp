@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "helpdialog.h"
 
 #include <QCloseEvent>
 #include <QDir>
@@ -10,6 +11,7 @@
 #include <QFontDatabase>
 #include <QLabel>
 #include <QLocale>
+#include <QMenuBar>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QSaveFile>
@@ -29,6 +31,10 @@ constexpr int kBaudRate = 1000000;
 
 using Severity = DeviceSession::Severity;
 
+#ifndef APP_VERSION
+#define APP_VERSION "dev"
+#endif
+
 } // namespace
 
 MainWindow::MainWindow(QWidget *parent)
@@ -37,6 +43,12 @@ MainWindow::MainWindow(QWidget *parent)
     , m_session(this)
 {
     ui->setupUi(this);
+
+    QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
+    QAction *guideAction = helpMenu->addAction(tr("&User guide"), this, &MainWindow::showGuide);
+    guideAction->setShortcut(QKeySequence::HelpContents);
+    helpMenu->addSeparator();
+    helpMenu->addAction(tr("&About MD Rewriter"), this, &MainWindow::showAbout);
 
     m_statusLabel = new QLabel(this);
     statusBar()->addWidget(m_statusLabel, 1);
@@ -242,6 +254,31 @@ void MainWindow::onSessionMessage(Severity severity, const QString &text)
 void MainWindow::clearLog()
 {
     ui->logView->clear();
+}
+
+void MainWindow::showGuide()
+{
+    if (!m_help)
+        m_help = new HelpDialog(this);
+    m_help->show();
+    m_help->raise();
+    m_help->activateWindow();
+}
+
+void MainWindow::showAbout()
+{
+    QMessageBox box(QMessageBox::Information, tr("About MD Rewriter"), QString(), QMessageBox::Ok, this);
+    box.setObjectName(QStringLiteral("aboutBox"));
+    box.setTextFormat(Qt::RichText);
+    box.setText(tr("<h3>MD Rewriter %1</h3>"
+                   "<p>Read and write Sega Mega Drive cartridges: back up games and saves, "
+                   "write flash cartridges, compare files.</p>"
+                   "<p>Press F1 for the user guide.</p>"
+                   "<p>Licensed under the MIT license. Built with Qt %2.</p>"
+                   "<p><a href=\"https://github.com/legendaryredfox/md_rewriter\">Project page</a> &middot; "
+                   "<a href=\"https://buymeacoffee.com/legendaryredfox\">Buy Me a Coffee</a></p>")
+                    .arg(QStringLiteral(APP_VERSION), QString::fromLatin1(qVersion())));
+    box.exec();
 }
 
 // ------------------------------------------------------------------ ports

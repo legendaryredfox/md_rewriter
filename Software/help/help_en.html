@@ -1,0 +1,175 @@
+<h1 id="top">MD Rewriter - User guide</h1>
+<p>MD Rewriter reads and writes <b>Sega Mega Drive / Genesis cartridges</b> through the MD Rewriter USB device. With it you can back up games and saves to your computer, write games to rewritable flash cartridges, and compare files.</p>
+<p>Jump to: <a href="#quick-start">Quick start</a> &middot; <a href="#recipes">Recipes</a> &middot; <a href="#messages">What the log says</a> &middot; <a href="#troubleshooting">Troubleshooting</a> &middot; <a href="#safety">Safety</a></p>
+
+<h2 id="quick-start">Quick start</h2>
+<ol>
+<li>Plug the <b>MD Rewriter</b> into the computer with a USB <b>data</b> cable, then insert the cartridge (see <a href="#safety">Safety</a>).</li>
+<li>In <b>Connection</b>, pick the device port. It is selected automatically when it is recognised (USB id <code>0483:5740</code>, "STM32 Virtual ComPort"). The list refreshes by itself; press <b>Refresh</b> if needed.</li>
+<li>Press <b>Connect</b>. The log shows <code>Device identified.</code> and the action buttons turn on.</li>
+<li>Press <b>Detect cartridge</b> to check that the device sees the cartridge.</li>
+<li>Pick what you want to do: <a href="#recipe-backup">back up a game</a>, <a href="#recipe-flash">write a game</a>, <a href="#recipe-saves">handle saves</a>, <a href="#recipe-erase">erase</a>, or <a href="#recipe-compare">compare files</a>.</li>
+</ol>
+
+<h2 id="window">The window, group by group</h2>
+<table border="1" cellspacing="0" cellpadding="5" width="100%">
+<tr><th align="left">Group</th><th align="left">What it does</th></tr>
+<tr><td><b>Connection</b></td><td>Port list, <b>Refresh</b> and <b>Connect</b>/<b>Disconnect</b>. The port can only be changed while disconnected.</td></tr>
+<tr><td><b>Cartridge and tools</b></td><td><b>Detect cartridge</b> identifies the flash chip. <b>Compare files</b> compares any two files and needs no device.</td></tr>
+<tr><td><b>Game (ROM)</b></td><td><b>Cartridge size</b> is used by <b>Read ROM</b> and <b>Erase by size</b>. <b>Write ROM</b> ignores it and uses the size of the file you choose.</td></tr>
+<tr><td><b>Save data (SRAM)</b></td><td><b>Save size</b> (32 KiB or 8 KiB) is used by <b>Read save</b>. <b>Write save</b> uses the size of the file.</td></tr>
+<tr><td><b>Erase</b></td><td>Destructive. <b>Erase by size</b> erases only the flash sectors covered by the cartridge size; <b>Erase all</b> erases the whole chip and the save memory.</td></tr>
+<tr><td><b>Log</b></td><td>Everything that happens. <span style="color:gray">Plain text</span> comes from the device; coloured lines are messages from the program: green for success, amber for warnings, red for errors.</td></tr>
+<tr><td><b>Progress bar and Cancel</b></td><td>Progress of the running operation (a moving bar means the duration is unknown). <b>Cancel</b> stops reads, writes and comparisons. Erasing cannot be cancelled.</td></tr>
+</table>
+<p>Buttons are greyed out when they cannot be used: most need a connection, and while an operation runs only <b>Cancel</b> is available. Hover over any control for a tooltip.</p>
+
+<h2 id="recipes">Recipes (common use cases)</h2>
+
+<h3 id="recipe-backup">Back up a game</h3>
+<ol>
+<li>Connect and press <b>Detect cartridge</b> if you like.</li>
+<li>Set <b>Cartridge size</b> to the real size of the ROM (512 KiB, 1 MiB, 2 MiB or 4 MiB). The size is usually printed in the game's documentation or listed in a ROM database.</li>
+<li>Press <b>Read ROM...</b> and choose a file name (<code>.bin</code>).</li>
+<li>Wait for 100%. The log shows <code>Read complete</code> and <code>Saved to "..."</code>.</li>
+</ol>
+<p>The file only appears when the read finished completely. If you cancel, or anything goes wrong, <b>no partial file is left</b>, and an existing file with the same name is not touched.</p>
+<p>Tip: if you are not sure about the size, check the result: a wrong size that is too large may give a file that repeats itself or contains unrelated data. Compare with a known-good ROM (see <a href="#recipe-verify">Verify</a>).</p>
+
+<h3 id="recipe-verify">Check that a dump is correct</h3>
+<ol>
+<li>Press <b>Compare files...</b>, pick your dump, then pick a known-good ROM of the same game.</li>
+<li>The log says <code>The two files are identical</code>, or lists how many bytes differ and the offsets of the first 20.</li>
+</ol>
+<p>Dumping the same cartridge twice and comparing the two files is a good test of the cable and the contacts.</p>
+
+<h3 id="recipe-flash">Write a game to a flash cartridge</h3>
+<ol>
+<li><b>Erase first</b> unless the cartridge is blank (see <a href="#recipe-erase">Erase</a>). Flash memory can only change bits from 1 to 0; writing over old data without erasing gives a corrupted game.</li>
+<li>Press <b>Write ROM...</b> and choose the file. Accepted sizes: <b>512 KiB, 1 MiB, 2 MiB, 3 MiB, 4 MiB</b>. Plain ROM files (<code>.bin</code>, <code>.md</code>, <code>.gen</code>) only. Interleaved <code>.smd</code> files are written as they are and will not boot; convert them to plain <code>.bin</code> first.</li>
+<li>Confirm the warning. The progress bar fills as blocks are written.</li>
+<li>Wait for <code>Game written</code>.</li>
+<li><b>Verify:</b> press <b>Read ROM...</b> with the same size, then <b>Compare files...</b> against the original. It should say the files are identical.</li>
+</ol>
+<p><b>Cancel</b> during a write leaves the cartridge with a partial image. Erase and write again.</p>
+<p>Only rewritable flash cartridges with the chip the device recognises (shown by <b>Detect cartridge</b> as <code>FLASHID:C2CB</code>, <code>MX29LV640EB MD FLASH CART</code>) are supported. <code>NO FIND NGP CARD</code> means the device did not recognise the chip; do not try to write to it.</p>
+
+<h3 id="recipe-saves">Back up, restore and move saves</h3>
+<ol>
+<li>Set <b>Save size</b> to the size of the game's save memory: <b>32 KiB</b> or <b>8 KiB</b>. If you are not sure, check the game's documentation or a game database; do not guess when you are going to write a save back.</li>
+<li><b>Read save...</b> copies the saves to a <code>.srm</code> file.</li>
+<li><b>Write save...</b> replaces the cartridge saves with a file of exactly 8 KiB or 32 KiB.</li>
+</ol>
+<p><b>Always read the current save first</b> and keep that file: writing a save replaces everything that is on the cartridge.</p>
+<p>To move a save to another cartridge of the same game, read it from the first and write it to the second. Only battery-backed <b>SRAM</b> saves are supported; games that store saves in EEPROM or in the flash chip itself cannot be read or written with this device.</p>
+<p>Before you erase or reflash a flash cartridge that holds a game with a battery save, read the save first.</p>
+
+<h3 id="recipe-erase">Erase a cartridge</h3>
+<ul>
+<li><b>Erase by size...</b> - erases only the sectors covered by <b>Cartridge size</b>. Faster: use it before writing a ROM of that size or smaller. The progress bar fills as sectors are erased.</li>
+<li><b>Erase all...</b> - erases the whole flash chip and the save memory. It can take <b>several minutes</b>, shows a moving bar and <b>cannot be cancelled</b>. Do not unplug the device until the log says <code>Erase complete</code>.</li>
+</ul>
+<p>Both ask for confirmation because they destroy data. There is no undo.</p>
+
+<h3 id="recipe-identify">Identify a cartridge</h3>
+<p><b>Detect cartridge</b> prints the chip ID. A recognised flash cartridge shows <code>FLASHID:C2CB</code> and <code>MX29LV640EB MD FLASH CART</code>. For a normal (non-flash) game cartridge the message is <code>NO FIND NGP CARD</code>: that is expected, you can still read it.</p>
+
+<h3 id="recipe-compare">Compare any two files (no device needed)</h3>
+<p><b>Compare files...</b> works without a connection. Typical uses: check a dump against a reference, see exactly which bytes a patch or ROM hack changes (original versus patched), or confirm that a write was successful.</p>
+<ul>
+<li>Result <code>identical</code>: same size, same bytes.</li>
+<li>Otherwise the log gives the number of differences, a note if the sizes differ, and the first 20 offsets in decimal and hexadecimal.</li>
+</ul>
+
+<h2 id="messages">What the log says</h2>
+<table border="1" cellspacing="0" cellpadding="5" width="100%">
+<tr><th align="left">Message</th><th align="left">Meaning and what to do</th></tr>
+<tr><td><code>Device identified.</code></td><td>The device answered. All good.</td></tr>
+<tr><td><code>The port opened, but the device did not answer...</code></td><td>Wrong port, or the firmware is not installed. Try another port in the list.</td></tr>
+<tr><td><code>Cannot open ...: permission denied...</code></td><td>Linux: see <a href="#problem-permission">permissions</a>.</td></tr>
+<tr><td><code>Lost the connection to the device</code></td><td>The cable was unplugged or the device reset. Reconnect; the running operation was aborted. If it was a write, the cartridge holds a partial image.</td></tr>
+<tr><td><code>Read complete: N bytes.</code> / <code>Saved to ...</code></td><td>Success. The file is complete.</td></tr>
+<tr><td><code>The data from the device is incomplete or out of sync...</code></td><td>The dump was damaged in transit. <b>The file was not saved.</b> Try another cable or USB port and read again.</td></tr>
+<tr><td><code>The device stopped answering after X of Y bytes.</code></td><td>The device or the cable stopped in the middle of a read. Replug and retry.</td></tr>
+<tr><td><code>The device did not confirm block N of M.</code></td><td>A write block was not acknowledged. Check the cable and the cartridge contacts, erase and write again.</td></tr>
+<tr><td><code>The file size (N bytes) is not supported...</code></td><td>The file is not 512 KiB, 1 MiB, 2 MiB, 3 MiB or 4 MiB (ROM), or not 8 KiB or 32 KiB (save). Nothing was sent to the device.</td></tr>
+<tr><td><code>... did not finish erasing in time...</code></td><td>The cartridge may be faulty or not a flash cartridge. (Only shown with the updated firmware.)</td></tr>
+<tr><td><code>Cancelled after N of M blocks. The cartridge now holds a partial image.</code></td><td>You cancelled a write. Erase and write again before using the cartridge.</td></tr>
+<tr><td><code>The device did not send the final confirmation, but all data was received.</code></td><td>The data is complete. The warning is harmless.</td></tr>
+<tr><td><code>Another operation is still running.</code></td><td>Wait for it to finish, or press <b>Cancel</b>.</td></tr>
+<tr><td><code>FLASHID:...</code>, <code>PUSH SAVE GAME BUTTON!!!</code>, <code>USE TIME n s</code></td><td>Plain device text. <code>USE TIME</code> counts the seconds of a full erase.</td></tr>
+</table>
+
+<h2 id="troubleshooting">Troubleshooting</h2>
+
+<h3 id="problem-permission">Linux: "permission denied" when connecting</h3>
+<p>Your user must be allowed to use the serial port. Either add yourself to the <code>dialout</code> group and log in again:</p>
+<p><code>sudo usermod -aG dialout $USER</code></p>
+<p>or install the udev rule that ships with the program (<code>99-md-rewriter.rules</code>), then replug the device:</p>
+<p><code>sudo cp 99-md-rewriter.rules /etc/udev/rules.d/ &amp;&amp; sudo udevadm control --reload &amp;&amp; sudo udevadm trigger</code></p>
+<p>If the port is "busy", another program (often ModemManager) has it. The udev rule tells ModemManager to ignore the device.</p>
+
+<h3 id="problem-noport">The port does not appear</h3>
+<ul>
+<li>Use a USB cable that carries <b>data</b>; many cables only charge.</li>
+<li>Replug the device and press <b>Refresh</b>. The list also refreshes by itself every two seconds while disconnected.</li>
+<li>Windows: the device appears as a COM port. Install the "STM32 Virtual ComPort" driver if Windows does not recognise it.</li>
+<li>For a port the system does not list (a symlink or a pseudo-terminal), start the program with <code>MD_REWRITER_EXTRA_PORT=/path/to/port</code>.</li>
+</ul>
+
+<h3 id="problem-noanswer">Connected, but "the device did not answer"</h3>
+<p>Wrong port, or no firmware on the device. Choose the entry that mentions <code>0483:5740</code>. If you have several serial devices, unplug the others.</p>
+
+<h3 id="problem-readbad">Reads are incomplete, out of sync or give different files each time</h3>
+<ul>
+<li>Clean the cartridge contacts (isopropyl alcohol) and make sure it is fully inserted.</li>
+<li>Try another USB port directly on the computer (no hub) and another cable.</li>
+<li>Dump twice and <a href="#recipe-compare">compare</a> the two files. If they differ, the problem is the connection, not the game.</li>
+<li>Check that <b>Cartridge size</b> matches the real ROM size.</li>
+</ul>
+
+<h3 id="problem-writebad">The game does not boot after writing</h3>
+<ul>
+<li>Did you erase first? Write over old data gives a corrupted game.</li>
+<li>Is the file a plain ROM (not interleaved <code>.smd</code>) and does it work in an emulator?</li>
+<li>Read the cartridge back and <a href="#recipe-compare">compare</a> it with the file. If they differ, repeat with another cable and check the contacts.</li>
+<li>The game may need a save mapper or a different cartridge type that the flash cartridge does not provide.</li>
+</ul>
+
+<h3 id="problem-detect">"NO FIND NGP CARD" on a flash cartridge</h3>
+<p>The chip is not the one the device supports, or the cartridge is not inserted properly. Reinsert, clean the contacts, press <b>Detect cartridge</b> again. If it still fails, writing is not supported for that cartridge.</p>
+
+<h3 id="problem-closed">I closed the program or lost power during an operation</h3>
+<p>Reading: nothing was saved, just read again. Writing or erasing: the cartridge is in an unknown state. Erase it and write again. Saves: restore the save file you backed up.</p>
+
+<h2 id="safety">Safety and good practice</h2>
+<ul>
+<li><b>Back up first.</b> Read the ROM and the save of a cartridge before you erase or write anything on it.</li>
+<li><b>Never unplug</b> the device, or remove the cartridge, while an operation is running, especially erase and write.</li>
+<li>Plug and unplug cartridges with the USB cable <b>disconnected</b>; this is the safe way to treat any cartridge slot.</li>
+<li>Erase and write operations <b>destroy data</b> and cannot be undone. The program asks for confirmation each time.</li>
+<li>Verify every write by reading it back and comparing.</li>
+<li>Only copy games and saves that you own or are allowed to copy.</li>
+</ul>
+
+<h2 id="shortcuts">Keyboard shortcuts</h2>
+<p>Every button has an access key (hold <b>Alt</b> and press the underlined letter). <b>F1</b> opens this guide.</p>
+<table border="1" cellspacing="0" cellpadding="5">
+<tr><th align="left">Key</th><th align="left">Action</th><th align="left">Key</th><th align="left">Action</th></tr>
+<tr><td>Alt+R</td><td>Refresh</td><td>Alt+O</td><td>Read ROM</td></tr>
+<tr><td>Alt+C</td><td>Connect / Disconnect</td><td>Alt+W</td><td>Write ROM</td></tr>
+<tr><td>Alt+D</td><td>Detect cartridge</td><td>Alt+S</td><td>Read save</td></tr>
+<tr><td>Alt+M</td><td>Compare files</td><td>Alt+V</td><td>Write save</td></tr>
+<tr><td>Alt+Z</td><td>Erase by size</td><td>Alt+A</td><td>Erase all</td></tr>
+<tr><td>Alt+L</td><td>Clear log</td><td>Alt+N</td><td>Cancel</td></tr>
+</table>
+
+<h2 id="technical">Technical notes</h2>
+<ul>
+<li>Link: USB virtual serial port, 1,000,000 baud, 8 data bits, no parity, 1 stop bit, no flow control.</li>
+<li>ROM dump sizes: 512 KiB, 1 MiB, 2 MiB, 4 MiB. Write sizes: 512 KiB, 1 MiB, 2 MiB, 3 MiB, 4 MiB. Save sizes: 8 KiB, 32 KiB. Cartridges larger than 4 MiB are not supported.</li>
+<li>Data is written in 1 KiB blocks, each one acknowledged by the device before the next is sent. The last block of a file is padded with <code>0xFF</code> (which means "do not program" for flash).</li>
+<li>Reads are saved atomically: the program writes a temporary file and renames it only when the read is complete.</li>
+<li>The program works with firmware 1.0 and newer. Some messages (erase timeouts) only appear with the updated firmware.</li>
+</ul>
+<p>Project, source code and releases: <a href="https://github.com/legendaryredfox/md_rewriter">github.com/legendaryredfox/md_rewriter</a>. Support the project: <a href="https://buymeacoffee.com/legendaryredfox">Buy Me a Coffee</a>.</p>

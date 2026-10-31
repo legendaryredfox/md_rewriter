@@ -127,3 +127,7 @@ Firmware first because it is small and independent. Protocol layer before the wi
 Findings of the tests that were then fixed: a pty bridge deadlock in the test itself, the difference list printed in upper case, and a fixed minimum window height that clipped the Refresh button.
 
 Not verified (no hardware, no Qt 5): every firmware change (FW-1 to FW-10, FW-8 in particular), Windows build, Qt 5.15 build, a real USB serial port.
+
+## Addendum: built-in user guide (UX-12)
+
+Added after the first release: `Software/helpdialog.*`, `Software/help/help_{en,pt_BR}.html` (embedded through `help.qrc`), Help menu with F1 and an About box. New suite `tst_help` (structure and anchor parity between languages, link resolution, locale selection, search, and drift guards: every message and every Alt+key quoted in the guide must exist in the program's strings and translations) plus three e2e tests. Results: unit 59, integration 35, help 19 (+1 screenshot test that needs `MD_SCREENSHOT_DIR`), e2e 23; all clean under ASan and UBSan.

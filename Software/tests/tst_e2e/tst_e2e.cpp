@@ -2,6 +2,10 @@
 // with the fake firmware answering on the other end. Linux only.
 #include <QApplication>
 #include <QComboBox>
+#include <QMenu>
+#include <QMenuBar>
+#include <QMessageBox>
+#include <QTimer>
 #include <QDir>
 #include <QLabel>
 #include <QPlainTextEdit>
@@ -15,6 +19,7 @@
 #include <QtTest>
 
 #include "fakefirmware.h"
+#include "helpdialog.h"
 #include "mainwindow.h"
 
 #ifdef Q_OS_LINUX
@@ -407,7 +412,7 @@ private slots:
             if (l->text().isEmpty()) continue;
             QVERIFY2(l->width() >= l->sizeHint().width(), qPrintable(l->text() + " is clipped"));
         }
-        QVERIFY2(m_win->minimumSizeHint().width() <= 560 && m_win->minimumSizeHint().height() <= 640,
+        QVERIFY2(m_win->minimumSizeHint().width() <= 560 && m_win->minimumSizeHint().height() <= 680,
                  qPrintable(QStringLiteral("minimum size too large: %1x%2").arg(m_win->minimumSizeHint().width()).arg(m_win->minimumSizeHint().height())));
         // optional artefact for visual review
         const QString shots = qEnvironmentVariable("MD_SCREENSHOT_DIR");
@@ -415,6 +420,57 @@ private slots:
             QDir().mkpath(shots);
             m_win->grab().save(QStringLiteral("%1/ui-%2x%3.png").arg(shots).arg(size.width()).arg(size.height()));
         }
+    }
+
+    void helpMenuHasGuideAndAbout()
+    {
+        const auto menus = m_win->menuBar()->actions();
+        QCOMPARE(menus.size(), 1);
+        QCOMPARE(menus[0]->text().remove('&'), QString("Help"));
+        const auto items = menus[0]->menu()->actions();
+        QStringList texts;
+        for (auto *a : items)
+            if (!a->isSeparator()) texts << a->text().remove('&');
+        QCOMPARE(texts, (QStringList{"User guide", "About MD Rewriter"}));
+    }
+
+    void f1OpensTheGuideEvenWhileBusy()
+    {
+        m_fw->rom = randomBytes(0x80000, 12);
+        m_fw->setFragmentation(100, 2);
+        connectDevice();
+        m_nextSave = m_dir.filePath("busy.bin");
+        QTest::mouseClick(w<QPushButton>("readRomButton"), Qt::LeftButton);
+        QTRY_VERIFY_WITH_TIMEOUT(!enabled("readRomButton"), 3000);
+        QVERIFY(!m_win->findChild<HelpDialog *>("helpDialog"));
+        QTest::keyClick(m_win, Qt::Key_F1);
+        auto *h = m_win->findChild<HelpDialog *>("helpDialog");
+        QVERIFY(h);
+        QVERIFY(h->isVisible());
+        QVERIFY(h->plainText().contains("Quick start"));
+        // the operation keeps running while the guide is open
+        QTRY_VERIFY_WITH_TIMEOUT(logText().contains("Saved to"), 30000);
+        h->close();
+    }
+
+    void aboutBoxMentionsLicenseAndLinks()
+    {
+        QString shown;
+        QTimer::singleShot(300, this, [&shown]() {
+            for (QWidget *top : QApplication::topLevelWidgets()) {
+                if (top->objectName() == "aboutBox") {
+                    shown = static_cast<QMessageBox *>(top)->text();
+                    top->close();
+                }
+            }
+        });
+        const auto items = m_win->menuBar()->actions()[0]->menu()->actions();
+        items.last()->trigger();
+        QVERIFY2(shown.contains("MD Rewriter"), qPrintable(shown));
+        QVERIFY(shown.contains("MIT"));
+        QVERIFY(shown.contains("github.com/legendaryredfox/md_rewriter"));
+        QVERIFY(shown.contains("buymeacoffee.com/legendaryredfox"));
+        QVERIFY(shown.contains("F1"));
     }
 
     void closeWhileBusyAsksFirst()

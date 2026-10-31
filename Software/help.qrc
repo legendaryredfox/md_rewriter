@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/help">
+        <file alias="help_en.html">help/help_en.html</file>
+        <file alias="help_pt_BR.html">help/help_pt_BR.html</file>
+    </qresource>
+</RCC>
