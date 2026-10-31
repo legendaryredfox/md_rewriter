@@ -32,6 +32,11 @@ public:
     int dropDumpBlock = -1;        // old-firmware bug: this dump block is not sent
     int stopAfterDumpBlocks = -1;  // stop answering after this many dump blocks
     bool eraseFails = false;       // answer to erase with a timeout line
+    // Deterministic brake for timing-sensitive tests: after this many reply chunks the device
+    // goes quiet (what it would still say is kept) until resume() is called.
+    int holdAfterReplies = -1;
+    void resume();
+    int replyCount() const { return m_replyCount; }
 
     // What the fake observed
     QList<QByteArray> commands;    // every command packet received, verbatim
@@ -65,6 +70,8 @@ private:
     int m_maxChunk = 0;
     QRandomGenerator m_rng;
     int m_dumpBlocksSent = 0;
+    int m_replyCount = 0;
+    QByteArray m_held;
 };
 
 #endif // FAKEFIRMWARE_H

@@ -77,6 +77,7 @@ class TstE2E : public QObject
     QList<QPair<QString, QString>> m_confirms;
     bool m_confirmAnswer = true;
 
+    int m_fwReplies() { return m_fw->replyCount(); }
     template <class T> T *w(const char *name) { return m_win->findChild<T *>(name); }
     QString logText() { return w<QPlainTextEdit>("logView")->toPlainText(); }
     bool enabled(const char *name) { return w<QPushButton>(name)->isEnabled(); }
@@ -242,10 +243,12 @@ private slots:
         m_fw->rom = randomBytes(0x80000, 2);
         m_fw->setFragmentation(200, 3);
         connectDevice();
+        m_fw->holdAfterReplies = m_fwReplies() + 1 + 60;   // pause after 60 of 512 blocks
         m_nextSave = m_dir.filePath("cancelled.bin");
         QTest::mouseClick(w<QPushButton>("readRomButton"), Qt::LeftButton);
         QTRY_VERIFY_WITH_TIMEOUT(w<QProgressBar>("progressBar")->value() > 5, 10000);
         QTest::mouseClick(w<QPushButton>("cancelButton"), Qt::LeftButton);
+        m_fw->resume();
         QTRY_VERIFY_WITH_TIMEOUT(logText().contains("incomplete file was not saved"), 20000);
         QVERIFY2(!QFileInfo::exists(m_nextSave), "a cancelled dump must not leave a file behind");
         // device still usable afterwards
@@ -354,6 +357,7 @@ private slots:
         m_fw->rom = randomBytes(0x80000, 8);
         m_fw->setFragmentation(100, 2);
         connectDevice();
+        m_fw->holdAfterReplies = m_fwReplies() + 1 + 40;   // pause after 40 blocks, then the cable "breaks"
         m_nextSave = m_dir.filePath("unplug.bin");
         QTest::mouseClick(w<QPushButton>("readRomButton"), Qt::LeftButton);
         QTRY_VERIFY_WITH_TIMEOUT(w<QProgressBar>("progressBar")->value() > 3, 10000);
@@ -439,9 +443,12 @@ private slots:
         m_fw->rom = randomBytes(0x80000, 12);
         m_fw->setFragmentation(100, 2);
         connectDevice();
+        m_fw->holdAfterReplies = m_fwReplies() + 1 + 30;
         m_nextSave = m_dir.filePath("busy.bin");
         QTest::mouseClick(w<QPushButton>("readRomButton"), Qt::LeftButton);
         QTRY_VERIFY_WITH_TIMEOUT(!enabled("readRomButton"), 3000);
+        QTest::qWait(200);
+        QVERIFY(!enabled("readRomButton"));          // still busy: the device is paused
         QVERIFY(!m_win->findChild<HelpDialog *>("helpDialog"));
         QTest::keyClick(m_win, Qt::Key_F1);
         auto *h = m_win->findChild<HelpDialog *>("helpDialog");
@@ -449,6 +456,7 @@ private slots:
         QVERIFY(h->isVisible());
         QVERIFY(h->plainText().contains("Quick start"));
         // the operation keeps running while the guide is open
+        m_fw->resume();
         QTRY_VERIFY_WITH_TIMEOUT(logText().contains("Saved to"), 30000);
         h->close();
     }
@@ -478,6 +486,7 @@ private slots:
         m_fw->rom = randomBytes(0x80000, 11);
         m_fw->setFragmentation(100, 2);
         connectDevice();
+        m_fw->holdAfterReplies = m_fwReplies() + 1 + 30;
         m_nextSave = m_dir.filePath("x.bin");
         QTest::mouseClick(w<QPushButton>("readRomButton"), Qt::LeftButton);
         QTRY_VERIFY_WITH_TIMEOUT(!enabled("readRomButton"), 3000);

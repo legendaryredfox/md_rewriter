@@ -64,9 +64,23 @@ void FakeFirmware::replyRaw(const QByteArray &bytes)
 {
     if (silent)
         return;
+    if (holdAfterReplies >= 0 && m_replyCount >= holdAfterReplies) {
+        m_held.append(bytes);
+        return;
+    }
+    ++m_replyCount;
     m_pending.append(bytes);
     if (!m_timer.isActive())
         m_timer.start();
+}
+
+void FakeFirmware::resume()
+{
+    holdAfterReplies = -1;
+    const QByteArray held = m_held;
+    m_held.clear();
+    if (!held.isEmpty())
+        replyRaw(held);
 }
 
 void FakeFirmware::pump()

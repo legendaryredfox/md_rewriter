@@ -328,15 +328,18 @@ private slots:
         Harness h;
         h.fw.rom = cartRom(51);
         h.fw.setFragmentation(2000, 4);
+        h.fw.holdAfterReplies = 1 + 20;          // start line + exactly 20 blocks, then the device pauses
         QBuffer out; out.open(QIODevice::WriteOnly);
         QVERIFY(h.s.readRom(Protocol::romSizes()[0], &out));
-        QTRY_VERIFY_WITH_TIMEOUT(out.size() > 10000, 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(out.size() == 20 * 1024, 5000);
+        QVERIFY(h.done.isEmpty());
         h.s.cancel();
+        h.fw.resume();                           // the device finishes its dump in the background
         QVERIFY(h.waitDone());
         QVERIFY(h.done[0].cancelled);
         QVERIFY(!h.done[0].ok);
-        QVERIFY(out.size() < 0x80000);
-        // The device finished its dump in the background; the next operation must still work.
+        QCOMPARE(out.size(), qint64(20 * 1024)); // nothing more was written after the cancel
+        // The stream stayed in sync: the next operation works.
         QVERIFY(h.s.detect());
         QVERIFY(h.waitDone(2));
         QVERIFY(h.done[1].ok);
@@ -347,14 +350,17 @@ private slots:
         Harness h;
         h.fw.rom = QByteArray(0x80000, '\xFF');
         h.fw.setFragmentation(50, 4);
+        h.fw.holdAfterReplies = 5;               // acknowledge 5 blocks, then go quiet
         QByteArray image = randomBytes(0x80000, 61);
         QBuffer in(&image); in.open(QIODevice::ReadOnly);
         QVERIFY(h.s.writeRom(&in));
-        QTRY_VERIFY_WITH_TIMEOUT(h.fw.blocksWritten > 5, 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(h.fw.blocksWritten == 6, 5000);   // the 6th block is in flight, unacknowledged
+        QVERIFY(h.done.isEmpty());
         h.s.cancel();
+        h.fw.resume();
         QVERIFY(h.waitDone());
         QVERIFY(h.done[0].cancelled);
-        QVERIFY(h.fw.blocksWritten < 512);
+        QCOMPARE(h.fw.blocksWritten, 6);         // no further block was sent
         QCOMPARE(h.fw.commands.last(), QByteArray::fromHex("0FAA55AABB"));
         QVERIFY(h.hasMessage(Sev::Warning, "partial image"));
         QVERIFY(h.fw.errors.isEmpty());
@@ -365,9 +371,10 @@ private slots:
         Harness h;
         h.fw.rom = cartRom(71);
         h.fw.setFragmentation(500, 4);
+        h.fw.holdAfterReplies = 1 + 10;
         QBuffer out; out.open(QIODevice::WriteOnly);
         QVERIFY(h.s.readRom(Protocol::romSizes()[0], &out));
-        QTRY_VERIFY_WITH_TIMEOUT(out.size() > 5000, 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(out.size() == 10 * 1024, 5000);
         h.s.deviceLost("cable pulled");
         QVERIFY(h.waitDone());
         QVERIFY(!h.done[0].ok);
