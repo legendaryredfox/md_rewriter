@@ -55,6 +55,19 @@
 #define MD_TIME 		PBout(12)
 #define MD_M3 			PBout(13)
 
+/* USB <-> main loop shared state. Written from the USB interrupt, read by the
+ * main loop, hence volatile. */
+#define RX_BLOCKS      16U   /* 16 x 64 bytes = one 1024-byte data block */
+#define RX_PKT_SIZE    64U   /* CDC full-speed bulk packet size */
+#define CMD_MAX_LEN    16U   /* longest command packet the PC sends is 9 bytes */
+#define CDC_TX_TIMEOUT_MS   2000U
+#define ERASE_SECTOR_TIMEOUT_MS  15000U
+#define ERASE_CHIP_TIMEOUT_S     300U
+
+extern volatile uint8_t receiveBuffer[RX_BLOCKS][RX_PKT_SIZE];
+extern volatile uint8_t cmdbuff[RX_PKT_SIZE];
+extern volatile uint8_t buffcnt;
+
 
 void Delay_nop(uint32_t nop);
 void read_mode(void);
@@ -67,7 +80,7 @@ uint8_t getByte(uint32_t addr);
 void setAddress(uint32_t addr);
 void write_data_bus(uint16_t data);
 void setByte(uint32_t address, uint16_t dat);
-void eraseFLASH(void);
+uint8_t eraseFLASH(void);
 void checkid(void);
 void checkheadermenu(void);
 uint8_t erase_sector(uint32_t sector_addr);

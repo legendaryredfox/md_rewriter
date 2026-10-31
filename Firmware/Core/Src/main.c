@@ -60,11 +60,11 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-	uint8_t receiveBuffer[16][64];
-	uint8_t cmdbuff[64];
+	volatile uint8_t receiveBuffer[RX_BLOCKS][RX_PKT_SIZE];
+	volatile uint8_t cmdbuff[RX_PKT_SIZE];
 	uint8_t transmitBuffer[1024];
 	uint32_t datacnt;
-	uint8_t buffcnt;
+	volatile uint8_t buffcnt;
 	uint32_t addj;
 	uint32_t bank = 0;
 	uint32_t endadd;
@@ -75,21 +75,26 @@ void SystemClock_Config(void);
 	void CDC_Transmit(const char* str)
 		{
 			uint16_t len = strlen(str);
+			uint32_t start = HAL_GetTick();
 			while (CDC_Transmit_FS((uint8_t*)str, len) == USBD_BUSY) {
+				if ((HAL_GetTick() - start) > CDC_TX_TIMEOUT_MS) {
+					return; /* host not reading: drop the message instead of hanging */
+				}
 			}
 		}	
 		
 	int fputc(int ch, FILE *f)
 		{
+			(void)f;
 			HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 0xffff);
 			return ch;
 		}
 		
 	void memclear(void)
 		{
-			for(uint8_t i=0;i<15;i++)
+			for(uint8_t i=0;i<RX_BLOCKS;i++)
 				{
-					for(uint8_t j = 0;j<64;j++)
+					for(uint8_t j = 0;j<RX_PKT_SIZE;j++)
 					{
 						receiveBuffer[i][j]=0x00;
 					}
@@ -108,7 +113,7 @@ void SystemClock_Config(void);
 		
 	void cmdclear(void)
 		{
-			for(uint8_t j = 0;j<64;j++)
+			for(uint8_t j = 0;j<RX_PKT_SIZE;j++)
 			{
 				cmdbuff[j]=0x00;
 			}
@@ -187,7 +192,9 @@ int main(void)
 				MD_CS = 1;
 				memclearTX();
 				HAL_Delay(100);				
-				for(uint32_t j=0 ;j < wsize ; j++){						
+				for(uint32_t j=0 ;j < wsize ; j++){
+					/* previous block must have left the device before the buffer is reused */
+					if(!CDC_WaitTxIdle(CDC_TX_TIMEOUT_MS)) break;
 					for(uint16_t i = 0;i<512;i++){
 							setAddress(j*512+i);
 							MD_CS = 0;
@@ -199,7 +206,7 @@ int main(void)
 							MD_CS = 1;
 							Delay_nop(50);							
 						}
-					CDC_Transmit_FS(transmitBuffer, 1024);	
+					if(CDC_Transmit_FS(transmitBuffer, 1024) != USBD_OK) break;
 					}
 				HAL_Delay(150);
 				CDC_Transmit("DUMPER ROM FINISH!!!\r\n");
@@ -226,7 +233,8 @@ int main(void)
 				MD_CS = 1;//CS=1
 				memclearTX();
 				HAL_Delay(100);				
-				for(uint32_t j=0 ;j < wsize ; j++){						
+				for(uint32_t j=0 ;j < wsize ; j++){
+					if(!CDC_WaitTxIdle(CDC_TX_TIMEOUT_MS)) break;
 					for(uint16_t i = 0;i<1024;i++){
 							setAddress(j*1024+i);
 							PAout(4) = 1;//A20=1
@@ -234,11 +242,11 @@ int main(void)
 							MD_RD = 0;//RD=0
 							Delay_nop(30);
 							transmitBuffer[i] = (GPIOE->IDR) & 0xff;							
-							MD_CS = 1;//RD=1
+							MD_RD = 1;//RD=1
 							MD_CS = 1;//CS=1
 							Delay_nop(50);							
 						}
-					CDC_Transmit_FS(transmitBuffer, 1024);	
+					if(CDC_Transmit_FS(transmitBuffer, 1024) != USBD_OK) break;
 					}
 				HAL_Delay(150);
 				enableSram_MD(0);
@@ -256,7 +264,7 @@ int main(void)
 				uint32_t addw = bank*64*512+addj*512;
 				for(uint16_t i = 0;i<1024;i=i+2)
 					{
-						if((receiveBuffer[i/64][i%64]==0xff)&(receiveBuffer[i/64][i%64+1]==0xff))
+						if((receiveBuffer[i/64][i%64]==0xff)&&(receiveBuffer[i/64][i%64+1]==0xff))
 							{
 							}
 						else
@@ -279,7 +287,7 @@ int main(void)
 				memclear();
 				cmdclear();
 				bank=bank+1;
-				sprintf(displaybuff,"ADD:0x%X WRITE OK\r\n",addw);				
+				sprintf(displaybuff,"ADD:0x%lX WRITE OK\r\n",(unsigned long)addw);
 				CDC_Transmit(displaybuff);
 			}
 		}
@@ -299,8 +307,8 @@ int main(void)
 						MD_CS = 0;//CS=0
 						MD_WR = 0;//WR=0						
 						Delay_nop(200);
-						MD_WR = 1;//CS=0
-						MD_CS = 1;//WR=0
+						MD_WR = 1;//WR=1
+						MD_CS = 1;//CS=1
 						Delay_nop(200);
 					}	
 				enableSram_MD(0);
@@ -308,7 +316,7 @@ int main(void)
 				memclear();
 				cmdclear();
 				bank=bank+1;
-				sprintf(displaybuff,"ADD:0x%X WRITE GK\r\n",addw);				
+				sprintf(displaybuff,"ADD:0x%lX WRITE GK\r\n",(unsigned long)addw);
 				CDC_Transmit(displaybuff);
 			}
 		}
@@ -334,7 +342,14 @@ int main(void)
 		}		
 		if (cmdbuff[0] == 0x0E) {//MDFLASHERASE
 			if((cmdbuff[1] == 0xAA)&&(cmdbuff[2] == 0x55)&&(cmdbuff[3] == 0xAA)&&(cmdbuff[4] == 0xBB)){
-				eraseFLASH();
+				if(!eraseFLASH())
+				{
+					CDC_Transmit("FLASH ERASE TIMEOUT!!!\r\n");
+					write_mode();
+					cmdclear();
+					buffcnt = 0;
+					continue;
+				}
 				HAL_Delay(100);
 				CDC_Transmit("SRAM ERASE START\r\n");
 				enableSram_MD(1);
@@ -348,8 +363,8 @@ int main(void)
 							MD_CS = 0;//CS=0
 							MD_WR = 0;//WR=0						
 							Delay_nop(200);
-							MD_WR = 1;//CS=0
-							MD_CS = 1;//WR=0
+							MD_WR = 1;//WR=1
+							MD_CS = 1;//CS=1
 							Delay_nop(200);
 						}	
 				enableSram_MD(0);
@@ -388,7 +403,7 @@ int main(void)
 						address = cmdbuff[6];
 						address =(address<<8)+cmdbuff[7];
 						address =(address<<8)+cmdbuff[8];
-						sprintf(displaybuff,"SECTORADD:0x%X ERASEING\r\n",address);
+						sprintf(displaybuff,"SECTORADD:0x%lX ERASEING\r\n",(unsigned long)address);
 						CDC_Transmit(displaybuff);
 					}
 				else
@@ -396,10 +411,15 @@ int main(void)
 						CDC_Transmit("512K ERASEING\r\n");	
 						sectoradd = 0x40000;	
 					}
+				uint8_t eraseok = 1;
 				if(cmdbuff[5] < 0x5){
 						for(uint32_t i = 0;i < sectoradd ;)
 							{
-								erase_sector(address);
+								if(!erase_sector(address))
+								{
+									eraseok = 0;
+									break;
+								}
 								Delay_nop(100);
 								CDC_Transmit(".");
 								if(address<0x8000)
@@ -415,9 +435,13 @@ int main(void)
 							}
 					}
 				else{
-						eraseFLASH();
+						if(!eraseFLASH()) eraseok = 0;
 					}
-				if (cmdbuff[5] == 0x1)
+				if (!eraseok)
+					{
+						CDC_Transmit("\r\nERASE TIMEOUT!\r\n");
+					}
+				else if (cmdbuff[5] == 0x1)
 					{
 						CDC_Transmit("\r\n512K ERASE OK!\r\n");	
 					}
@@ -439,7 +463,7 @@ int main(void)
 					}
 				else if (cmdbuff[5] == 0x0)
 					{
-						sprintf(displaybuff,"SECTORADD:0x%X ERASE OK!\r\n",address);
+						sprintf(displaybuff,"SECTORADD:0x%lX ERASE OK!\r\n",(unsigned long)address);
 						CDC_Transmit(displaybuff);
 					}
 				else 
@@ -458,9 +482,15 @@ int main(void)
 				uint32_t address = cmdbuff[5];
 				address = ( address << 8 ) + cmdbuff[6];
 				address = ( address << 8 ) + cmdbuff[7];
-				erase_sector(address); 			
-				sprintf(displaybuff,"\r\nSECTORADD:0x%X ERASE OK!\r\n",address);
-				CDC_Transmit(displaybuff);	
+				if(erase_sector(address))
+				{
+					sprintf(displaybuff,"\r\nSECTORADD:0x%lX ERASE OK!\r\n",(unsigned long)address);
+					CDC_Transmit(displaybuff);
+				}
+				else
+				{
+					CDC_Transmit("\r\nERASE TIMEOUT!\r\n");
+				}
 				cmdclear();
 				buffcnt = 0;
 			}

@@ -22,10 +22,7 @@
 #include "usbd_cdc_if.h"
 
 /* USER CODE BEGIN INCLUDE */
-extern uint8_t receiveBuffer[16][64];
-extern uint8_t buffcnt;
-extern uint8_t cmdbuff[64];
-extern uint32_t datacnt;
+#include "MD.h"
 char charbuff[50];
 /* USER CODE END INCLUDE */
 
@@ -182,6 +179,8 @@ static int8_t CDC_DeInit_FS(void)
 static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 {
   /* USER CODE BEGIN 5 */
+  (void)pbuf;
+  (void)length;
   switch(cmd)
   {
     case CDC_SEND_ENCAPSULATED_COMMAND:
@@ -263,21 +262,35 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
 {
   /* USER CODE BEGIN 6 */
-	if((Buf[1] == 0xAA)&&(Buf[2] == 0x55)&&(Buf[3] == 0xAA)&&(Buf[4] == 0xBB))
-		{
-			for(uint8_t i=0;i<64;i++)
-				{
-					cmdbuff[i] = Buf[i];
-				}
-		}
-	else
-		{
-			for(uint8_t i=0;i<64;i++)
-				{
-					receiveBuffer[buffcnt][i] = Buf[i];
-				}
-		}
-	buffcnt++;
+  uint32_t len = *Len;
+  if (len > RX_PKT_SIZE)
+  {
+    len = RX_PKT_SIZE;
+  }
+
+  /* Command packet: [cmd] AA 55 AA BB [args]. Only short packets qualify, data
+   * packets are always full 64-byte packets. Never look past the received length. */
+  if ((len >= 5U) && (len <= CMD_MAX_LEN) &&
+      (Buf[1] == 0xAA) && (Buf[2] == 0x55) && (Buf[3] == 0xAA) && (Buf[4] == 0xBB))
+  {
+    /* Publish the command byte last so the main loop never sees a new command
+     * with the arguments of the previous one. */
+    cmdbuff[0] = 0;
+    for (uint32_t i = 1; i < RX_PKT_SIZE; i++)
+    {
+      cmdbuff[i] = (i < len) ? Buf[i] : 0;
+    }
+    cmdbuff[0] = Buf[0];
+  }
+  else if (buffcnt < RX_BLOCKS)
+  {
+    for (uint32_t i = 0; i < RX_PKT_SIZE; i++)
+    {
+      receiveBuffer[buffcnt][i] = (i < len) ? Buf[i] : 0xFF;
+    }
+    buffcnt++;
+  }
+  /* else: more data than one block holds, drop it instead of overrunning RAM. */
   USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
   USBD_CDC_ReceivePacket(&hUsbDeviceFS);
   return (USBD_OK);
@@ -300,6 +313,9 @@ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len)
   uint8_t result = USBD_OK;
   /* USER CODE BEGIN 7 */
   USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
+  if (hcdc == NULL){
+    return USBD_FAIL;
+  }
   if (hcdc->TxState != 0){
     return USBD_BUSY;
   }
@@ -310,6 +326,32 @@ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len)
 }
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_IMPLEMENTATION */
+
+/**
+  * @brief  Wait until the previous CDC transmit has fully left the device.
+  * @param  timeout_ms: give up after this long (host not reading)
+  * @retval 1 if idle, 0 on timeout or USB not configured
+  */
+uint8_t CDC_WaitTxIdle(uint32_t timeout_ms)
+{
+  uint32_t start = HAL_GetTick();
+  for (;;)
+  {
+    USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
+    if (hcdc == NULL)
+    {
+      return 0;
+    }
+    if (hcdc->TxState == 0)
+    {
+      return 1;
+    }
+    if ((HAL_GetTick() - start) > timeout_ms)
+    {
+      return 0;
+    }
+  }
+}
 
 /* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */
 

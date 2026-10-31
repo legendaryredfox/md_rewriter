@@ -128,6 +128,7 @@
 			
 	uint8_t erase_sector(uint32_t sector_addr) 
 		{
+			uint32_t start = HAL_GetTick();
 			write_mode();
 			setByte(0x555, 0xaa);
 			setByte(0x2aa, 0x55);
@@ -137,6 +138,13 @@
 			setByte(sector_addr, 0x30);
 			while (1) 
 				{
+					if ((HAL_GetTick() - start) > ERASE_SECTOR_TIMEOUT_MS)
+						{
+							/* chip never finished: put it back in read-array mode and report failure */
+							write_mode();
+							setByte(0x555, 0xf0);
+							return 0;
+						}
 					read_mode();
 					uint8_t status1 = getByte(sector_addr);
 					uint8_t status2 = getByte(sector_addr);
@@ -159,7 +167,7 @@
 			}
 		}
 				
-	void eraseFLASH(void)
+	uint8_t eraseFLASH(void)
 			{
 				CDC_Transmit("-- MD CART ERASE --\r\n");	
 				CDC_Transmit("FLASH ERASE START\r\n");		
@@ -181,54 +189,40 @@
 				HAL_Delay(10);
 				read_mode();
 				uint8_t eraseflag = 0;
-				uint8_t data[8];
 				uint32_t time = 0;
 				
-				//char chartime[15];
 				while(eraseflag == 0)
 				{
-					data[0] = getByte(0x0);
-					data[1] = getByte(0x1);
-					data[2] = getByte(0x2);
-					data[3] = getByte(0x3);
-					data[4] = getByte(0x4);
-					data[5] = getByte(0x5);
-					data[6] = getByte(0x6);
-					data[7] = getByte(0x7);
+					eraseflag = 1;
+					for(uint8_t k = 0; k < 8; k++)
+					{
+						if(getByte(k) != 0xff) eraseflag = 0;
+					}
 					HAL_Delay(1000);
 					HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
-					if(data[0] == 0xff) eraseflag = 1;
-					else eraseflag = 0;
-					if((data[1] == 0xff) & (eraseflag == 1)) eraseflag = 1;
-					else eraseflag = 0;
-					if((data[2] == 0xff) & (eraseflag == 1)) eraseflag = 1;
-					else eraseflag = 0;
-					if((data[3] == 0xff) & (eraseflag == 1)) eraseflag = 1;
-					else eraseflag = 0;
-					if((data[4] == 0xff) & (eraseflag == 1)) eraseflag = 1;
-					else eraseflag = 0;
-					if((data[5] == 0xff) & (eraseflag == 1)) eraseflag = 1;
-					else eraseflag = 0;
-					if((data[6] == 0xff) & (eraseflag == 1)) eraseflag = 1;
-					else eraseflag = 0;
-					if((data[7] == 0xff) & (eraseflag == 1)) 
-						{
-							eraseflag = 1;
-						}
-					sprintf(disbuff,"USE TIME %d s\r\n",time);
+					sprintf(disbuff,"USE TIME %lu s\r\n",(unsigned long)time);
 					CDC_Transmit(disbuff);
-					time = time + 1;	
+					time = time + 1;
+					if((eraseflag == 0) && (time > ERASE_CHIP_TIMEOUT_S))
+					{
+						/* chip never reported erased: back to read-array mode, report failure */
+						write_mode();
+						setByte(0x555, 0xf0);
+						HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13,GPIO_PIN_RESET);
+						return 0;
+					}
 				}
 				write_mode();
 				CDC_Transmit("FLASH ERASE FINISH!!!\r\n");
 				HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13,GPIO_PIN_RESET);
+				return 1;
 			}
 			
 			
 	void checkid(void)
 			{
 				CDC_Transmit("-- MD CART ID --\r\n");		
-				char chipid[2];
+				
 				char disbuff[50];
 				uint8_t s1,s2;
 				write_mode();
@@ -275,8 +269,8 @@
 				read_mode();		
 				s1 = getByte(0x0);
 				s2 = getByte(0x1);
-				sprintf(chipid,"%X%X",s1,s2);
-				if((s1==0xC2)&(s2==0XCB))
+				
+				if((s1==0xC2)&&(s2==0XCB))
 					{
 						sprintf(disbuff,"FLASHID:%X%X\r\n",s1,s2);
 						CDC_Transmit(disbuff);
