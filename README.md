@@ -20,6 +20,8 @@ Ferramenta portátil para cartuchos de Sega Mega Drive: faz backup e restauraç�
 
 Loja oficial da Epicjoy no AliExpress: [comprar](https://www.aliexpress.us/item/3256809599500641.html?pdp_npi=4%40dis%21USD%21US%20%2428.79%21US%20%2412.59%21%21%21204.30%2189.34%21%402103244817599933506882056ef13b%2112000050402273301%21sh%21US%212937514916%21X&spm=a2g0o.store_pc_allItems_or_groupList.new_all_items_2007603309925.1005009785815393&gatewayAdapt=glo2usa)
 
+Gostou do projeto? Apoie: [Buy Me a Coffee](https://buymeacoffee.com/legendaryredfox)
+
 ## Recursos
 
 - Sem restrição de região: cartuchos dos EUA, do Japão e da Europa.
@@ -140,6 +142,8 @@ Licença [MIT](LICENSE). O código de terceiros em `Firmware/Drivers` e `Firmwar
 
 Официальный магазин Epicjoy на AliExpress: [купить](https://www.aliexpress.us/item/3256809599500641.html?pdp_npi=4%40dis%21USD%21US%20%2428.79%21US%20%2412.59%21%21%21204.30%2189.34%21%402103244817599933506882056ef13b%2112000050402273301%21sh%21US%212937514916%21X&spm=a2g0o.store_pc_allItems_or_groupList.new_all_items_2007603309925.1005009785815393&gatewayAdapt=glo2usa)
 
+Нравится проект? Поддержите: [Buy Me a Coffee](https://buymeacoffee.com/legendaryredfox)
+
 ## Возможности
 
 - Без региональных ограничений: картриджи США, Японии и Европы.
@@ -259,6 +263,8 @@ cd ../.. && tools/check-firmware.sh                      # статическа�
 
 Epicjoy 官方速卖通店铺：[购买](https://www.aliexpress.us/item/3256809599500641.html?pdp_npi=4%40dis%21USD%21US%20%2428.79%21US%20%2412.59%21%21%21204.30%2189.34%21%402103244817599933506882056ef13b%2112000050402273301%21sh%21US%212937514916%21X&spm=a2g0o.store_pc_allItems_or_groupList.new_all_items_2007603309925.1005009785815393&gatewayAdapt=glo2usa)
 
+喜欢这个项目？欢迎支持：[Buy Me a Coffee](https://buymeacoffee.com/legendaryredfox)
+
 ## 功能
 
 - 无区域限制，兼容美版、日版和欧版卡带。
@@ -377,6 +383,8 @@ A portable Sega Mega Drive cartridge tool: back up and restore game ROMs and sav
 | `docs/` | Specification and plan of the fixes, technical notes. |
 
 Epicjoy official AliExpress store: [Buy now](https://www.aliexpress.us/item/3256809599500641.html?pdp_npi=4%40dis%21USD%21US%20%2428.79%21US%20%2412.59%21%21%21204.30%2189.34%21%402103244817599933506882056ef13b%2112000050402273301%21sh%21US%212937514916%21X&spm=a2g0o.store_pc_allItems_or_groupList.new_all_items_2007603309925.1005009785815393&gatewayAdapt=glo2usa)
+
+Like the project? Support it: [Buy Me a Coffee](https://buymeacoffee.com/legendaryredfox)
 
 ## Features
 
