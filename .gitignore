@@ -1,0 +1,33 @@
+# Qt / qmake
+*.pro.user
+*.pro.user.*
+*.qm
+.qmake.stash
+/Software/Makefile*
+/Software/**/Makefile*
+moc_*.cpp
+moc_*.h
+ui_*.h
+qrc_*.cpp
+*.o
+build*/
+/Software/MDRewriter
+
+# Keil MDK personal/generated files
+*.uvguix.*
+*.lst
+*.axf
+*.o
+*.d
+*.crf
+*.map
+*.htm
+*.build_log.htm
+Firmware/MDK-ARM/Objects/
+Firmware/MDK-ARM/Listings/
+
+# Editors / OS
+.vscode/
+.idea/
+*~
+.DS_Store
