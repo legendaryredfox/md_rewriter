@@ -96,6 +96,85 @@ private slots:
         QCOMPARE(h.fw.commands.value(0), QByteArray::fromHex("0CAA55AABB"));
     }
 
+    void connectWithFirmware1_0HasNoVersionAndNo8M()
+    {
+        Harness h;
+        QVERIFY(h.s.connectDevice());
+        QVERIFY(h.waitDone());
+        QVERIFY(h.done[0].ok);
+        QVERIFY(h.s.firmwareVersion().isEmpty());
+        QVERIFY(!h.s.canRead8M());
+    }
+
+    void connectLearnsTheFirmwareVersion()
+    {
+        Harness h;
+        h.fw.fwVersion = "1.1.0-test";
+        QStringList versions;
+        QObject::connect(&h.s, &DeviceSession::firmwareVersionChanged, [&](const QString &v) { versions << v; });
+        QVERIFY(h.s.connectDevice());
+        QVERIFY(h.waitDone());
+        QVERIFY(h.done[0].ok);
+        QCOMPARE(h.s.firmwareVersion(), QString("1.1.0-test"));
+        QVERIFY(h.s.canRead8M());
+        QCOMPARE(versions, QStringList{"1.1.0-test"});
+        h.s.resetFirmwareInfo();
+        QVERIFY(!h.s.canRead8M());
+        QCOMPARE(versions.size(), 2);
+    }
+
+    void connectToNewFirmwareDoesNotWaitForTheGracePeriod()
+    {
+        Harness h;
+        h.fw.fwVersion = "1.1.0";
+        QElapsedTimer t;
+        t.start();
+        QVERIFY(h.s.connectDevice());
+        QVERIFY(h.waitDone());
+        QVERIFY2(t.elapsed() < 350, "FWVER ends the connect at once");
+    }
+
+    void readRom8MFromNewFirmware()
+    {
+        Harness h;
+        h.fw.fwVersion = "1.1.0";
+        QVERIFY(h.s.connectDevice());
+        QVERIFY(h.waitDone());
+        h.fw.rom = randomBytes(0x800000, 50);
+        QByteArray out;
+        QBuffer buf(&out); buf.open(QIODevice::WriteOnly);
+        QVERIFY(h.s.readRom(Protocol::extendedRomSize(), &buf));
+        QVERIFY(h.waitDone(2, 120000));
+        QVERIFY(h.done[1].ok);
+        QCOMPARE(out.size(), 0x800000);
+        QVERIFY(out == h.fw.rom);
+        QCOMPARE(h.fw.commands.last(), QByteArray::fromHex("0AAA55AABB05"));
+    }
+
+    void readRom8MIsRefusedOnFirmware1_0()
+    {
+        Harness h;
+        QVERIFY(h.s.connectDevice());
+        QVERIFY(h.waitDone());
+        QByteArray out;
+        QBuffer buf(&out); buf.open(QIODevice::WriteOnly);
+        const int before = h.fw.commands.size();
+        QVERIFY(!h.s.readRom(Protocol::extendedRomSize(), &buf));
+        QVERIFY(h.hasMessage(Sev::Error, "firmware 1.1"));
+        QTest::qWait(30);
+        QCOMPARE(h.fw.commands.size(), before);   // nothing sent: 1.0 would have dumped 512K
+    }
+
+    void erase8MIsAFullChipEraseOnAnyFirmware()
+    {
+        Harness h;
+        QVERIFY(h.s.eraseBySize(Protocol::extendedRomSize()));
+        QVERIFY(h.waitDone());
+        QVERIFY(h.done[0].ok);
+        QCOMPARE(h.fw.commands.last(), QByteArray::fromHex("1EAA55AABB05"));
+        QCOMPARE(h.progress.first(), -1);   // no dots to count
+    }
+
     void connectNoBanner()
     {
         Harness h;

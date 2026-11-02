@@ -96,6 +96,8 @@ private slots:
         QCOMPARE(romSizes()[3].eraseSectors, 71);
         QCOMPARE(sramSizes()[0].code, quint8(0x01)); // 32K
         QCOMPARE(sramSizes()[1].code, quint8(0x02)); // 8K
+        QCOMPARE(extendedRomSize().code, quint8(0x05));
+        QCOMPARE(extendedRomSize().bytes, quint32(8 * 1024 * 1024));
         QVERIFY(isWritableRomSize(0x300000));
         QVERIFY(isWritableRomSize(0x40000));      // 256 KiB
         QVERIFY(isWritableRomSize(0x180000));     // 1.5 MiB
@@ -144,6 +146,8 @@ private slots:
         row("sramErase", "SRAM ERASE FINISH!!!", LineKind::EraseDone);
         row("flashFinishIsNotDone", "FLASH ERASE FINISH!!!", LineKind::Other);
         row("timeout", "FLASH ERASE TIMEOUT!!!", LineKind::EraseFailed);
+        row("fwVersion", "FWVER:1.1.0-dev", LineKind::FirmwareVersion);
+        row("fwVersionTrailingCr", "FWVER:1.1.0\r", LineKind::FirmwareVersion);
         row("useTime", "USE TIME 12 s", LineKind::EraseProgress);
         row("start", "FLASH ERASE START", LineKind::EraseProgress);
         row("eraseing", "512K ERASEING", LineKind::Other);

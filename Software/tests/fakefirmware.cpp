@@ -143,9 +143,10 @@ void FakeFirmware::dump(const QByteArray &image, bool isRom, int sizeCode)
 {
     int blocks = image.size() / 1024;
     if (isRom) {
-        static const char *names[] = { "512K", "512K", "1M", "2M", "4M" };
-        const int idx = (sizeCode >= 1 && sizeCode <= 4) ? sizeCode : 1;
-        blocks = (idx == 1 ? 512 : idx == 2 ? 1024 : idx == 3 ? 2048 : 4096);
+        static const char *names[] = { "512K", "512K", "1M", "2M", "4M", "8M" };
+        // Code 5 is the 8 MiB dump of the new firmware; firmware 1.0 falls into its "else" (512K).
+        const int idx = (sizeCode >= 1 && sizeCode <= 4) ? sizeCode : (sizeCode == 5 && !fwVersion.isEmpty() ? 5 : 1);
+        blocks = (idx == 1 ? 512 : idx == 2 ? 1024 : idx == 3 ? 2048 : idx == 4 ? 4096 : 8192);
         reply(QStringLiteral("%1 ROM DUMP START!!!\r\n").arg(QLatin1String(names[idx])));
     } else {
         blocks = (sizeCode == 0x01) ? 32 : 8;
@@ -171,6 +172,8 @@ void FakeFirmware::handle(const QByteArray &cmd, const QByteArray &blockData)
     case 0x0C:
         if (sendBanner)
             reply(QStringLiteral("FlashMaster MD Dumper is connected\r\n"));
+        if (sendBanner && !fwVersion.isEmpty())
+            reply(QStringLiteral("FWVER:%1\r\n").arg(fwVersion));
         break;
     case 0x0D:
         reply(QStringLiteral("-- MD CART ID --\r\nFLASHID:%1\r\n%2\r\n").arg(flashId, chipLine));
@@ -222,6 +225,15 @@ void FakeFirmware::handle(const QByteArray &cmd, const QByteArray &blockData)
         break;
     case 0x1E: {
         const int code = static_cast<quint8>(cmd.at(5));
+        if (code == 5) {
+            // Every firmware: code 5 erases the whole flash chip (no dots, "USE TIME" lines instead).
+            reply(QStringLiteral("-- MD CART ERASE --\r\nFLASH ERASE START\r\n"));
+            if (eraseFails)
+                reply(QStringLiteral("USE TIME 0 s\r\nFLASH ERASE TIMEOUT!!!\r\n"));
+            else
+                reply(QStringLiteral("USE TIME 0 s\r\nUSE TIME 1 s\r\nFLASH ERASE FINISH!!!\r\n\r\n8M ERASE OK!\r\n"));
+            break;
+        }
         static const char *names[] = { "512K", "512K", "1M", "2M", "4M" };
         const int idx = (code >= 1 && code <= 4) ? code : 1;
         const int steps = 8 + ((idx == 1 ? 0x40000 : idx == 2 ? 0x80000 : idx == 3 ? 0x100000 : 0x200000) / 0x8000) - 1;

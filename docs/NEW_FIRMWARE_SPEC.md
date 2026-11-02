@@ -40,8 +40,8 @@ Commands `0A 0B 0C 0D 0E 0F 1A 1B 1E 2E`, header `AA 55 AA BB`, 1 KiB write bloc
 | `0D` detect, ID line | `FLASHID:%X%X` | `FLASHID:%02X%02X` | text | parses 4 hex digits (also still parses the short form) |
 | `0D` detect, chip line | `MX29LV640EB MD FLASH CART` or `NO FIND NGP CARD` | `<name> MD FLASH CART` for every chip in the table, else `NO FIND NGP CARD`. The Macronix line is byte-identical to 1.0. | text | names the chip from its own table too |
 | `0B` ROM block failed | (none, silent) | `ADD:0x<word addr> WRITE TIMEOUT` instead of `WRITE OK` | waits, idle timeout | stops at once and says why |
-| `0C` connect | banner | banner, then `FWVER:<version>` | extra text after the banner | logs it |
-| `0A` dump, arg `05` | treated as 512K (`else` branch) | `8M ROM DUMP START!!!` and 8192 blocks | not sent | not used yet (see D6) |
+| `0C` connect | banner | banner, then `FWVER:<version>` | extra text after the banner | waits up to 400 ms for it after the banner, enables 8 MiB reads |
+| `0A` dump, arg `05` | treated as 512K (`else` branch) | `8M ROM DUMP START!!!` and 8192 blocks | not sent | offered only after `FWVER:` (D6) |
 
 ### 3.3 App side (done in `Software/`, works with both firmwares)
 
@@ -71,7 +71,7 @@ ROM of any even size up to 4 MiB (padded by the protocol with `0xFF`), `.smd` co
 | D3 | EEPROM saves (I2C 24Cxx cartridges). | New protocol. |
 | D4 | SSF2 bank-switch mapper and ROMs above 8 MiB. | Hardware/mapper work. |
 | D5 | `/UWR`, `/CAS2` not wired on the PCB. | Hardware (`docs/HARDWARE_REVIEW.md` L2). |
-| D6 | App support for the 8 MiB read and `FWVER` (offer 8M only when the connected firmware says it can). | Waits for hardware results of NFW-3. |
+| D6 | ~~App support for the 8 MiB read and `FWVER`~~ **Done in the app (2026-11-02):** the size list gains 8 MiB only after a `FWVER:` line; firmware 1.0 never sends it, so 8 MiB is never offered there (`readRom` refuses it). Reading 8 MiB itself still needs the hardware check of NFW-3. Erase by size 8M is code 5, a full chip erase, on any firmware. Writing stays limited to 4 MiB. | — |
 | D7 | Faster programming with the chip's write-buffer or unlock-bypass commands. | Timing and chip differences; measure first. |
 
 ## 6. Risks

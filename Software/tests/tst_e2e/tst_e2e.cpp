@@ -258,6 +258,34 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(logText().contains("MD FLASH CART"), 5000);
     }
 
+    void sizeListOffers8MiBOnlyWithNewFirmware()
+    {
+        auto *combo = w<QComboBox>("romSizeCombo");
+        QCOMPARE(combo->count(), 4);
+        connectDevice();
+        QCOMPARE(combo->count(), 4);                       // firmware 1.0: no FWVER line
+        QTest::mouseClick(w<QPushButton>("connectButton"), Qt::LeftButton);   // disconnect
+        QTRY_VERIFY_WITH_TIMEOUT(w<QPushButton>("connectButton")->text().remove('&') == "Connect", 5000);
+
+        m_fw->fwVersion = "1.1.0-test";
+        QTest::mouseClick(w<QPushButton>("connectButton"), Qt::LeftButton);
+        QTRY_VERIFY_WITH_TIMEOUT(enabled("readRomButton"), 5000);   // the first connect left its text in the log
+        QTRY_COMPARE_WITH_TIMEOUT(combo->count(), 5, 3000);
+        QVERIFY(logText().contains("Firmware 1.1.0-test detected"));
+        combo->setCurrentIndex(4);
+        m_fw->rom = randomBytes(0x800000, 7);
+        const QString out = m_dir.filePath("full.bin");
+        m_nextSave = out;
+        QTest::mouseClick(w<QPushButton>("readRomButton"), Qt::LeftButton);
+        QTRY_VERIFY_WITH_TIMEOUT(logText().contains("Read complete: 8388608 bytes"), 120000);
+        QFile f(out);
+        QVERIFY(f.open(QIODevice::ReadOnly));
+        QCOMPARE(f.size(), qint64(0x800000));
+
+        QTest::mouseClick(w<QPushButton>("connectButton"), Qt::LeftButton);   // disconnect
+        QTRY_COMPARE_WITH_TIMEOUT(combo->count(), 4, 3000);   // the entry goes away with the connection
+    }
+
     void writeRomAsksFirstAndDeclineSendsNothing()
     {
         connectDevice();

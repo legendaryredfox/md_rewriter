@@ -61,6 +61,7 @@ private slots:
     void onSessionMessage(DeviceSession::Severity severity, const QString &text);
     void onDeviceText(const QString &text);
     void onProgress(int percent);
+    void onFirmwareVersion(const QString &version);
     void onSerialError(QSerialPort::SerialPortError error);
     void stepCompare();
 
@@ -78,6 +79,7 @@ private:
     void closePort();
     void finishCompare(bool cancelled);
     const Protocol::RomSize &selectedRomSize() const;
+    void refreshRomSizes();
     const Protocol::SramSize &selectedSramSize() const;
     static QString humanSize(qint64 bytes);
 

@@ -57,8 +57,7 @@ MainWindow::MainWindow(QWidget *parent)
     statusBar()->addWidget(m_statusLabel, 1);
 
     // Sizes come from the protocol tables, so the UI cannot offer what the firmware cannot do.
-    for (const auto &s : Protocol::romSizes())
-        ui->romSizeCombo->addItem(humanSize(s.bytes));
+    refreshRomSizes();
     for (const auto &s : Protocol::sramSizes())
         ui->saveSizeCombo->addItem(humanSize(s.bytes));
 
@@ -94,6 +93,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(&m_session, &DeviceSession::message, this, &MainWindow::onSessionMessage);
     connect(&m_session, &DeviceSession::deviceText, this, &MainWindow::onDeviceText);
     connect(&m_session, &DeviceSession::progress, this, &MainWindow::onProgress);
+    connect(&m_session, &DeviceSession::firmwareVersionChanged, this, &MainWindow::onFirmwareVersion);
 
     connect(&m_serial, &QSerialPort::errorOccurred, this, &MainWindow::onSerialError);
 
@@ -139,7 +139,30 @@ QString MainWindow::humanSize(qint64 bytes)
 const Protocol::RomSize &MainWindow::selectedRomSize() const
 {
     const auto &v = Protocol::romSizes();
-    return v[qBound(0, ui->romSizeCombo->currentIndex(), v.size() - 1)];
+    const int i = ui->romSizeCombo->currentIndex();
+    if (i >= v.size() && m_session.canRead8M())
+        return Protocol::extendedRomSize();
+    return v[qBound(0, i, v.size() - 1)];
+}
+
+// The size list is what every firmware can do; 8 MiB is added when the firmware says it can.
+void MainWindow::refreshRomSizes()
+{
+    const int keep = ui->romSizeCombo->currentIndex();
+    const QSignalBlocker block(ui->romSizeCombo);
+    ui->romSizeCombo->clear();
+    for (const auto &s : Protocol::romSizes())
+        ui->romSizeCombo->addItem(humanSize(s.bytes));
+    if (m_session.canRead8M())
+        ui->romSizeCombo->addItem(humanSize(Protocol::extendedRomSize().bytes));
+    ui->romSizeCombo->setCurrentIndex(qBound(0, keep, ui->romSizeCombo->count() - 1));
+}
+
+void MainWindow::onFirmwareVersion(const QString &version)
+{
+    refreshRomSizes();
+    if (!version.isEmpty())
+        log(Severity::Info, tr("Firmware %1 detected: reading 8 MiB is available in the cartridge size list.").arg(version));
 }
 
 const Protocol::SramSize &MainWindow::selectedSramSize() const
@@ -346,6 +369,7 @@ void MainWindow::closePort()
         m_session.deviceLost(tr("The connection was closed."));
     if (m_serial.isOpen())
         m_serial.close();
+    m_session.resetFirmwareInfo();
 }
 
 void MainWindow::toggleConnection()

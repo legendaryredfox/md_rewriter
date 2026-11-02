@@ -5,6 +5,10 @@
 
 using Protocol::LineKind;
 
+namespace {
+constexpr int kVersionGraceMs = 400;   // time to wait for "FWVER:" after the connect banner
+}
+
 DeviceSession::DeviceSession(QObject *parent)
     : QObject(parent)
     , m_parser(this)
@@ -26,6 +30,14 @@ void DeviceSession::setDevice(QIODevice *device)
     m_parser.reset();
     if (m_io)
         connect(m_io, &QIODevice::readyRead, this, &DeviceSession::onReadyRead);
+}
+
+void DeviceSession::resetFirmwareInfo()
+{
+    if (m_fwVersion.isEmpty())
+        return;
+    m_fwVersion.clear();
+    emit firmwareVersionChanged(m_fwVersion);
 }
 
 bool DeviceSession::canCancel() const
@@ -65,6 +77,7 @@ bool DeviceSession::begin(Op op, int idleMs)
     m_clearSent = false;
     m_dots = 0;
     m_eraseSteps = 0;
+    m_bannerSeen = false;
     m_idleMs = m_idleOverrideMs > 0 ? m_idleOverrideMs : idleMs;
     m_idle.start(m_idleMs);
     emit started(op);
@@ -84,6 +97,10 @@ bool DeviceSession::connectDevice()
 {
     if (!begin(Op::Connect, 3000))
         return false;
+    if (!m_fwVersion.isEmpty()) {
+        m_fwVersion.clear();
+        emit firmwareVersionChanged(m_fwVersion);
+    }
     setProgress(-1);
     return send(Protocol::buildCommand(Protocol::Connect));
 }
@@ -115,6 +132,10 @@ bool DeviceSession::startRead(Op op, quint32 bytes, Protocol::Command cmd, quint
 
 bool DeviceSession::readRom(const Protocol::RomSize &size, QIODevice *out)
 {
+    if (size.bytes > 0x400000 && !canRead8M()) {
+        emit message(Severity::Error, tr("Reading 8 MiB needs firmware 1.1 or later; this device has firmware 1.0."));
+        return false;
+    }
     return startRead(Op::ReadRom, size.bytes, Protocol::DumpRom, size.code, out);
 }
 
@@ -173,7 +194,7 @@ bool DeviceSession::eraseBySize(const Protocol::RomSize &size)
     if (!begin(Op::EraseBySize, 30000))
         return false;
     m_eraseSteps = size.eraseSectors;
-    setProgress(0);
+    setProgress(size.eraseSectors > 0 ? 0 : -1);   // 8M is a full chip erase: duration unknown
     QByteArray args;
     args.append(static_cast<char>(size.code));
     return send(Protocol::buildCommand(Protocol::EraseBySize, args));
@@ -256,6 +277,10 @@ void DeviceSession::onIdleTimeout()
         finishWrite();
         return;
     }
+    if (m_op == Op::Connect && m_bannerSeen) {
+        finish(true, tr("Device identified."));
+        return;
+    }
     switch (m_op) {
     case Op::VerifyRom:
         fail(tr("The device stopped answering after %1 of %2 bytes while verifying the write.").arg(m_received).arg(m_expected));
@@ -332,14 +357,26 @@ void DeviceSession::onOutOfSync(const QString &line)
 
 void DeviceSession::onLine(const QString &line)
 {
+    if (Protocol::classifyLine(line) == LineKind::FirmwareVersion) {
+        const QString version = line.trimmed().mid(6).trimmed();
+        if (version != m_fwVersion) {
+            m_fwVersion = version;
+            emit firmwareVersionChanged(m_fwVersion);
+        }
+    }
     if (m_op == Op::None)
         return;
     const LineKind kind = Protocol::classifyLine(line);
 
     switch (m_op) {
     case Op::Connect:
-        if (kind == LineKind::ConnectBanner)
+        if (kind == LineKind::ConnectBanner) {
+            // Firmware 1.1 sends its version right after the banner: give it a moment.
+            m_bannerSeen = true;
+            m_idle.start(kVersionGraceMs);
+        } else if (kind == LineKind::FirmwareVersion) {
             finish(true, tr("Device identified."));
+        }
         break;
     case Op::Detect:
         if (line.trimmed().startsWith(QLatin1String("FLASHID:")))

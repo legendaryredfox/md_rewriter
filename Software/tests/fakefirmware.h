@@ -29,6 +29,7 @@ public:
     // Fault injection
     bool silent = false;           // never answer
     bool sendBanner = true;        // answer to Connect
+    QString fwVersion;             // new firmware: sent as "FWVER:<x>" after the banner and enables dump code 5 (8M)
     int dropDumpBlock = -1;        // old-firmware bug: this dump block is not sent
     int stopAfterDumpBlocks = -1;  // stop answering after this many dump blocks
     bool eraseFails = false;       // answer to erase with a timeout line

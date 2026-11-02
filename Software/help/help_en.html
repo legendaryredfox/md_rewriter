@@ -29,7 +29,7 @@
 <h3 id="recipe-backup">Back up a game</h3>
 <ol>
 <li>Connect and press <b>Detect cartridge</b> if you like.</li>
-<li>Set <b>Cartridge size</b> to the real size of the ROM (512 KiB, 1 MiB, 2 MiB or 4 MiB). The size is usually printed in the game's documentation or listed in a ROM database.</li>
+<li>Set <b>Cartridge size</b> to the real size of the ROM (512 KiB, 1 MiB, 2 MiB or 4 MiB; with firmware 1.1 or later the list also has 8 MiB, the whole chip of a 64 Mbit flash cartridge). The size is usually printed in the game's documentation or listed in a ROM database.</li>
 <li>Press <b>Read ROM...</b> and choose a file name (<code>.bin</code>).</li>
 <li>Wait for 100%. The log shows <code>Read complete</code> and <code>Saved to "..."</code>.</li>
 </ol>
@@ -167,7 +167,7 @@
 <h2 id="technical">Technical notes</h2>
 <ul>
 <li>Link: USB virtual serial port, 1,000,000 baud, 8 data bits, no parity, 1 stop bit, no flow control.</li>
-<li>ROM dump sizes: 512 KiB, 1 MiB, 2 MiB, 4 MiB. Write sizes: any even size from 512 bytes to 4 MiB. Save sizes: 8 KiB, 32 KiB. Cartridges larger than 4 MiB are not supported.</li>
+<li>ROM dump sizes: 512 KiB, 1 MiB, 2 MiB, 4 MiB (8 MiB with firmware 1.1 or later, which announces itself as <code>FWVER:</code> after connecting; the <b>8 MiB</b> choice of <b>Erase by size</b> is a full chip erase on any firmware). Write sizes: any even size from 512 bytes to 4 MiB. Save sizes: 8 KiB, 32 KiB. Writing is limited to 4 MiB.</li>
 <li>Data is written in 1 KiB blocks, each one acknowledged by the device before the next is sent. The last block of a file is padded with <code>0xFF</code> (which means "do not program" for flash).</li>
 <li>Reads are saved atomically: the program writes a temporary file and renames it only when the read is complete.</li>
 <li>The program works with firmware 1.0 and newer. Some messages (erase timeouts) only appear with the updated firmware.</li>

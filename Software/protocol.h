@@ -46,8 +46,12 @@ struct SramSize {
     quint8 code;         // size argument of DumpSram
 };
 
-// Sizes the firmware can dump and erase by size.
+// Sizes every firmware can dump and erase by size.
 const QVector<RomSize> &romSizes();
+// 8 MiB, the whole 64 Mbit chip. Firmware 1.0 cannot dump it (it treats code 5 as 512K), so the
+// app offers it only when the firmware announced itself with a "FWVER:" line (firmware 1.1+).
+// Erase by size with code 5 erases the whole flash chip on every firmware.
+const RomSize &extendedRomSize();
 // Sizes of save RAM the firmware can dump.
 const QVector<SramSize> &sramSizes();
 
@@ -73,7 +77,8 @@ enum class LineKind {
     DetectDone,        // detection result line (flash found or not)
     EraseProgress,     // "FLASH ERASE START", "USE TIME n s"
     EraseDone,         // "... ERASE OK!" or "SRAM ERASE FINISH!!!"
-    EraseFailed        // "... TIMEOUT" (new firmware only)
+    EraseFailed,       // "... TIMEOUT" (new firmware only)
+    FirmwareVersion    // "FWVER:1.1.0" after the connect banner (new firmware only)
 };
 LineKind classifyLine(const QString &line);
 

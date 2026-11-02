@@ -47,6 +47,12 @@ const QVector<RomSize> &romSizes()
     return sizes;
 }
 
+const RomSize &extendedRomSize()
+{
+    static const RomSize size = { QStringLiteral("8M"), 0x800000, 0x05, 0 };   // no dot count: a full chip erase
+    return size;
+}
+
 const QVector<SramSize> &sramSizes()
 {
     // Note the firmware codes: 0x01 = 32K, 0x02 = 8K.
@@ -85,6 +91,8 @@ QByteArray padBlock(QByteArray block)
 LineKind classifyLine(const QString &line)
 {
     const QString l = line.trimmed();
+    if (l.startsWith(QLatin1String("FWVER:")))
+        return LineKind::FirmwareVersion;
     if (l.contains(QLatin1String("MD Dumper is connected")))
         return LineKind::ConnectBanner;
     if (l.contains(QLatin1String("DUMP START!!!")))

@@ -52,6 +52,14 @@ public:
     bool eraseAll();
     bool eraseBySize(const Protocol::RomSize &size);
 
+    // Version text the firmware announced after the connect banner ("1.1.0"); empty for firmware 1.0.
+    QString firmwareVersion() const { return m_fwVersion; }
+    // Firmware that announces a version can read 8 MiB (see Protocol::extendedRomSize).
+    bool canRead8M() const { return !m_fwVersion.isEmpty(); }
+
+    // Forget what the firmware announced (the port was closed).
+    void resetFirmwareInfo();
+
     void cancel();
     // The port vanished or reported an error: abort whatever is running.
     void deviceLost(const QString &reason);
@@ -65,6 +73,7 @@ signals:
     void progress(int percent);             // 0..100, or -1 when the duration is unknown
     void started(DeviceSession::Op op);
     void finished(DeviceSession::Op op, bool ok, bool cancelled);
+    void firmwareVersionChanged(const QString &version);   // empty when the connection is reset
 
 private slots:
     void onReadyRead();
@@ -120,6 +129,10 @@ private:
     bool m_clearSent = false;
     bool m_verify = false;
     std::unique_ptr<RomVerifier> m_verifier;
+
+    // connect
+    QString m_fwVersion;
+    bool m_bannerSeen = false;   // the banner came; FWVER may still follow within a short grace period
 
     // detect
     QString m_flashIdLine;

@@ -65,7 +65,7 @@ Pass: dumps identical, write verifies, no `WRITE TIMEOUT` on a healthy cartridge
 | 5 | Write without erasing first, over existing data | `WRITE TIMEOUT` at the first word that needs 0 to 1 (the polling working as intended), not silent corruption |
 | 6 | Write to a mask-ROM game cartridge (not flash) | `WRITE TIMEOUT` within seconds, not a hang; the cartridge is untouched |
 | 7 | Erase by size, 512K / 1M / 2M / 4M, on the ST chip | completes; on a top-boot chip (`DT`) the first eight erase steps hit the same 64 KiB sector (the firmware steps by 8 KiB below 64 KiB), so it is slower but correct |
-| 8 | Read 8 MiB (needs a test build of the app that sends code `05`, or `printf` to the serial port) | `8M ROM DUMP START!!!`, 8 388 608 bytes, `DUMPER ROM FINISH!!!` |
+| 8 | Read 8 MiB (the app offers it after connecting to this firmware: size list, "8 MiB") | `8M ROM DUMP START!!!`, 8 388 608 bytes, `DUMPER ROM FINISH!!!` |
 | 9 | Save read/write (SRAM) on a battery cartridge | same bytes as with 1.0 |
 | 10 | Unplug during a write | the app reports it; reconnect works |
 
@@ -79,7 +79,7 @@ Any failure: reflash `backup_fw_1.0.bin` (`st-flash write backup_fw_1.0.bin 0x08
 ## Step 7: Results and release
 
 1. Fill the tables above, mark confirmed chip IDs in `new_firmware/Core/Src/MD.c` (`flash_chips[]`, the `not confirmed` comments) and `Software/chipdb.cpp`.
-2. Decide D6: if 8 MiB reads work, teach the app to offer them when `FWVER:` is present.
+2. D6 is already in the app (8 MiB offered when `FWVER:` is present). If the 8 MiB read fails on hardware (checklist 8), remove it: either drop `FWVER:`/code 5 from the firmware or the `extendedRomSize()` entry in `Software/protocol.cpp`.
 3. Tag and publish `md-rewriter-firmware-1.1.hex` with the Makefile output, the `sha256sum`, and the backup/rollback instructions in the release notes.
 
 ## Future: USB update (D1), design sketch only
