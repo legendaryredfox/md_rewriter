@@ -59,8 +59,8 @@ const QVector<SramSize> &sramSizes()
 
 bool isWritableRomSize(qint64 bytes)
 {
-    return bytes == 0x080000 || bytes == 0x100000 || bytes == 0x200000
-        || bytes == 0x300000 || bytes == 0x400000;
+    // The firmware programs 1 KiB blocks, skips 0xFFFF words and does not care about the size.
+    return bytes >= 0x200 && bytes <= 0x400000 && bytes % 2 == 0;
 }
 
 bool isWritableSramSize(qint64 bytes)

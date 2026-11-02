@@ -1,7 +1,10 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "helpdialog.h"
+#include "romimage.h"
 
+#include <QBuffer>
+#include <QCheckBox>
 #include <QCloseEvent>
 #include <QDir>
 #include <climits>
@@ -58,6 +61,11 @@ MainWindow::MainWindow(QWidget *parent)
         ui->romSizeCombo->addItem(humanSize(s.bytes));
     for (const auto &s : Protocol::sramSizes())
         ui->saveSizeCombo->addItem(humanSize(s.bytes));
+
+    ui->verifyCheck->setChecked(QSettings().value(QStringLiteral("verifyAfterWrite"), true).toBool());
+    connect(ui->verifyCheck, &QCheckBox::toggled, this, [](bool on) {
+        QSettings().setValue(QStringLiteral("verifyAfterWrite"), on);
+    });
 
     const QIcon warn = style()->standardIcon(QStyle::SP_MessageBoxWarning);
     ui->eraseSizeButton->setIcon(warn);
@@ -434,23 +442,42 @@ void MainWindow::writeRom()
     const QString path = askOpenFile(tr("Select the ROM file to write"), tr("ROM files (*.bin *.md *.smd *.gen);;All files (*)"));
     if (path.isEmpty())
         return;
-    m_inFile = std::make_unique<QFile>(path);
-    if (!m_inFile->open(QIODevice::ReadOnly)) {
-        log(Severity::Error, tr("Cannot open \"%1\": %2").arg(path, m_inFile->errorString()));
-        m_inFile.reset();
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        log(Severity::Error, tr("Cannot open \"%1\": %2").arg(path, file.errorString()));
         return;
     }
-    if (Protocol::isWritableRomSize(m_inFile->size())
-        && !confirm(tr("Write ROM"),
-                    tr("Write \"%1\" (%2) to the cartridge?\n\nThe cartridge must be erased first. "
-                       "Anything already on it will be overwritten.")
-                        .arg(QFileInfo(path).fileName(), humanSize(m_inFile->size())),
-                    tr("Write"))) {
-        m_inFile.reset();
+    // Refuse before reading a huge file into memory (an SMD file has 512 bytes of header on top).
+    if (file.size() > RomImage::kMaxRomBytes + RomImage::kSmdHeaderBytes) {
+        log(Severity::Error, tr("The file is %1, larger than the 4 MiB this device can write.").arg(humanSize(file.size())));
         return;
     }
-    if (!m_session.writeRom(m_inFile.get()))
-        m_inFile.reset();
+    const RomImage::Result rom = RomImage::prepare(file.readAll());
+    file.close();
+    if (!rom.ok) {
+        log(Severity::Error, rom.error);
+        return;
+    }
+    for (const QString &info : rom.infos)
+        log(Severity::Info, info);
+    for (const QString &warning : rom.warnings)
+        log(Severity::Warning, warning);
+
+    QString text = tr("Write \"%1\" (%2) to the cartridge?\n\nThe cartridge must be erased first. "
+                      "Anything already on it will be overwritten.")
+                       .arg(QFileInfo(path).fileName(), humanSize(rom.data.size()));
+    if (!rom.warnings.isEmpty())
+        text += QStringLiteral("\n\n") + tr("Warning:") + QLatin1Char(' ') + rom.warnings.join(QStringLiteral("\n"));
+    if (!confirm(tr("Write ROM"), text, tr("Write")))
+        return;
+
+    m_romData = rom.data;
+    m_romBuffer = std::make_unique<QBuffer>(&m_romData);
+    m_romBuffer->open(QIODevice::ReadOnly);
+    if (!m_session.writeRom(m_romBuffer.get(), ui->verifyCheck->isChecked())) {
+        m_romBuffer.reset();
+        m_romData.clear();
+    }
 }
 
 void MainWindow::writeSave()
@@ -529,6 +556,8 @@ void MainWindow::onSessionFinished(DeviceSession::Op op, bool ok, bool cancelled
         m_outFile.reset();
     }
     m_inFile.reset();
+    m_romBuffer.reset();
+    m_romData.clear();
     updateUi();
 }
 
@@ -632,6 +661,7 @@ void MainWindow::updateUi()
     ui->eraseSizeButton->setEnabled(idleDevice);
     ui->eraseAllButton->setEnabled(idleDevice);
     ui->romSizeCombo->setEnabled(!busy);
+    ui->verifyCheck->setEnabled(!busy);
     ui->saveSizeCombo->setEnabled(!busy);
     ui->compareButton->setEnabled(!busy);
 
@@ -655,6 +685,7 @@ void MainWindow::setStatus()
         case DeviceSession::Op::Detect: what = tr("detecting the cartridge"); break;
         case DeviceSession::Op::ReadRom: what = tr("reading the ROM"); break;
         case DeviceSession::Op::WriteRom: what = tr("writing the ROM"); break;
+        case DeviceSession::Op::VerifyRom: what = tr("verifying the written ROM"); break;
         case DeviceSession::Op::ReadSave: what = tr("reading the save data"); break;
         case DeviceSession::Op::WriteSave: what = tr("writing the save data"); break;
         case DeviceSession::Op::EraseAll: what = tr("erasing the cartridge"); break;

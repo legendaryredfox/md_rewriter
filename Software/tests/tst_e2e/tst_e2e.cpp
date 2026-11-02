@@ -12,6 +12,7 @@
 #include <QProgressBar>
 #include <QPushButton>
 #include <QRandomGenerator>
+#include <QCheckBox>
 #include <QSettings>
 #include <QSocketNotifier>
 #include <QStatusBar>
@@ -285,19 +286,93 @@ private slots:
         m_nextOpen = f;
         QTest::mouseClick(w<QPushButton>("writeRomButton"), Qt::LeftButton);
         QTRY_VERIFY_WITH_TIMEOUT(logText().contains("Game written"), 30000);
+        QTRY_VERIFY_WITH_TIMEOUT(logText().contains("Verified"), 30000);   // verify is on by default
         QCOMPARE(m_fw->rom, image);
         QVERIFY(m_fw->errors.isEmpty());
+        QVERIFY(enabled("writeRomButton"));
+    }
+
+    void writeRomWithoutVerifyWhenUnchecked()
+    {
+        m_fw->rom = QByteArray(0x80000, '\xFF');
+        connectDevice();
+        w<QCheckBox>("verifyCheck")->setChecked(false);
+        const QByteArray image = randomBytes(0x40000, 6);   // 256 KiB: not a size the old app accepted
+        const QString f = m_dir.filePath("small.bin");
+        QVERIFY(writeFile(f, image));
+        m_nextOpen = f;
+        QTest::mouseClick(w<QPushButton>("writeRomButton"), Qt::LeftButton);
+        QTRY_VERIFY_WITH_TIMEOUT(logText().contains("Game written"), 30000);
+        QTRY_VERIFY(enabled("writeRomButton"));
+        QVERIFY(!logText().contains("Verif"));
+        QCOMPARE(m_fw->rom.left(image.size()), image);
+        QVERIFY(logText().contains("not a standard size"));
+        for (const QByteArray &c : m_fw->commands)
+            QVERIFY(static_cast<quint8>(c.at(0)) != 0x0A);
+        w<QCheckBox>("verifyCheck")->setChecked(true);
+    }
+
+    void writeRomConvertsSmdFiles()
+    {
+        m_fw->rom = QByteArray(0x80000, '\xFF');
+        connectDevice();
+        QByteArray plain(0x8000, '\xFF');
+        plain.replace(0x100, 16, "SEGA MEGA DRIVE ");
+        for (int i = 0x200; i < plain.size(); ++i)
+            plain[i] = static_cast<char>(i * 7 + 3);
+        QByteArray smd(512, '\0');
+        smd[8] = static_cast<char>(0xAA);
+        smd[9] = static_cast<char>(0xBB);
+        for (int b = 0; b < plain.size() / 16384; ++b) {
+            QByteArray blk(16384, '\0');
+            for (int i = 0; i < 8192; ++i) {
+                blk[i] = plain.at(b * 16384 + 2 * i + 1);
+                blk[8192 + i] = plain.at(b * 16384 + 2 * i);
+            }
+            smd += blk;
+        }
+        const QString f = m_dir.filePath("game.smd");
+        QVERIFY(writeFile(f, smd));
+        m_nextOpen = f;
+        QTest::mouseClick(w<QPushButton>("writeRomButton"), Qt::LeftButton);
+        QTRY_VERIFY_WITH_TIMEOUT(logText().contains("Verified"), 30000);
+        QVERIFY(logText().contains("Super Magic Drive"));
+        QCOMPARE(m_fw->rom.left(plain.size()), plain);
+    }
+
+    void writeRomWarnsAboutAHeaderButStillWrites()
+    {
+        m_fw->rom = QByteArray(0x80000, '\xFF');
+        connectDevice();
+        const QString f = m_dir.filePath("nothing.bin");
+        QVERIFY(writeFile(f, randomBytes(0x10000, 8)));   // random data: no "SEGA"
+        m_nextOpen = f;
+        QTest::mouseClick(w<QPushButton>("writeRomButton"), Qt::LeftButton);
+        QTRY_VERIFY_WITH_TIMEOUT(logText().contains("Game written"), 30000);
+        QVERIFY(logText().contains("SEGA"));
+        QCOMPARE(m_confirms.size(), 1);
+        QVERIFY(m_confirms[0].second.contains("SEGA"));   // the warning is in the confirmation too
+    }
+
+    void detectExplainsAChipTheFirmwareDoesNotKnow()
+    {
+        m_fw->flashId = "20DF";
+        m_fw->chipLine = "NO FIND NGP CARD";
+        connectDevice();
+        QTest::mouseClick(w<QPushButton>("detectButton"), Qt::LeftButton);
+        QTRY_VERIFY_WITH_TIMEOUT(logText().contains("M29W640DB"), 5000);
+        QVERIFY(logText().contains("same commands"));
     }
 
     void writeRomWithUnsupportedSizeIsRejectedBeforeAnything()
     {
         connectDevice();
         const QString f = m_dir.filePath("odd.bin");
-        QVERIFY(writeFile(f, QByteArray(1234, 'x')));
+        QVERIFY(writeFile(f, QByteArray(1235, 'x')));
         m_nextOpen = f;
         const int before = m_fw->commands.size();
         QTest::mouseClick(w<QPushButton>("writeRomButton"), Qt::LeftButton);
-        QVERIFY(logText().contains("not supported"));
+        QVERIFY(logText().contains("odd number of bytes"));
         QVERIFY(m_confirms.isEmpty());
         QTest::qWait(50);
         QCOMPARE(m_fw->commands.size(), before);
@@ -416,7 +491,7 @@ private slots:
             if (l->text().isEmpty()) continue;
             QVERIFY2(l->width() >= l->sizeHint().width(), qPrintable(l->text() + " is clipped"));
         }
-        QVERIFY2(m_win->minimumSizeHint().width() <= 560 && m_win->minimumSizeHint().height() <= 680,
+        QVERIFY2(m_win->minimumSizeHint().width() <= 560 && m_win->minimumSizeHint().height() <= 700,
                  qPrintable(QStringLiteral("minimum size too large: %1x%2").arg(m_win->minimumSizeHint().width()).arg(m_win->minimumSizeHint().height())));
         // optional artefact for visual review
         const QString shots = qEnvironmentVariable("MD_SCREENSHOT_DIR");

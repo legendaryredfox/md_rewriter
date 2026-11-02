@@ -12,6 +12,7 @@
 #include "filecompare.h"
 
 class HelpDialog;
+class QBuffer;
 class QFile;
 class QLabel;
 class QSaveFile;
@@ -89,6 +90,8 @@ private:
     // file of the running read or write
     std::unique_ptr<QSaveFile> m_outFile;
     std::unique_ptr<QFile> m_inFile;
+    std::unique_ptr<QBuffer> m_romBuffer;   // the prepared ROM image of a running write
+    QByteArray m_romData;
     QString m_outPath;
 
     // running comparison

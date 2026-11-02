@@ -173,7 +173,7 @@ void FakeFirmware::handle(const QByteArray &cmd, const QByteArray &blockData)
             reply(QStringLiteral("FlashMaster MD Dumper is connected\r\n"));
         break;
     case 0x0D:
-        reply(QStringLiteral("-- MD CART ID --\r\nFLASHID:C2CB\r\nMX29LV640EB MD FLASH CART\r\n"));
+        reply(QStringLiteral("-- MD CART ID --\r\nFLASHID:%1\r\n%2\r\n").arg(flashId, chipLine));
         break;
     case 0x0A:
         dump(rom, true, static_cast<quint8>(cmd.at(5)));
@@ -200,9 +200,15 @@ void FakeFirmware::handle(const QByteArray &cmd, const QByteArray &blockData)
         } else {
             target.replace(off, 1024, blockData);
         }
+        if (c == 0x0B && corruptRomOffset >= off && corruptRomOffset < off + 1024)
+            target[corruptRomOffset] = static_cast<char>(target.at(corruptRomOffset) ^ 0x01);
         ++blocksWritten;
         const unsigned long addw = (c == 0x0B) ? (bank * 64 * 512 + idx * 512) : (bank * 64 * 1024 + idx * 1024);
         const QString hex = QString::number(addw, 16).toUpper();
+        if (c == 0x0B && failRomWriteAtBlock >= 0 && static_cast<int>(bank * 64 + idx) == failRomWriteAtBlock) {
+            reply(QStringLiteral("ADD:0x%1 WRITE TIMEOUT\r\n").arg(hex));
+            break;
+        }
         reply(QStringLiteral("ADD:0x%1 %2\r\n").arg(hex, c == 0x0B ? QStringLiteral("WRITE OK") : QStringLiteral("WRITE GK")));
         break;
     }

@@ -233,12 +233,132 @@ private slots:
         QVERIFY(h.fw.rom == image);
     }
 
+    void writeRomNonStandardSize()
+    {
+        Harness h;
+        h.fw.rom = QByteArray(0x100000, '\xFF');       // an erased 1 MiB cartridge
+        QByteArray image = randomBytes(0xC0000, 40);   // 768 KiB
+        QBuffer in(&image); in.open(QIODevice::ReadOnly);
+        QVERIFY(h.s.writeRom(&in));
+        QVERIFY(h.waitDone());
+        QVERIFY(h.done[0].ok);
+        QCOMPARE(h.fw.blocksWritten, 768);
+        QVERIFY(h.fw.rom.left(image.size()) == image);
+        QVERIFY(h.fw.rom.mid(image.size()) == QByteArray(0x100000 - image.size(), '\xFF'));   // the rest stays blank
+    }
+
+    void writeRomWithVerifyOk()
+    {
+        Harness h;
+        h.fw.rom = QByteArray(0x80000, '\xFF');
+        h.fw.setFragmentation(500, 9);
+        QByteArray image = randomBytes(0x40000, 41);   // 256 KiB: read back as 512K
+        QBuffer in(&image); in.open(QIODevice::ReadOnly);
+        QVERIFY(h.s.writeRom(&in, true));
+        QVERIFY(h.waitDone());
+        QVERIFY(h.done[0].ok);
+        QCOMPARE(h.done.size(), 1);                       // one finished() for write + verify
+        QCOMPARE(h.done[0].op, Op::WriteRom);
+        QCOMPARE(h.fw.blocksWritten, 256);
+        QVERIFY(h.hasMessage(Sev::Success, "Game written"));
+        QVERIFY(h.hasMessage(Sev::Success, "Verified"));
+        QVERIFY2(h.fw.errors.isEmpty(), qPrintable(h.fw.errors.join("; ")));
+        // the read-back used the normal dump command, 512K code, right after the clear-buffers command
+        QCOMPARE(h.fw.commands.last(), QByteArray::fromHex("0AAA55AABB01"));
+        QCOMPARE(h.fw.commands.at(h.fw.commands.size() - 2), QByteArray::fromHex("0FAA55AABB"));
+        QCOMPARE(h.progress.last(), 100);
+    }
+
+    void writeRomVerifyReadsFourMiBFor3MiB()
+    {
+        Harness h;
+        h.fw.rom = QByteArray(0x300000, '\xFF');
+        QByteArray image = randomBytes(0x300000, 42);
+        QBuffer in(&image); in.open(QIODevice::ReadOnly);
+        QVERIFY(h.s.writeRom(&in, true));
+        QVERIFY(h.waitDone(1, 60000));
+        QVERIFY(h.done[0].ok);
+        QCOMPARE(h.fw.commands.last(), QByteArray::fromHex("0AAA55AABB04"));
+    }
+
+    void writeRomVerifyCatchesABadWrite()
+    {
+        Harness h;
+        h.fw.rom = QByteArray(0x80000, '\xFF');
+        h.fw.corruptRomOffset = 0x1234;
+        QByteArray image = randomBytes(0x80000, 43);
+        QBuffer in(&image); in.open(QIODevice::ReadOnly);
+        QVERIFY(h.s.writeRom(&in, true));
+        QVERIFY(h.waitDone());
+        QVERIFY(!h.done[0].ok);
+        QVERIFY(h.hasMessage(Sev::Success, "Game written"));
+        QVERIFY2(h.hasMessage(Sev::Error, "Verification failed"), "must say it failed");
+        QVERIFY(h.hasMessage(Sev::Error, "0x1234"));
+        QVERIFY(h.hasMessage(Sev::Error, "1 bytes differ"));
+    }
+
+    void writeRomStopsOnAWriteTimeoutFromNewFirmware()
+    {
+        Harness h;
+        h.fw.rom = QByteArray(0x80000, '\xFF');
+        h.fw.failRomWriteAtBlock = 3;
+        QByteArray image = randomBytes(0x80000, 45);
+        QBuffer in(&image); in.open(QIODevice::ReadOnly);
+        QVERIFY(h.s.writeRom(&in, true));
+        QVERIFY(h.waitDone(1, 5000));                 // well before the 10 s idle timeout
+        QVERIFY(!h.done[0].ok);
+        QVERIFY(h.hasMessage(Sev::Error, "did not finish programming"));
+        QCOMPARE(h.fw.blocksWritten, 4);              // blocks 0..3 reached the device, then it stopped
+        QVERIFY2(!h.hasMessage(Sev::Success, "Game written"), "must not claim success");
+        QVERIFY(h.s.currentOp() == Op::None);
+    }
+
+    void writeRomWithoutVerifyDoesNotReadBack()
+    {
+        Harness h;
+        h.fw.rom = QByteArray(0x80000, '\xFF');
+        QByteArray image = randomBytes(0x40000, 44);
+        QBuffer in(&image); in.open(QIODevice::ReadOnly);
+        QVERIFY(h.s.writeRom(&in, false));
+        QVERIFY(h.waitDone());
+        QVERIFY(h.done[0].ok);
+        for (const QByteArray &c : h.fw.commands)
+            QVERIFY(static_cast<quint8>(c.at(0)) != 0x0A);
+    }
+
+    void detectNamesChips_data()
+    {
+        QTest::addColumn<QString>("id");
+        QTest::addColumn<QString>("line");
+        QTest::addColumn<int>("severity");
+        QTest::addColumn<QString>("expected");
+        QTest::newRow("supported") << "C2CB" << "MX29LV640EB MD FLASH CART" << int(Sev::Success) << "Supported";
+        QTest::newRow("st chip firmware does not list") << "20DF" << "NO FIND NGP CARD" << int(Sev::Info) << "M29W640DB";
+        QTest::newRow("unconfirmed id says so") << "207E" << "NO FIND NGP CARD" << int(Sev::Info) << "not confirmed";
+        QTest::newRow("unknown") << "FFFF" << "NO FIND NGP CARD" << int(Sev::Warning) << "Chip not in the list";
+    }
+    void detectNamesChips()
+    {
+        QFETCH(QString, id);
+        QFETCH(QString, line);
+        QFETCH(int, severity);
+        QFETCH(QString, expected);
+        Harness h;
+        h.fw.flashId = id;
+        h.fw.chipLine = line;
+        QVERIFY(h.s.detect());
+        QVERIFY(h.waitDone());
+        QVERIFY(h.done[0].ok);
+        QVERIFY2(h.hasMessage(static_cast<Sev>(severity), expected), qPrintable(h.messages.isEmpty() ? QString("no message") : h.messages.last().second));
+    }
+
     void writeRomRejectsBadSize_data()
     {
         QTest::addColumn<int>("size");
         QTest::newRow("empty") << 0;
-        QTest::newRow("tiny") << 1000;
-        QTest::newRow("oneOver") << 0x80001;
+        QTest::newRow("tiny") << 100;
+        QTest::newRow("odd") << 0x80001;
+        QTest::newRow("overFourMiB") << 0x400002;
     }
     void writeRomRejectsBadSize()
     {

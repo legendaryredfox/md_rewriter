@@ -8,7 +8,11 @@
 #include <QString>
 #include <QTimer>
 
+#include <memory>
+
+#include "chipdb.h"
 #include "protocol.h"
+#include "romverifier.h"
 #include "streamparser.h"
 
 // Runs one operation at a time against the firmware over any QIODevice (a QSerialPort in the
@@ -20,7 +24,7 @@ class DeviceSession : public QObject
 {
     Q_OBJECT
 public:
-    enum class Op { None, Connect, Detect, ReadRom, WriteRom, ReadSave, WriteSave, EraseAll, EraseBySize };
+    enum class Op { None, Connect, Detect, ReadRom, WriteRom, VerifyRom, ReadSave, WriteSave, EraseAll, EraseBySize };
     enum class Severity { Info, Success, Warning, Error };
     Q_ENUM(Op)
     Q_ENUM(Severity)
@@ -39,7 +43,10 @@ public:
     bool connectDevice();
     bool detect();
     bool readRom(const Protocol::RomSize &size, QIODevice *out);
-    bool writeRom(QIODevice *in);
+    // With `verify`, a successful write is followed by a read-back (the normal ROM dump command)
+    // that is compared with `in`, which must be seekable. Same operation for the caller: one
+    // finished() signal, ok only if the write and the comparison both succeeded.
+    bool writeRom(QIODevice *in, bool verify = false);
     bool readSave(const Protocol::SramSize &size, QIODevice *out);
     bool writeSave(QIODevice *in);
     bool eraseAll();
@@ -74,10 +81,13 @@ private:
     void finish(bool ok, const QString &okMessage = QString());
     void fail(const QString &reason);
     bool startRead(Op op, quint32 bytes, Protocol::Command cmd, quint8 code, QIODevice *out);
-    bool startWrite(Op op, QIODevice *in, Protocol::Command cmd);
+    bool startWrite(Op op, QIODevice *in, Protocol::Command cmd, bool verify = false);
+    void startVerify();
+    void finishVerify();
     void sendNextBlock();
     void onWriteAck();
     void finishWrite();
+    void failWrite(const QString &line);
     void setProgress(int percent);
 
     QPointer<QIODevice> m_io;
@@ -87,6 +97,7 @@ private:
     int m_idleMs = 10000;
 
     Op m_op = Op::None;
+    Op m_reportOp = Op::None;     // what finished() reports: a verify belongs to its write
     bool m_cancelled = false;
     bool m_finishing = false;
     int m_lastPercent = -2;
@@ -107,6 +118,12 @@ private:
     quint32 m_acked = 0;
     bool m_awaitingAck = false;
     bool m_clearSent = false;
+    bool m_verify = false;
+    std::unique_ptr<RomVerifier> m_verifier;
+
+    // detect
+    QString m_flashIdLine;
+    void reportChip(const QString &firmwareLine);
 
     // erase by size
     int m_eraseSteps = 0;

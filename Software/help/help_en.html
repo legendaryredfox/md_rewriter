@@ -46,13 +46,13 @@
 <h3 id="recipe-flash">Write a game to a flash cartridge</h3>
 <ol>
 <li><b>Erase first</b> unless the cartridge is blank (see <a href="#recipe-erase">Erase</a>). Flash memory can only change bits from 1 to 0; writing over old data without erasing gives a corrupted game.</li>
-<li>Press <b>Write ROM...</b> and choose the file. Accepted sizes: <b>512 KiB, 1 MiB, 2 MiB, 3 MiB, 4 MiB</b>. Plain ROM files (<code>.bin</code>, <code>.md</code>, <code>.gen</code>) only. Interleaved <code>.smd</code> files are written as they are and will not boot; convert them to plain <code>.bin</code> first.</li>
+<li>Press <b>Write ROM...</b> and choose the file. Any ROM from 512 bytes to <b>4 MiB</b> with an even size is accepted, including 256 KiB, 768 KiB or 1.5 MiB games: it is written as it is and the rest of the chip stays blank. <code>.bin</code>, <code>.md</code> and <code>.gen</code> files are written as they are; <code>.smd</code> (Super Magic Drive) files are converted to a plain ROM automatically. If the ROM header looks wrong (no <code>SEGA</code>, bad checksum, truncated file) the program warns you before writing, but never blocks the write.</li>
 <li>Confirm the warning. The progress bar fills as blocks are written.</li>
 <li>Wait for <code>Game written</code>.</li>
-<li><b>Verify:</b> press <b>Read ROM...</b> with the same size, then <b>Compare files...</b> against the original. It should say the files are identical.</li>
+<li><b>Verify:</b> leave <b>Verify after writing</b> ticked (it is on by default). When the write ends the program reads the cartridge back and compares it with the file; the log says <code>Verified</code> or gives the first offset that differs. You can also press <b>Read ROM...</b> with the same size and use <b>Compare files...</b> against the original.</li>
 </ol>
 <p><b>Cancel</b> during a write leaves the cartridge with a partial image. Erase and write again.</p>
-<p>Only rewritable flash cartridges with the chip the device recognises (shown by <b>Detect cartridge</b> as <code>FLASHID:C2CB</code>, <code>MX29LV640EB MD FLASH CART</code>) are supported. <code>NO FIND NGP CARD</code> means the device did not recognise the chip; do not try to write to it.</p>
+<p>Only rewritable flash cartridges that take the standard AMD/JEDEC commands can be written. The chip the firmware was made for is shown by <b>Detect cartridge</b> as <code>FLASHID:C2CB</code>, <code>MX29LV640EB MD FLASH CART</code>. Other chips of the same family (for example the ST M29W640) print <code>NO FIND NGP CARD</code> but the program names them from the ID; they should work, although this has not been tested on hardware. Always keep <b>Verify after writing</b> on with such a cartridge.</p>
 
 <h3 id="recipe-saves">Back up, restore and move saves</h3>
 <ol>
@@ -72,7 +72,7 @@
 <p>Both ask for confirmation because they destroy data. There is no undo.</p>
 
 <h3 id="recipe-identify">Identify a cartridge</h3>
-<p><b>Detect cartridge</b> prints the chip ID. A recognised flash cartridge shows <code>FLASHID:C2CB</code> and <code>MX29LV640EB MD FLASH CART</code>. For a normal (non-flash) game cartridge the message is <code>NO FIND NGP CARD</code>: that is expected, you can still read it.</p>
+<p><b>Detect cartridge</b> prints the chip ID. A recognised flash cartridge shows <code>FLASHID:C2CB</code> and <code>MX29LV640EB MD FLASH CART</code>. For a normal (non-flash) game cartridge the message is <code>NO FIND NGP CARD</code>: that is expected, you can still read it. The program also says in plain words what it found: a chip it knows, or "Chip not in the list" with the ID. <code>NO FIND NGP CARD</code> only means the firmware did not recognise the chip; it never blocks anything.</p>
 
 <h3 id="recipe-compare">Compare any two files (no device needed)</h3>
 <p><b>Compare files...</b> works without a connection. Typical uses: check a dump against a reference, see exactly which bytes a patch or ROM hack changes (original versus patched), or confirm that a write was successful.</p>
@@ -92,7 +92,7 @@
 <tr><td><code>The data from the device is incomplete or out of sync...</code></td><td>The dump was damaged in transit. <b>The file was not saved.</b> Try another cable or USB port and read again.</td></tr>
 <tr><td><code>The device stopped answering after X of Y bytes.</code></td><td>The device or the cable stopped in the middle of a read. Replug and retry.</td></tr>
 <tr><td><code>The device did not confirm block N of M.</code></td><td>A write block was not acknowledged. Check the cable and the cartridge contacts, erase and write again.</td></tr>
-<tr><td><code>The file size (N bytes) is not supported...</code></td><td>The file is not 512 KiB, 1 MiB, 2 MiB, 3 MiB or 4 MiB (ROM), or not 8 KiB or 32 KiB (save). Nothing was sent to the device.</td></tr>
+<tr><td><code>The file size (N bytes) is not supported...</code></td><td>The ROM is not an even size between 512 bytes and 4 MiB, or the save is not 8 KiB or 32 KiB. Nothing was sent to the device.</td></tr>
 <tr><td><code>... did not finish erasing in time...</code></td><td>The cartridge may be faulty or not a flash cartridge. (Only shown with the updated firmware.)</td></tr>
 <tr><td><code>Cancelled after N of M blocks. The cartridge now holds a partial image.</code></td><td>You cancelled a write. Erase and write again before using the cartridge.</td></tr>
 <tr><td><code>The device did not send the final confirmation, but all data was received.</code></td><td>The data is complete. The warning is harmless.</td></tr>
@@ -131,13 +131,13 @@
 <h3 id="problem-writebad">The game does not boot after writing</h3>
 <ul>
 <li>Did you erase first? Write over old data gives a corrupted game.</li>
-<li>Is the file a plain ROM (not interleaved <code>.smd</code>) and does it work in an emulator?</li>
+<li>Does the file work in an emulator? (<code>.smd</code> files are converted automatically, but a bad dump will not boot.)</li>
 <li>Read the cartridge back and <a href="#recipe-compare">compare</a> it with the file. If they differ, repeat with another cable and check the contacts.</li>
 <li>The game may need a save mapper or a different cartridge type that the flash cartridge does not provide.</li>
 </ul>
 
 <h3 id="problem-detect">"NO FIND NGP CARD" on a flash cartridge</h3>
-<p>The chip is not the one the device supports, or the cartridge is not inserted properly. Reinsert, clean the contacts, press <b>Detect cartridge</b> again. If it still fails, writing is not supported for that cartridge.</p>
+<p>The firmware only recognises one chip, so it prints this for every other chip. Read the line the program adds below it: if it names a chip (for example M29W640DB), the cartridge is probably fine; if it says "Chip not in the list", the cartridge may not be flash or may not be inserted properly. Reinsert, clean the contacts, press <b>Detect cartridge</b> again. Test a new flash cartridge by erasing, writing a small ROM with <b>Verify after writing</b> on and checking that it passes.</p>
 
 <h3 id="problem-closed">I closed the program or lost power during an operation</h3>
 <p>Reading: nothing was saved, just read again. Writing or erasing: the cartridge is in an unknown state. Erase it and write again. Saves: restore the save file you backed up.</p>
@@ -148,7 +148,7 @@
 <li><b>Never unplug</b> the device, or remove the cartridge, while an operation is running, especially erase and write.</li>
 <li>Plug and unplug cartridges with the USB cable <b>disconnected</b>; this is the safe way to treat any cartridge slot.</li>
 <li>Erase and write operations <b>destroy data</b> and cannot be undone. The program asks for confirmation each time.</li>
-<li>Verify every write by reading it back and comparing.</li>
+<li>Keep <b>Verify after writing</b> on: it reads every write back and compares it.</li>
 <li>Only copy games and saves that you own or are allowed to copy.</li>
 </ul>
 
@@ -167,7 +167,7 @@
 <h2 id="technical">Technical notes</h2>
 <ul>
 <li>Link: USB virtual serial port, 1,000,000 baud, 8 data bits, no parity, 1 stop bit, no flow control.</li>
-<li>ROM dump sizes: 512 KiB, 1 MiB, 2 MiB, 4 MiB. Write sizes: 512 KiB, 1 MiB, 2 MiB, 3 MiB, 4 MiB. Save sizes: 8 KiB, 32 KiB. Cartridges larger than 4 MiB are not supported.</li>
+<li>ROM dump sizes: 512 KiB, 1 MiB, 2 MiB, 4 MiB. Write sizes: any even size from 512 bytes to 4 MiB. Save sizes: 8 KiB, 32 KiB. Cartridges larger than 4 MiB are not supported.</li>
 <li>Data is written in 1 KiB blocks, each one acknowledged by the device before the next is sent. The last block of a file is padded with <code>0xFF</code> (which means "do not program" for flash).</li>
 <li>Reads are saved atomically: the program writes a temporary file and renames it only when the read is complete.</li>
 <li>The program works with firmware 1.0 and newer. Some messages (erase timeouts) only appear with the updated firmware.</li>

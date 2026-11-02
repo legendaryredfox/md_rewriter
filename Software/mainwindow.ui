@@ -134,6 +134,19 @@
          </property>
         </widget>
        </item>
+       <item row="4" column="0">
+        <widget class="QCheckBox" name="verifyCheck">
+         <property name="toolTip">
+          <string>After writing, read the cartridge back and compare it with the file. Takes extra time, but catches bad writes.</string>
+         </property>
+         <property name="text">
+          <string>&amp;Verify after writing</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
       </layout>
      </widget>
       </item>
@@ -309,6 +322,7 @@
   <tabstop>romSizeCombo</tabstop>
   <tabstop>readRomButton</tabstop>
   <tabstop>writeRomButton</tabstop>
+  <tabstop>verifyCheck</tabstop>
   <tabstop>saveSizeCombo</tabstop>
   <tabstop>readSaveButton</tabstop>
   <tabstop>writeSaveButton</tabstop>

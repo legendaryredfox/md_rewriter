@@ -11,7 +11,7 @@
 // It parses the bytes the app writes exactly as the real firmware would (command header
 // AA 55 AA BB, 1 KiB write blocks followed by a 7-byte command) and answers with the same
 // strings, in randomly sized fragments to mimic a serial driver.
-// The behaviour is derived from Firmware/Core/Src/main.c; keep both in sync.
+// The behaviour is derived from legacy_firmware/Core/Src/main.c; keep both in sync.
 class FakeFirmware : public QIODevice
 {
     Q_OBJECT
@@ -32,6 +32,10 @@ public:
     int dropDumpBlock = -1;        // old-firmware bug: this dump block is not sent
     int stopAfterDumpBlocks = -1;  // stop answering after this many dump blocks
     bool eraseFails = false;       // answer to erase with a timeout line
+    QString flashId = QStringLiteral("C2CB");                         // text after "FLASHID:"
+    QString chipLine = QStringLiteral("MX29LV640EB MD FLASH CART");   // what firmware 1.0 prints next
+    int failRomWriteAtBlock = -1;  // new-firmware behaviour: answer this ROM block with "WRITE TIMEOUT"
+    int corruptRomOffset = -1;     // flip this ROM byte right after it is programmed (a bad write)
     // Deterministic brake for timing-sensitive tests: after this many reply chunks the device
     // goes quiet (what it would still say is kept) until resume() is called.
     int holdAfterReplies = -1;

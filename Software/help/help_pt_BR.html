@@ -46,13 +46,13 @@
 <h3 id="recipe-flash">Gravar um jogo em um cartucho flash</h3>
 <ol>
 <li><b>Apague antes</b>, a menos que o cartucho esteja vazio (veja <a href="#recipe-erase">Apagar</a>). A memória flash só consegue mudar bits de 1 para 0; gravar sobre dados antigos sem apagar gera um jogo corrompido.</li>
-<li>Clique em <b>Gravar ROM...</b> e escolha o arquivo. Tamanhos aceitos: <b>512 KiB, 1 MiB, 2 MiB, 3 MiB, 4 MiB</b>. Apenas arquivos de ROM simples (<code>.bin</code>, <code>.md</code>, <code>.gen</code>). Arquivos <code>.smd</code> (intercalados) são gravados como estão e não vão iniciar; converta-os para <code>.bin</code> simples antes.</li>
+<li>Clique em <b>Gravar ROM...</b> e escolha o arquivo. Qualquer ROM de 512 bytes até <b>4 MiB</b> com tamanho par é aceita, inclusive jogos de 256 KiB, 768 KiB ou 1,5 MiB: ela é gravada como está e o resto do chip fica em branco. Arquivos <code>.bin</code>, <code>.md</code> e <code>.gen</code> são gravados como estão; arquivos <code>.smd</code> (Super Magic Drive) são convertidos automaticamente para uma ROM simples. Se o cabeçalho da ROM parecer errado (sem <code>SEGA</code>, checksum ruim, arquivo truncado), o programa avisa antes de gravar, mas nunca bloqueia a gravação.</li>
 <li>Confirme o aviso. A barra de progresso enche conforme os blocos são gravados.</li>
 <li>Aguarde <code>Jogo gravado</code>.</li>
-<li><b>Confira:</b> clique em <b>Ler ROM...</b> com o mesmo tamanho e depois em <b>Comparar arquivos...</b> com o original. Deve dizer que os arquivos são idênticos.</li>
+<li><b>Confira:</b> deixe <b>Verificar após gravar</b> marcado (vem ligado por padrão). Quando a gravação termina, o programa lê o cartucho de volta e compara com o arquivo; o registro mostra <code>Verificado</code> ou o primeiro deslocamento que difere. Você também pode clicar em <b>Ler ROM...</b> com o mesmo tamanho e usar <b>Comparar arquivos...</b> com o original.</li>
 </ol>
 <p><b>Cancelar</b> durante a gravação deixa o cartucho com uma imagem parcial. Apague e grave de novo.</p>
-<p>Só há suporte a cartuchos flash regraváveis com o chip que o dispositivo reconhece (o <b>Detectar cartucho</b> mostra <code>FLASHID:C2CB</code>, <code>MX29LV640EB MD FLASH CART</code>). <code>NO FIND NGP CARD</code> significa que o dispositivo não reconheceu o chip; não tente gravar nele.</p>
+<p>Só é possível gravar cartuchos flash regraváveis que aceitem os comandos AMD/JEDEC padrão. O chip para o qual o firmware foi feito aparece no <b>Detectar cartucho</b> como <code>FLASHID:C2CB</code>, <code>MX29LV640EB MD FLASH CART</code>. Outros chips da mesma família (por exemplo o ST M29W640) mostram <code>NO FIND NGP CARD</code>, mas o programa os nomeia pelo ID; eles devem funcionar, embora isso não tenha sido testado em hardware. Com um cartucho assim, mantenha sempre <b>Verificar após gravar</b> ligado.</p>
 
 <h3 id="recipe-saves">Backup, restauração e transferência de saves</h3>
 <ol>
@@ -72,7 +72,7 @@
 <p>Ambos pedem confirmação porque destroem dados. Não há como desfazer.</p>
 
 <h3 id="recipe-identify">Identificar um cartucho</h3>
-<p><b>Detectar cartucho</b> mostra o ID do chip. Um cartucho flash reconhecido mostra <code>FLASHID:C2CB</code> e <code>MX29LV640EB MD FLASH CART</code>. Para um cartucho de jogo comum (não flash) a mensagem é <code>NO FIND NGP CARD</code>: é esperado, e você ainda pode lê-lo.</p>
+<p><b>Detectar cartucho</b> mostra o ID do chip. Um cartucho flash reconhecido mostra <code>FLASHID:C2CB</code> e <code>MX29LV640EB MD FLASH CART</code>. Para um cartucho de jogo comum (não flash) a mensagem é <code>NO FIND NGP CARD</code>: é esperado, e você ainda pode lê-lo. O programa também diz em palavras simples o que encontrou: um chip que ele conhece, ou "Chip fora da lista" com o ID. <code>NO FIND NGP CARD</code> só significa que o firmware não reconheceu o chip; nunca bloqueia nada.</p>
 
 <h3 id="recipe-compare">Comparar dois arquivos quaisquer (sem dispositivo)</h3>
 <p><b>Comparar arquivos...</b> funciona sem conexão. Usos típicos: conferir uma leitura contra uma referência, ver exatamente quais bytes um patch ou ROM hack altera (original contra modificada), ou confirmar que uma gravação deu certo.</p>
@@ -92,7 +92,7 @@
 <tr><td><code>Os dados do dispositivo estão incompletos ou fora de sincronia...</code></td><td>A leitura foi danificada no caminho. <b>O arquivo não foi salvo.</b> Tente outro cabo ou porta USB e leia de novo.</td></tr>
 <tr><td><code>O dispositivo parou de responder após X de Y bytes.</code></td><td>O dispositivo ou o cabo parou no meio da leitura. Reconecte e tente de novo.</td></tr>
 <tr><td><code>O dispositivo não confirmou o bloco N de M.</code></td><td>Um bloco de gravação não foi confirmado. Verifique o cabo e os contatos do cartucho, apague e grave de novo.</td></tr>
-<tr><td><code>O tamanho do arquivo (N bytes) não é suportado...</code></td><td>O arquivo não tem 512 KiB, 1 MiB, 2 MiB, 3 MiB ou 4 MiB (ROM), nem 8 KiB ou 32 KiB (save). Nada foi enviado ao dispositivo.</td></tr>
+<tr><td><code>O tamanho do arquivo (N bytes) não é suportado...</code></td><td>A ROM não tem tamanho par entre 512 bytes e 4 MiB, ou o save não tem 8 KiB nem 32 KiB. Nada foi enviado ao dispositivo.</td></tr>
 <tr><td><code>... não terminou de apagar a tempo...</code></td><td>O cartucho pode estar com defeito ou não ser flash. (Só aparece com o firmware atualizado.)</td></tr>
 <tr><td><code>Cancelado após N de M blocos. O cartucho agora contém uma imagem parcial.</code></td><td>Você cancelou uma gravação. Apague e grave de novo antes de usar o cartucho.</td></tr>
 <tr><td><code>O dispositivo não enviou a confirmação final, mas todos os dados foram recebidos.</code></td><td>Os dados estão completos. O aviso é inofensivo.</td></tr>
@@ -131,13 +131,13 @@
 <h3 id="problem-writebad">O jogo não inicia depois de gravar</h3>
 <ul>
 <li>Você apagou antes? Gravar sobre dados antigos gera um jogo corrompido.</li>
-<li>O arquivo é uma ROM simples (não <code>.smd</code> intercalado) e funciona em um emulador?</li>
+<li>O arquivo funciona em um emulador? (arquivos <code>.smd</code> são convertidos automaticamente, mas um dump ruim não inicia.)</li>
 <li>Leia o cartucho de volta e <a href="#recipe-compare">compare</a> com o arquivo. Se diferirem, repita com outro cabo e confira os contatos.</li>
 <li>O jogo pode precisar de um mapeador de save ou de um tipo de cartucho que o cartucho flash não oferece.</li>
 </ul>
 
 <h3 id="problem-detect">"NO FIND NGP CARD" em um cartucho flash</h3>
-<p>O chip não é o que o dispositivo suporta, ou o cartucho não está bem encaixado. Reinsira, limpe os contatos e clique em <b>Detectar cartucho</b> de novo. Se continuar falhando, não há suporte à gravação nesse cartucho.</p>
+<p>O firmware só reconhece um chip, então mostra isto para todos os outros. Leia a linha que o programa acrescenta abaixo: se ela nomear um chip (por exemplo M29W640DB), o cartucho provavelmente está bem; se disser "Chip fora da lista", o cartucho pode não ser flash ou não estar bem encaixado. Reinsira, limpe os contatos e clique em <b>Detectar cartucho</b> de novo. Teste um cartucho flash novo apagando, gravando uma ROM pequena com <b>Verificar após gravar</b> ligado e conferindo que passa.</p>
 
 <h3 id="problem-closed">Fechei o programa ou faltou energia durante uma operação</h3>
 <p>Leitura: nada foi salvo, é só ler de novo. Gravação ou apagamento: o cartucho está em estado desconhecido. Apague e grave de novo. Saves: restaure o arquivo de save do seu backup.</p>
@@ -148,7 +148,7 @@
 <li><b>Nunca desconecte</b> o dispositivo, nem retire o cartucho, durante uma operação, principalmente apagar e gravar.</li>
 <li>Conecte e retire cartuchos com o cabo USB <b>desconectado</b>; é a forma segura de tratar qualquer slot de cartucho.</li>
 <li>Apagar e gravar <b>destroem dados</b> e não podem ser desfeitos. O programa pede confirmação todas as vezes.</li>
-<li>Confira toda gravação lendo de volta e comparando.</li>
+<li>Mantenha <b>Verificar após gravar</b> ligado: ele lê cada gravação de volta e compara.</li>
 <li>Copie apenas jogos e saves que você possui ou tem permissão para copiar.</li>
 </ul>
 
@@ -167,7 +167,7 @@
 <h2 id="technical">Notas técnicas</h2>
 <ul>
 <li>Enlace: porta serial virtual USB, 1.000.000 de baud, 8 bits de dados, sem paridade, 1 stop bit, sem controle de fluxo.</li>
-<li>Tamanhos de leitura de ROM: 512 KiB, 1 MiB, 2 MiB, 4 MiB. Tamanhos de gravação: 512 KiB, 1 MiB, 2 MiB, 3 MiB, 4 MiB. Tamanhos de save: 8 KiB, 32 KiB. Cartuchos maiores que 4 MiB não são suportados.</li>
+<li>Tamanhos de leitura de ROM: 512 KiB, 1 MiB, 2 MiB, 4 MiB. Tamanhos de gravação: qualquer tamanho par de 512 bytes até 4 MiB. Tamanhos de save: 8 KiB, 32 KiB. Cartuchos maiores que 4 MiB não são suportados.</li>
 <li>Os dados são gravados em blocos de 1 KiB, cada um confirmado pelo dispositivo antes do próximo. O último bloco de um arquivo é completado com <code>0xFF</code> (que significa "não programar" na flash).</li>
 <li>As leituras são salvas de forma atômica: o programa escreve um arquivo temporário e só o renomeia quando a leitura termina.</li>
 <li>O programa funciona com o firmware 1.0 e posteriores. Algumas mensagens (tempo esgotado ao apagar) só aparecem com o firmware atualizado.</li>

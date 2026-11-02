@@ -13,7 +13,7 @@ Ferramenta portátil para cartuchos de Sega Mega Drive: faz backup e restauraç�
 
 | Pasta | Conteúdo |
 |-------|----------|
-| `Firmware/` | Código-fonte do firmware do microcontrolador (STM32F103VB, projeto Keil). O firmware compilado está na página de releases: [Release 1.0](https://github.com/Epicjoy/md_rewriter/releases/download/1.0/md-rewriter-firmware-1.0.hex). |
+| `legacy_firmware/` | Código-fonte do firmware do microcontrolador (STM32F103VB, projeto Keil). O firmware compilado está na página de releases: [Release 1.0](https://github.com/Epicjoy/md_rewriter/releases/download/1.0/md-rewriter-firmware-1.0.hex). |
 | `Hardware/` | BOM, Gerber e arquivos da PCB. Você pode fabricar a placa conforme sua necessidade. |
 | `Software/` | Aplicativo de computador (Qt 6). Funciona em **Linux** e Windows. |
 | `docs/` | Especificação e plano das correções, e notas técnicas. |
@@ -28,6 +28,7 @@ Gostou do projeto? Apoie: [Buy Me a Coffee](https://buymeacoffee.com/legendaryre
 - Faz backup de jogos de cartuchos de Mega Drive para o computador e grava jogos em cartuchos flash regraváveis de terceiros.
 - Lê e grava os dados de save (SRAM) do cartucho.
 - Compara dois arquivos byte a byte (por exemplo, uma leitura e a ROM original), sem precisar do dispositivo.
+- Grava ROMs de qualquer tamanho par até 4 MiB, converte arquivos `.smd` e verifica a gravação lendo o cartucho de volta.
 - Interface que segue o tema do sistema (claro ou escuro), com confirmação antes de qualquer operação destrutiva e botão Cancelar para leituras e gravações.
 - Guia do usuário embutido (menu **Ajuda → Guia do usuário** ou **F1**): receitas de uso, o que cada mensagem do registro significa e solução de problemas, com busca. Disponível em português e inglês.
 - Código aberto.
@@ -66,7 +67,7 @@ Baixe o programa pronto na página de releases, ou abra `Software/MDRewriter.pro
 1. **Conecte o MD Rewriter** ao computador por USB e **insira o cartucho** no dispositivo.
 2. Abra o **MD Rewriter**. A lista de portas se atualiza sozinha; a porta do dispositivo (USB `0483:5740`, "STM32 Virtual ComPort") é escolhida automaticamente. Se não aparecer, clique em **Atualizar**.
 3. Clique em **Conectar**. O registro mostra "Device identified." e os botões de ação são habilitados. Os botões ficam desabilitados enquanto não houver conexão ou durante uma operação.
-4. Clique em **Detectar cartucho** para identificar o chip flash (mostra o ID do chip e, para cartuchos flash compatíveis, o modelo).
+4. Clique em **Detectar cartucho** para identificar o chip flash (mostra o ID do chip e o modelo, quando conhecido). O firmware 1.0 só reconhece o chip MX29LV640EB e mostra `NO FIND NGP CARD` para os demais, mas isso não impede nada: o programa nomeia outros chips pelo ID (por exemplo ST M29W640D) e explica o resultado.
 
 ### Fazer backup de um jogo (ler a ROM)
 
@@ -77,8 +78,9 @@ Baixe o programa pronto na página de releases, ou abra `Software/MDRewriter.pro
 ### Gravar um jogo em um cartucho flash
 
 1. **Apague o cartucho antes** se ele não estiver vazio (veja abaixo).
-2. Clique em **Gravar ROM…** e escolha o arquivo. Tamanhos aceitos: 512 KiB, 1 MiB, 2 MiB, 3 MiB e 4 MiB. O tamanho usado é o do arquivo.
+2. Clique em **Gravar ROM…** e escolha o arquivo (`.bin`, `.md`, `.gen` ou `.smd`). Qualquer ROM de tamanho par entre 512 bytes e 4 MiB é aceita (256 KiB, 768 KiB, 1,5 MiB etc.): ela é gravada como está e o resto do chip fica em branco. Arquivos `.smd` são convertidos para ROM simples. O programa avisa, sem bloquear, se o cabeçalho parecer errado (sem `SEGA`, checksum ruim, arquivo truncado).
 3. Confirme o aviso. A barra mostra o progresso; **Cancelar** interrompe, mas deixa o cartucho com uma imagem parcial.
+4. Com **Verificar após gravar** marcado (padrão), o programa lê o cartucho de volta e compara com o arquivo; o registro mostra "Verified" ou o primeiro deslocamento que difere.
 
 ### Apagar o cartucho
 
@@ -124,7 +126,7 @@ O firmware não pôde ser testado em hardware real nestas alterações: veja `do
 
 ## Licença
 
-Licença [MIT](LICENSE). O código de terceiros em `Firmware/Drivers` e `Firmware/Middlewares` (STMicroelectronics, ARM) mantém as licenças originais.
+Licença [MIT](LICENSE). O código de terceiros em `legacy_firmware/Drivers` e `legacy_firmware/Middlewares` (STMicroelectronics, ARM) mantém as licenças originais.
 
 ---
 
@@ -137,7 +139,7 @@ Licença [MIT](LICENSE). O código de terceiros em `Firmware/Drivers` e `Firmwar
 
 | Папка | Содержимое |
 |-------|------------|
-| `Firmware/` | Исходный код прошивки микроконтроллера (STM32F103VB, проект Keil). Готовая прошивка — в разделе релизов: [Release 1.0](https://github.com/Epicjoy/md_rewriter/releases/download/1.0/md-rewriter-firmware-1.0.hex). |
+| `legacy_firmware/` | Исходный код прошивки микроконтроллера (STM32F103VB, проект Keil). Готовая прошивка — в разделе релизов: [Release 1.0](https://github.com/Epicjoy/md_rewriter/releases/download/1.0/md-rewriter-firmware-1.0.hex). |
 | `Hardware/` | BOM, Gerber и файлы печатной платы. Плату можно изготовить самостоятельно. |
 | `Software/` | Программа для компьютера (Qt 6). Работает в **Linux** и Windows. |
 | `docs/` | Спецификация и план исправлений, технические заметки. |
@@ -152,6 +154,7 @@ Licença [MIT](LICENSE). O código de terceiros em `Firmware/Drivers` e `Firmwar
 - Резервное копирование игр с картриджей Mega Drive на компьютер и запись игр на сторонние перезаписываемые картриджи.
 - Чтение и запись сохранений (SRAM) картриджа.
 - Побайтовое сравнение двух файлов (например, дампа и оригинальной ROM) — устройство не нужно.
+- Записывает ROM любого чётного размера до 4 MiB, преобразует файлы `.smd` и проверяет запись обратным чтением картриджа.
 - Интерфейс использует системную тему (светлую или тёмную), запрашивает подтверждение перед любой разрушающей операцией, а чтение и запись можно отменить кнопкой «Cancel».
 - Встроенное руководство (меню **Help → User guide** или **F1**): сценарии использования, значение сообщений журнала и устранение неполадок, с поиском. Доступно на португальском и английском.
 - Открытый исходный код.
@@ -190,7 +193,7 @@ sudo make install            # по желанию: установка в /usr/l
 1. **Подключите MD Rewriter** к компьютеру по USB и **вставьте картридж** в устройство.
 2. Запустите **MD Rewriter**. Список портов обновляется сам; порт устройства (USB `0483:5740`, «STM32 Virtual ComPort») выбирается автоматически. Если порта нет, нажмите **Refresh**.
 3. Нажмите **Connect**. В журнале появится «Device identified.», и кнопки действий станут доступны. Без соединения и во время операции кнопки неактивны.
-4. Нажмите **Detect cartridge**, чтобы определить flash-микросхему (показываются её ID и, для совместимых flash-картриджей, модель).
+4. Нажмите **Detect cartridge**, чтобы определить flash-микросхему (показываются её ID и модель, если она известна). Прошивка 1.0 распознаёт только MX29LV640EB и для любой другой микросхемы пишет `NO FIND NGP CARD`, но это ничего не блокирует: программа называет другие микросхемы по ID (например, ST M29W640D) и объясняет результат.
 
 ### Резервная копия игры (чтение ROM)
 
@@ -201,7 +204,7 @@ sudo make install            # по желанию: установка в /usr/l
 ### Запись игры на flash-картридж
 
 1. Если картридж не пуст, **сначала сотрите его** (см. ниже).
-2. Нажмите **Write ROM…** и выберите файл. Допустимые размеры: 512 KiB, 1 MiB, 2 MiB, 3 MiB и 4 MiB; используется размер файла.
+2. Нажмите **Write ROM…** и выберите файл (`.bin`, `.md`, `.gen` или `.smd`). Принимается любой ROM чётного размера от 512 байт до 4 MiB (256 KiB, 768 KiB, 1,5 MiB и т. д.): он записывается как есть, остальная часть микросхемы остаётся чистой. Файлы `.smd` автоматически преобразуются в обычный ROM. Если заголовок выглядит неверно (нет `SEGA`, неверная контрольная сумма, файл обрезан), программа предупреждает, но запись не блокирует. С включённой опцией **Verify after writing** (по умолчанию) программа после записи читает картридж обратно и сравнивает с файлом.
 3. Подтвердите предупреждение. **Cancel** прервёт запись, но на картридже останется неполный образ.
 
 ### Стирание картриджа
@@ -247,7 +250,7 @@ cd ../.. && tools/check-firmware.sh                      # статическа�
 
 ## Лицензия
 
-Лицензия [MIT](LICENSE). Сторонний код в `Firmware/Drivers` и `Firmware/Middlewares` (STMicroelectronics, ARM) сохраняет исходные лицензии.
+Лицензия [MIT](LICENSE). Сторонний код в `legacy_firmware/Drivers` и `legacy_firmware/Middlewares` (STMicroelectronics, ARM) сохраняет исходные лицензии.
 
 ---
 
@@ -260,7 +263,7 @@ cd ../.. && tools/check-firmware.sh                      # статическа�
 
 | 目录 | 内容 |
 |------|------|
-| `Firmware/` | 单片机固件源码（STM32F103VB，Keil 工程）。编译好的固件见发布页：[Release 1.0](https://github.com/Epicjoy/md_rewriter/releases/download/1.0/md-rewriter-firmware-1.0.hex)。 |
+| `legacy_firmware/` | 单片机固件源码（STM32F103VB，Keil 工程）。编译好的固件见发布页：[Release 1.0](https://github.com/Epicjoy/md_rewriter/releases/download/1.0/md-rewriter-firmware-1.0.hex)。 |
 | `Hardware/` | BOM、Gerber 和 PCB 文件，可按需自行制板。 |
 | `Software/` | 上位机软件（Qt 6），支持 **Linux** 和 Windows。 |
 | `docs/` | 修复规格说明与计划、技术说明。 |
@@ -275,6 +278,7 @@ Epicjoy 官方速卖通店铺：[购买](https://www.aliexpress.us/item/32568095
 - 将 MD 卡带中的游戏备份到电脑，或写入第三方可重复擦写的卡带。
 - 读取并备份卡带存档（SRAM），方便管理。
 - 逐字节比较两个文件（例如读出的文件与原始 ROM），无需连接设备。
+- 可写入最大 4 MiB 的任意偶数大小 ROM，自动转换 `.smd` 文件，并在写入后把卡带读回进行校验。
 - 界面跟随系统主题（浅色或深色）；任何破坏性操作前都会确认，读写过程可点击“Cancel”取消。
 - 内置用户指南（菜单 **Help → User guide** 或按 **F1**）：使用场景、日志信息含义和故障排除，支持搜索。提供葡萄牙语和英语版本。
 - 开源。
@@ -313,7 +317,7 @@ sudo make install            # 可选：安装到 /usr/local（程序、图标�
 1. 用 USB 线把 **MD Rewriter 连接到电脑**，并把**卡带插入**设备。
 2. 打开 **MD Rewriter**。端口列表会自动刷新，设备端口（USB `0483:5740`，“STM32 Virtual ComPort”）会被自动选中。如果没有出现，请点击 **Refresh**。
 3. 点击 **Connect**。日志中出现“Device identified.”后，操作按钮即可使用。未连接或操作进行中时，按钮为灰色。
-4. 点击 **Detect cartridge** 识别 Flash 芯片（显示芯片 ID，对兼容的 Flash 卡带还会显示型号）。
+4. 点击 **Detect cartridge** 识别 Flash 芯片（显示芯片 ID，已知时还会显示型号）。固件 1.0 只认识 MX29LV640EB，其他芯片都会显示 `NO FIND NGP CARD`，但这不会阻止任何操作：程序会根据 ID 给出其他芯片的名称（例如 ST M29W640D）并解释结果。
 
 ### 备份游戏（读取 ROM）
 
@@ -324,7 +328,7 @@ sudo make install            # 可选：安装到 /usr/local（程序、图标�
 ### 向 Flash 卡带写入游戏
 
 1. 如果卡带不是空白的，请**先擦除**（见下文）。
-2. 点击 **Write ROM…** 并选择文件。支持的文件大小：512 KiB、1 MiB、2 MiB、3 MiB 和 4 MiB，以文件实际大小为准。
+2. 点击 **Write ROM…** 并选择文件（`.bin`、`.md`、`.gen` 或 `.smd`）。支持 512 字节到 4 MiB 之间任何偶数大小的 ROM（256 KiB、768 KiB、1.5 MiB 等）：按原样写入，芯片其余部分保持空白。`.smd` 文件会自动转换为普通 ROM。如果文件头看起来不对（没有 `SEGA`、校验和错误、文件被截断），程序会提醒但不会阻止写入。勾选 **Verify after writing**（默认开启）后，写入结束时程序会把卡带读回并与文件比较。
 3. 确认提示。写入时可点 **Cancel** 中断，但卡带上会留下不完整的镜像。
 
 ### 擦除卡带
@@ -370,7 +374,7 @@ cd ../.. && tools/check-firmware.sh                      # 固件静态检查（
 
 ## 许可证
 
-采用 [MIT](LICENSE) 许可证。`Firmware/Drivers` 和 `Firmware/Middlewares` 中的第三方代码（STMicroelectronics、ARM）保留其原有许可证。
+采用 [MIT](LICENSE) 许可证。`legacy_firmware/Drivers` 和 `legacy_firmware/Middlewares` 中的第三方代码（STMicroelectronics、ARM）保留其原有许可证。
 
 ---
 
@@ -383,7 +387,7 @@ A portable Sega Mega Drive cartridge tool: back up and restore game ROMs and sav
 
 | Folder | Contents |
 |--------|----------|
-| `Firmware/` | Source code of the microcontroller firmware (STM32F103VB, Keil project). The compiled firmware is in the releases section: [Release 1.0](https://github.com/Epicjoy/md_rewriter/releases/download/1.0/md-rewriter-firmware-1.0.hex). |
+| `legacy_firmware/` | Source code of the microcontroller firmware (STM32F103VB, Keil project). The compiled firmware is in the releases section: [Release 1.0](https://github.com/Epicjoy/md_rewriter/releases/download/1.0/md-rewriter-firmware-1.0.hex). |
 | `Hardware/` | BOM, Gerber and PCB files. You can build the board to suit your needs. |
 | `Software/` | Desktop application (Qt 6). Runs on **Linux** and Windows. |
 | `docs/` | Specification and plan of the fixes, technical notes. |
@@ -398,6 +402,7 @@ Like the project? Support it: [Buy Me a Coffee](https://buymeacoffee.com/legenda
 - Back up MD cartridge games to your PC, or write games to third-party rewritable cartridges.
 - Read and back up the cartridge save data (SRAM).
 - Compare two files byte by byte (for example a dump and the original ROM), no device needed.
+- Writes ROMs of any even size up to 4 MiB, converts `.smd` files and verifies the write by reading the cartridge back.
 - Follows the system theme (light or dark), asks for confirmation before any destructive operation, and has a Cancel button for reads and writes.
 - Built-in user guide (menu **Help → User guide** or **F1**): usage recipes, what each log message means and troubleshooting, with search. Available in Portuguese and English.
 - Open source.
@@ -436,7 +441,7 @@ Download the ready-made program from the releases page, or open `Software/MDRewr
 1. **Plug the MD Rewriter** into your computer over USB and **insert the cartridge** into the device.
 2. Start **MD Rewriter**. The port list refreshes by itself, and the device port (USB `0483:5740`, "STM32 Virtual ComPort") is selected automatically. If it is missing, click **Refresh**.
 3. Click **Connect**. The log shows "Device identified." and the action buttons become available. Buttons are greyed out when not connected and while an operation is running.
-4. Click **Detect cartridge** to identify the flash chip (shows the chip ID and, for supported flash cartridges, the model).
+4. Click **Detect cartridge** to identify the flash chip (shows the chip ID and the model when known). Firmware 1.0 only recognises the MX29LV640EB and prints `NO FIND NGP CARD` for any other chip, but that blocks nothing: the program names other chips from the ID (for example the ST M29W640D) and explains the result.
 
 ### Back up a game (read the ROM)
 
@@ -447,7 +452,7 @@ Download the ready-made program from the releases page, or open `Software/MDRewr
 ### Write a game to a flash cartridge
 
 1. **Erase the cartridge first** if it is not blank (see below).
-2. Click **Write ROM…** and choose the file. Accepted sizes: 512 KiB, 1 MiB, 2 MiB, 3 MiB and 4 MiB; the file's own size is used.
+2. Click **Write ROM…** and choose the file (`.bin`, `.md`, `.gen` or `.smd`). Any ROM of even size between 512 bytes and 4 MiB is accepted (256 KiB, 768 KiB, 1.5 MiB, ...): it is written as it is and the rest of the chip stays blank. `.smd` files are converted to a plain ROM. The program warns, without blocking, if the header looks wrong (no `SEGA`, bad checksum, truncated file). With **Verify after writing** ticked (the default) it reads the cartridge back and compares it with the file when the write ends.
 3. Confirm the warning. **Cancel** stops the write but leaves the cartridge holding a partial image.
 
 ### Erase the cartridge
@@ -493,4 +498,4 @@ The firmware changes could not be tested on real hardware: see `docs/SPEC.md` an
 
 ## License
 
-[MIT](LICENSE) license. Third-party code in `Firmware/Drivers` and `Firmware/Middlewares` (STMicroelectronics, ARM) keeps its original licenses.
+[MIT](LICENSE) license. Third-party code in `legacy_firmware/Drivers` and `legacy_firmware/Middlewares` (STMicroelectronics, ARM) keeps its original licenses.

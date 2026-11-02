@@ -3,8 +3,11 @@
 #include <QSignalSpy>
 #include <QtTest>
 
+#include "chipdb.h"
 #include "filecompare.h"
 #include "protocol.h"
+#include "romimage.h"
+#include "romverifier.h"
 #include "streamparser.h"
 
 using namespace Protocol;
@@ -94,7 +97,12 @@ private slots:
         QCOMPARE(sramSizes()[0].code, quint8(0x01)); // 32K
         QCOMPARE(sramSizes()[1].code, quint8(0x02)); // 8K
         QVERIFY(isWritableRomSize(0x300000));
-        QVERIFY(!isWritableRomSize(0x300001));
+        QVERIFY(isWritableRomSize(0x40000));      // 256 KiB
+        QVERIFY(isWritableRomSize(0x180000));     // 1.5 MiB
+        QVERIFY(isWritableRomSize(0x400000));
+        QVERIFY(!isWritableRomSize(0x300001));    // odd
+        QVERIFY(!isWritableRomSize(0x400002));    // over 4 MiB
+        QVERIFY(!isWritableRomSize(0x1FE));       // smaller than vector table + header
         QVERIFY(!isWritableRomSize(0));
         QVERIFY(isWritableSramSize(0x2000));
         QVERIFY(isWritableSramSize(0x8000));
@@ -310,6 +318,217 @@ private slots:
         FileComparer fc(&ba, &bb);
         QVERIFY(fc.failed());
         QVERIFY(fc.finished());
+    }
+
+    // ---------------------------------------------------------------- RomImage
+
+    static QByteArray fakeRom(int size, bool header = true)
+    {
+        QByteArray r(size, '\xFF');
+        if (header) {
+            r.replace(0x100, 16, "SEGA MEGA DRIVE ");
+            const quint32 end = static_cast<quint32>(size - 1);
+            r[0x1A4] = static_cast<char>(end >> 24);
+            r[0x1A5] = static_cast<char>(end >> 16);
+            r[0x1A6] = static_cast<char>(end >> 8);
+            r[0x1A7] = static_cast<char>(end);
+            const quint16 sum = RomImage::computeChecksum(r, size);
+            r[0x18E] = static_cast<char>(sum >> 8);
+            r[0x18F] = static_cast<char>(sum);
+        }
+        return r;
+    }
+
+    // Builds an SMD file out of a plain ROM (the inverse of the conversion).
+    static QByteArray toSmd(const QByteArray &plain)
+    {
+        QByteArray smd(512, '\0');
+        smd[0] = static_cast<char>(plain.size() / 16384);
+        smd[1] = 3;
+        smd[8] = static_cast<char>(0xAA);
+        smd[9] = static_cast<char>(0xBB);
+        for (int b = 0; b < plain.size() / 16384; ++b) {
+            QByteArray blk(16384, '\0');
+            for (int i = 0; i < 8192; ++i) {
+                blk[i] = plain.at(b * 16384 + 2 * i + 1);
+                blk[8192 + i] = plain.at(b * 16384 + 2 * i);
+            }
+            smd += blk;
+        }
+        return smd;
+    }
+
+    void romImagePlainPassesThrough()
+    {
+        const QByteArray rom = fakeRom(0x80000);
+        const auto r = RomImage::prepare(rom);
+        QVERIFY(r.ok);
+        QCOMPARE(r.data, rom);
+        QVERIFY(r.infos.isEmpty());
+        QVERIFY2(r.warnings.isEmpty(), qPrintable(r.warnings.join("; ")));
+    }
+
+    void romImageNonStandardSizeIsAcceptedWithNote()
+    {
+        for (int size : {0x40000, 0xC0000, 0x180000, 0x280000, 0x300000}) {
+            const auto r = RomImage::prepare(fakeRom(size));
+            QVERIFY2(r.ok, qPrintable(r.error));
+            QCOMPARE(r.data.size(), size);
+            QVERIFY2(!r.infos.isEmpty(), qPrintable(QString::number(size)));
+        }
+    }
+
+    void romImageRejections()
+    {
+        QVERIFY(!RomImage::prepare(QByteArray()).ok);
+        QVERIFY(!RomImage::prepare(QByteArray(0x100, 'x')).ok);                       // too small
+        QVERIFY(RomImage::prepare(QByteArray(0x80001, 'x')).error.contains("odd"));    // odd size
+        QVERIFY(RomImage::prepare(QByteArray(0x400002, 'x')).error.contains("4 MiB")); // too big
+    }
+
+    void romImageCoveringSize()
+    {
+        QCOMPARE(RomImage::coveringReadSize(0x40000), qint64(0x80000));
+        QCOMPARE(RomImage::coveringReadSize(0x80000), qint64(0x80000));
+        QCOMPARE(RomImage::coveringReadSize(0x80002), qint64(0x100000));
+        QCOMPARE(RomImage::coveringReadSize(0x300000), qint64(0x400000));
+        QCOMPARE(RomImage::coveringReadSize(0x400000), qint64(0x400000));
+        QCOMPARE(RomImage::coveringReadSize(0x400002), qint64(0));
+    }
+
+    void romImageSmdIsConverted()
+    {
+        const QByteArray plain = fakeRom(0x40000);
+        const QByteArray smd = toSmd(plain);
+        QCOMPARE(smd.size(), 0x40000 + 512);
+        QVERIFY(RomImage::looksLikeSmd(smd));
+        QVERIFY(!RomImage::looksLikeSmd(plain));
+        const auto r = RomImage::prepare(smd);
+        QVERIFY2(r.ok, qPrintable(r.error));
+        QCOMPARE(r.data, plain);
+        QVERIFY(r.infos.join(' ').contains("Super Magic Drive"));
+        QVERIFY(r.warnings.isEmpty());
+    }
+
+    void romImageSmdNeedsTheMagicBytes()
+    {
+        QByteArray smd = toSmd(fakeRom(0x8000));
+        smd[8] = 0;
+        QVERIFY(!RomImage::looksLikeSmd(smd));
+        QVERIFY(RomImage::convertSmd(smd).isEmpty());
+    }
+
+    void romImageHeaderWarnings()
+    {
+        QByteArray rom = fakeRom(0x80000);
+        QVERIFY(RomImage::headerWarnings(rom).isEmpty());
+
+        QByteArray noSega = rom;
+        noSega.replace(0x100, 4, "XXXX");
+        QVERIFY(RomImage::headerWarnings(noSega).join(' ').contains("SEGA"));
+
+        QByteArray badSum = rom;
+        badSum[0x300] = static_cast<char>(badSum.at(0x300) ^ 0x55);
+        QVERIFY(RomImage::headerWarnings(badSum).join(' ').contains("checksum"));
+
+        QByteArray zeroSum = badSum;
+        zeroSum[0x18E] = 0;
+        zeroSum[0x18F] = 0;
+        QVERIFY2(RomImage::headerWarnings(zeroSum).isEmpty(), "a checksum of 0 means 'not used'");
+
+        const QByteArray truncated = rom.left(0x40000);   // header still says 512 KiB
+        QVERIFY(RomImage::headerWarnings(truncated).join(' ').contains("truncated"));
+    }
+
+    // ---------------------------------------------------------------- ChipDb
+
+    void chipDbKnownIds_data()
+    {
+        QTest::addColumn<QString>("line");
+        QTest::addColumn<QString>("name");
+        QTest::newRow("macronix") << "FLASHID:C2CB" << "MX29LV640EB";
+        QTest::newRow("st bottom") << "FLASHID:20DF" << "M29W640DB";
+        QTest::newRow("st top") << "FLASHID:20DE" << "M29W640DT";
+        QTest::newRow("trailing spaces") << "  FLASHID:C2CB \r" << "MX29LV640EB";
+    }
+    void chipDbKnownIds()
+    {
+        QFETCH(QString, line);
+        QFETCH(QString, name);
+        const auto m = ChipDb::identify(line);
+        QVERIFY(m.parsed);
+        QVERIFY(m.chip);
+        QVERIFY2(QString::fromLatin1(m.chip->name).contains(name), m.chip->name);
+    }
+
+    void chipDbUnknownAndMalformed()
+    {
+        auto m = ChipDb::identify("FLASHID:FFFF");
+        QVERIFY(m.parsed);
+        QVERIFY(!m.chip);
+        QCOMPARE(m.idText, QString("FFFF"));
+        QVERIFY(!ChipDb::identify("MX29LV640EB MD FLASH CART").parsed);
+        QVERIFY(!ChipDb::identify("FLASHID:").parsed);
+        QVERIFY(!ChipDb::identify("FLASHID:ZZZZ").parsed);
+        QVERIFY(!ChipDb::identify("FLASHID:12345").parsed);
+    }
+
+    // The firmware prints "%X%X": values under 0x10 lose their leading zero.
+    void chipDbUnpaddedIds()
+    {
+        auto m = ChipDb::identify("FLASHID:17E");   // could be 1/7E or 17/E
+        QVERIFY(m.parsed);
+        QCOMPARE(m.manufacturer, quint8(0x1));
+        QCOMPARE(m.device, quint8(0x7E));
+        m = ChipDb::identify("FLASHID:00");
+        QVERIFY(m.parsed);
+        QVERIFY(!m.chip);
+    }
+
+    void chipDbTableIsSane()
+    {
+        int n = 0;
+        const ChipDb::Chip *t = ChipDb::chips(&n);
+        QVERIFY(n >= 5);
+        for (int i = 0; i < n; ++i)
+            for (int j = i + 1; j < n; ++j)
+                QVERIFY(t[i].manufacturer != t[j].manufacturer || t[i].device != t[j].device);
+        QVERIFY(t[0].confirmed);   // the chip firmware 1.0 itself recognises
+        QCOMPARE(t[0].manufacturer, quint8(0xC2));
+        QCOMPARE(t[0].device, quint8(0xCB));
+    }
+
+    // ---------------------------------------------------------------- RomVerifier
+
+    void verifierMatchesAndIgnoresTail()
+    {
+        QByteArray ref = randomBytes(5000, 1);
+        QBuffer in(&ref);
+        in.open(QIODevice::ReadOnly);
+        RomVerifier v(&in);
+        QByteArray dump = ref + QByteArray(3000, '\xFF');   // dumped size is larger than the file
+        for (int off = 0; off < dump.size(); off += 700)
+            QCOMPARE(v.write(dump.mid(off, 700)), qint64(dump.mid(off, 700).size()));
+        QVERIFY(v.ok());
+        QCOMPARE(v.compared(), qint64(5000));
+    }
+
+    void verifierReportsFirstDifference()
+    {
+        QByteArray ref = randomBytes(4096, 2);
+        QBuffer in(&ref);
+        in.open(QIODevice::ReadOnly);
+        RomVerifier v(&in);
+        QByteArray dump = ref;
+        dump[1000] = static_cast<char>(dump.at(1000) ^ 0x10);
+        dump[3000] = static_cast<char>(dump.at(3000) ^ 0x01);
+        v.write(dump.left(1500));
+        v.write(dump.mid(1500));
+        QVERIFY(!v.ok());
+        QCOMPARE(v.firstOffset(), qint64(1000));
+        QCOMPARE(v.mismatches(), qint64(2));
+        QCOMPARE(v.expectedByte(), static_cast<quint8>(ref.at(1000)));
+        QCOMPARE(v.actualByte(), static_cast<quint8>(dump.at(1000)));
     }
 
     void openErrors()
