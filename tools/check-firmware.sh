@@ -3,7 +3,7 @@
 # Usage: tools/check-firmware.sh
 # Needs: arm-none-eabi-gcc. Uses cppcheck when available.
 set -u
-cd "$(dirname "$0")/../Firmware"
+cd "$(dirname "$0")/../legacy_firmware"
 
 INC=(
   -ICore/Inc -IUSB_DEVICE/App -IUSB_DEVICE/Target

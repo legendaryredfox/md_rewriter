@@ -23,11 +23,13 @@ build*/
 *.map
 *.htm
 *.build_log.htm
-Firmware/MDK-ARM/Objects/
-Firmware/MDK-ARM/Listings/
+legacy_firmware/MDK-ARM/Objects/
+legacy_firmware/MDK-ARM/Listings/
 
 # Editors / OS
 .vscode/
 .idea/
 *~
 .DS_Store
+
+new_firmware/build/

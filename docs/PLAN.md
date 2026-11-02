@@ -25,7 +25,7 @@ Verify: script reproduces the known warnings; `git status` shows only the intend
 
 ## Step 2: Firmware fixes (FW-1 to FW-9)
 
-Files: `Firmware/USB_DEVICE/App/usbd_cdc_if.c`, `Firmware/Core/Src/main.c`, `Firmware/Core/Src/MD.c`, `Firmware/Core/Inc/MD.h`.
+Files: `legacy_firmware/USB_DEVICE/App/usbd_cdc_if.c`, `legacy_firmware/Core/Src/main.c`, `legacy_firmware/Core/Src/MD.c`, `legacy_firmware/Core/Inc/MD.h`.
 
 Order, smallest blast radius first:
 
@@ -86,7 +86,7 @@ Verify: all flows pass with several fragmentation seeds; the emulator's expectat
 ## Step 7: Build system, Linux integration, docs (REPO-2, 3, 4, 6; UX-9)
 
 1. `MDRewriter.pro`: C++17, Qt 5.15/6 compatible, `lrelease` hook, `SUBDIRS` with tests, Linux install of binary, `.desktop`, PNG icon (generated from `md.ico`), udev rule.
-2. `99-md-rewriter.rules` using the VID:PID from `Firmware/USB_DEVICE/App/usbd_desc.c`.
+2. `99-md-rewriter.rules` using the VID:PID from `legacy_firmware/USB_DEVICE/App/usbd_desc.c`.
 3. README: Linux build/run, `dialout` or udev instructions, test commands; remove "Windows only".
 4. Run the whole pipeline in a fresh clone in the scratchpad: configure, build, test, install to a temp prefix, launch the installed binary under Xvfb.
 

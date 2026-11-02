@@ -8,7 +8,7 @@ md_rewriter is a Sega Mega Drive cartridge reader/writer. Three parts:
 
 | Part | Tech | Role |
 |------|------|------|
-| `Firmware/` | STM32F103 (HAL, USB CDC), Keil project | Drives the cartridge bus, talks to the PC over a USB serial port |
+| `legacy_firmware/` | STM32F103 (HAL, USB CDC), Keil project | Drives the cartridge bus, talks to the PC over a USB serial port |
 | `Software/` | Qt (Widgets + SerialPort), qmake | Desktop GUI: read/write ROM and save, erase, detect, compare |
 | `Hardware/` | PCB/BOM/Gerber | Out of scope |
 
