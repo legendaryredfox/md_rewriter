@@ -20,15 +20,16 @@ FILES=(Core/Src/main.c Core/Src/MD.c Core/Src/flashid.c Core/Src/gpio.c Core/Src
 
 status=0
 total=0
-for poll in 1 0; do
+for mode in "1 0" "0 0" "1 1"; do
+  set -- $mode; poll=$1; fast=$2
   for f in "${FILES[@]}"; do
-    out=$(arm-none-eabi-gcc -mcpu=cortex-m3 -mthumb -DUSE_HAL_DRIVER -DSTM32F103xB -DFLASH_POLL=$poll \
+    out=$(arm-none-eabi-gcc -mcpu=cortex-m3 -mthumb -DUSE_HAL_DRIVER -DSTM32F103xB -DFLASH_POLL=$poll -DFLASH_FAST=$fast \
           "${INC[@]}" -std=gnu11 -Wall -Wextra -Wformat=2 -fsyntax-only "$f" 2>&1)
     rc=$?
     n=$(printf '%s\n' "$out" | grep -c -E 'warning:|error:')
     total=$((total + n))
     if [ "$rc" -ne 0 ] || [ "$n" -ne 0 ]; then
-      printf '[FLASH_POLL=%s] %s\n' "$poll" "$f"
+      printf '[FLASH_POLL=%s FLASH_FAST=%s] %s\n' "$poll" "$fast" "$f"
       printf '%s\n' "$out" | grep -E 'warning:|error:'
       status=1
     fi
@@ -57,12 +58,14 @@ if command -v gcc >/dev/null 2>&1; then
   else
     cat "$tmp/out1" 2>/dev/null; echo "host test flashid: FAILED"; status=1
   fi
-  if gcc -Wall -Wextra -Wformat=2 -DMD_HOST_TEST -DFLASH_POLL=1 -Itests/host -ICore/Inc \
-       tests/host/test_md_flash.c tests/host/host_hw.c Core/Src/MD.c Core/Src/flashid.c -o "$tmp/t2" && "$tmp/t2" >"$tmp/out2"; then
-    echo "host test MD.c vs chip model: $(tail -1 "$tmp/out2")"
-  else
-    cat "$tmp/out2" 2>/dev/null; echo "host test MD.c vs chip model: FAILED"; status=1
-  fi
+  for fast in 0 1; do
+    if gcc -Wall -Wextra -Wformat=2 -DMD_HOST_TEST -DFLASH_POLL=1 -DFLASH_FAST=$fast -Itests/host -ICore/Inc \
+         tests/host/test_md_flash.c tests/host/host_hw.c Core/Src/MD.c Core/Src/flashid.c -o "$tmp/t2" && "$tmp/t2" >"$tmp/out2"; then
+      echo "host test MD.c vs chip model (FLASH_FAST=$fast): $(tail -1 "$tmp/out2")"
+    else
+      cat "$tmp/out2" 2>/dev/null; echo "host test MD.c vs chip model (FLASH_FAST=$fast): FAILED"; status=1
+    fi
+  done
   rm -rf "$tmp"
 else
   echo "host tests: gcc not installed, skipped"

@@ -81,6 +81,12 @@
 #endif
 /* Upper bound of polls per word. One poll costs a few microseconds, a word program
  * takes 10 us typical and 200 us at most on the supported chips. */
+/* Write Buffer Programming (16 words per operation) for chips whose datasheet documents it, today
+ * the S29GL064N. Off by default: nothing here has run on hardware. -DFLASH_FAST=1 turns it on;
+ * the chip is still checked by ID before each image, every other chip keeps the word program. */
+#ifndef FLASH_FAST
+#define FLASH_FAST          0
+#endif
 #define FLASH_PROGRAM_POLL_MAX   2000U
 #define ERASE_SECTOR_TIMEOUT_MS  15000U
 #define ERASE_CHIP_TIMEOUT_S     300U
@@ -109,6 +115,9 @@ void checkheadermenu(void);
 uint8_t erase_sector(uint32_t sector_addr);
 uint8_t flash_wait_program(uint32_t addr, uint8_t lastLowByte);
 uint8_t flash_program_word(uint32_t addr, uint8_t hi, uint8_t lo);
+uint8_t flash_program_page(uint32_t page_addr, const uint8_t data[32]);
+uint8_t flash_fast_available(void);
+void flash_fast_forget(void);
 uint8_t erase_range(uint32_t *address, uint32_t words);
 void bus_input_fast(void);
 void bus_output_fast(void);

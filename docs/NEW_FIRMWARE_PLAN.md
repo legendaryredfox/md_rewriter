@@ -64,6 +64,7 @@ Pass: dumps identical, write verifies, no `WRITE TIMEOUT` on a healthy cartridge
 | 2 | New app with firmware 1.0 (reflash the backup) | works; no `WRITE TIMEOUT` line ever; verify still works |
 | 3 | Detect with the Macronix cartridge | `FLASHID:C2CB`, `MX29LV640EB MD FLASH CART` |
 | 3a | Detect with the Spansion cartridge (S29GL064N90TFI03, PCB Ver1.4) | `FLASHID:017E`, `S29GL064N MD FLASH CART` (needs ID cycle 2 = `0C`; if it prints `NO FIND NGP CARD`, record the real cycle 2/3 values and fix `flashid.c`) |
+| 3b | Write buffer on the Spansion cartridge: build with `make OPT="-O1 -DFLASH_FAST=1"` | erase, write a 256 KiB ROM with Verify on, read back equal to the file; time it against the build without `FLASH_FAST` (the model predicts about a third of the bus cycles). On any chip that is not the S29GL064N the build must behave like the normal one. A `WRITE TIMEOUT` here means: stop, record the chip answer, go back to the normal build |
 | 4 | Detect with the ST-chip cartridge (the one bought) | `FLASHID:20xx`; name from the table or `NO FIND NGP CARD`; note the real ID in the table and in `Software/chipdb.cpp`, mark confirmed |
 | 5 | Write without erasing first, over existing data | `WRITE TIMEOUT` at the first word that needs 0 to 1 (the polling working as intended), not silent corruption |
 | 6 | Write to a mask-ROM game cartridge (not flash) | `WRITE TIMEOUT` within seconds, not a hang; the cartridge is untouched |
@@ -84,6 +85,20 @@ Any failure: reflash `backup_fw_1.0.bin` (`st-flash write backup_fw_1.0.bin 0x08
 1. Fill the tables above, mark confirmed chip IDs in `new_firmware/Core/Src/MD.c` (`flash_chips[]`, the `not confirmed` comments) and `Software/chipdb.cpp`.
 2. D6 is already in the app (8 MiB offered when `FWVER:` is present). If the 8 MiB read fails on hardware (checklist 8), remove it: either drop `FWVER:`/code 5 from the firmware or the `extendedRomSize()` entry in `Software/protocol.cpp`.
 3. Tag and publish `md-rewriter-firmware-1.1.hex` with the Makefile output, the `sha256sum`, and the backup/rollback instructions in the release notes.
+
+## Progress log
+
+| Date | What | State |
+|------|------|-------|
+| 2026-11-02 | Scaffold, NFW-1 to 9, app improvements | done, not run on hardware |
+| 2026-11-03 | S29GL064N identified (ID `017E`, cycles 2/3), top-boot aware erase, dot count kept at the 1.0 value (NFW-10) | done, not run on hardware |
+| 2026-11-03 | PC tests of the real `MD.c` against a flash chip model, `make test`, `check.sh` (NFW-11) | done, 103 checks |
+| 2026-11-03 | Write Buffer Programming, `-DFLASH_FAST=1`, S29GL064N only (NFW-12, D7) | done in the model, off by default |
+| 2026-11-03 | Releases: app 1.2.0 (tarball and `.deb`), no firmware `.hex` | published as pre-release |
+| 2026-11-03 | SST39VF640xB looks AMD-compatible per datasheet; Intel J3 datasheet fetched | researched only (D2) |
+| not started | USB bootloader (D1), EEPROM saves (D3), SSF2 mapper (D4): see the table in the spec, section 5 | blocked on hardware or on a decision |
+
+Next, in order: SST table entries (cheap, datasheet-backed, needs a chip to confirm), then everything in "Order of work" that needs the dumper.
 
 ## Future: USB update (D1), design sketch only
 

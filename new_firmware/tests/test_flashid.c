@@ -7,7 +7,7 @@ static int failures;
 
 static void expect(const char *what, const uint8_t id[4], int known, const char *name, flash_layout_t layout)
 {
-	flash_info_t info = { "untouched", FLASH_LAYOUT_UNKNOWN };
+	flash_info_t info = { "untouched", FLASH_LAYOUT_UNKNOWN, 0 };
 	const int got = flash_identify(id, &info);
 	int ok = (got == known);
 	if(ok && known)
@@ -41,6 +41,15 @@ int main(void)
 	expect("M29W640DT", dt, 1, "M29W640DT", FLASH_LAYOUT_NO_BOTTOM_BOOT);
 	expect("M29W640DB", db, 1, "M29W640DB", FLASH_LAYOUT_BOTTOM_BOOT);
 	expect("M29W640G layout stays unknown", g, 1, "M29W640G", FLASH_LAYOUT_UNKNOWN);
+	{
+		flash_info_t i = { "", FLASH_LAYOUT_UNKNOWN, 0 };
+		int ok = flash_identify(gl03, &i) && i.write_buffer == 1;
+		ok = ok && flash_identify(gl01, &i) && i.write_buffer == 1;
+		ok = ok && flash_identify(mx, &i) && i.write_buffer == 0;
+		ok = ok && flash_identify(dt, &i) && i.write_buffer == 0;
+		printf("%s write buffer only for the S29GL064N\n", ok ? "PASS" : "FAIL");
+		if(!ok) failures++;
+	}
 	expect("S29GL064N model 03 (top boot)", gl03, 1, "S29GL064N", FLASH_LAYOUT_NO_BOTTOM_BOOT);
 	expect("S29GL064N model 04 (bottom boot)", gl04, 1, "S29GL064N", FLASH_LAYOUT_BOTTOM_BOOT);
 	expect("S29GL064N uniform", gl01, 1, "S29GL064N", FLASH_LAYOUT_NO_BOTTOM_BOOT);

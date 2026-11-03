@@ -12,13 +12,14 @@
 #define WORDS 0x400000U
 #define NS_PER_NOP 55ULL         /* one Delay_nop iteration, about 4 cycles at 72 MHz (assumed) */
 
-const hw_chip_config_t HW_MX29LV640EB    = { HW_BOTTOM_BOOT, { 0x00C2, 0x22CB, 0x0000, 0x0000 }, 9000, 500000000ULL, 40000000000ULL };
-const hw_chip_config_t HW_S29GL064N_03   = { HW_TOP_BOOT,    { 0x0001, 0x227E, 0x220C, 0x2201 }, 15000, 500000000ULL, 40000000000ULL };
-const hw_chip_config_t HW_S29GL064N_04   = { HW_BOTTOM_BOOT, { 0x0001, 0x227E, 0x220C, 0x2200 }, 15000, 500000000ULL, 40000000000ULL };
-const hw_chip_config_t HW_S29GL064N_01   = { HW_UNIFORM,     { 0x0001, 0x227E, 0x2210, 0x2201 }, 15000, 500000000ULL, 40000000000ULL };
-const hw_chip_config_t HW_M29W640DT      = { HW_TOP_BOOT,    { 0x0020, 0x22DE, 0x0000, 0x0000 }, 10000, 800000000ULL, 40000000000ULL };
+const hw_chip_config_t HW_MX29LV640EB    = { HW_BOTTOM_BOOT, { 0x00C2, 0x22CB, 0x0000, 0x0000 }, 9000, 500000000ULL, 40000000000ULL, 0 };
+const hw_chip_config_t HW_S29GL064N_03   = { HW_TOP_BOOT,    { 0x0001, 0x227E, 0x220C, 0x2201 }, 15000, 500000000ULL, 40000000000ULL, 1 };
+const hw_chip_config_t HW_S29GL064N_04   = { HW_BOTTOM_BOOT, { 0x0001, 0x227E, 0x220C, 0x2200 }, 15000, 500000000ULL, 40000000000ULL, 1 };
+const hw_chip_config_t HW_S29GL064N_01   = { HW_UNIFORM,     { 0x0001, 0x227E, 0x2210, 0x2201 }, 15000, 500000000ULL, 40000000000ULL, 1 };
+const hw_chip_config_t HW_M29W640DT      = { HW_TOP_BOOT,    { 0x0020, 0x22DE, 0x0000, 0x0000 }, 10000, 800000000ULL, 40000000000ULL, 0 };
 
-typedef enum { S_READ, S_C1, S_C2, S_AUTO, S_PROG_DATA, S_E1, S_E2, S_E3, S_PROG_BUSY, S_ERASE_BUSY, S_FAIL } state_t;
+typedef enum { S_READ, S_C1, S_C2, S_AUTO, S_PROG_DATA, S_E1, S_E2, S_E3, S_PROG_BUSY, S_ERASE_BUSY, S_FAIL,
+               S_WB_COUNT, S_WB_DATA, S_WB_CONFIRM, S_WB_ABORT } state_t;
 
 static hw_chip_config_t cfg;
 static uint16_t *mem;
@@ -34,6 +35,12 @@ volatile uint8_t host_pin_a[16], host_pin_b[16], host_pin_e[16];
 static int wr_pending;
 
 int hw_errors, hw_sector_erases, hw_chip_erases, hw_program_ops, hw_program_while_busy;
+int hw_write_cycles, hw_buffer_programs, hw_inject_buffer_abort;
+static uint32_t wb_sector_start, wb_sector_size, wb_page, wb_remaining, wb_last_addr;
+static uint16_t wb_data[16];
+static uint16_t wb_mask;               /* which of the 16 words were loaded */
+static uint16_t wb_last_data;
+static int wb_abort_seq;
 char hw_error_text[256];
 uint64_t hw_now_ns;
 char hw_cdc_log[4096];
@@ -70,6 +77,7 @@ static void chip_write(uint32_t addr, uint16_t data)
 	const uint8_t cmd = (uint8_t)(data & 0xFFU);
 	const uint32_t a11 = addr & 0x7FFU;
 
+	hw_write_cycles++;
 	if(state == S_PROG_BUSY || state == S_ERASE_BUSY)
 		{
 			hw_program_while_busy++;
@@ -83,6 +91,77 @@ static void chip_write(uint32_t addr, uint16_t data)
 		}
 	if(rom_only)
 		return;
+	if(state == S_WB_ABORT)
+		{
+			/* Write-to-Buffer-Abort Reset: AAh@555, 55h@2AA, F0h@555 */
+			if(wb_abort_seq == 0 && a11 == 0x555U && cmd == 0xAAU) wb_abort_seq = 1;
+			else if(wb_abort_seq == 1 && a11 == 0x2AAU && cmd == 0x55U) wb_abort_seq = 2;
+			else if(wb_abort_seq == 2 && a11 == 0x555U && cmd == 0xF0U) { state = S_READ; wb_abort_seq = 0; }
+			else wb_abort_seq = 0;
+			return;
+		}
+	if(state == S_WB_COUNT || state == S_WB_DATA || state == S_WB_CONFIRM)
+		{
+			/* inside a write buffer operation every cycle is a load or the confirm; anything else aborts */
+			if(state == S_WB_COUNT)
+				{
+					const uint32_t n = (uint32_t)(data & 0x1FU) + 1U;
+					uint32_t s0, sz;
+					sector_of(addr, &s0, &sz);
+					if((data & 0xFFE0U) != 0 || n > 16U || s0 != wb_sector_start) goto wb_abort;
+					wb_remaining = n;
+					wb_page = addr >> 4;
+					wb_mask = 0;
+					state = S_WB_DATA;
+					return;
+				}
+			if(state == S_WB_DATA)
+				{
+					if((addr >> 4) != wb_page) goto wb_abort;
+					wb_data[addr & 15U] = data;
+					wb_mask |= (uint16_t)(1U << (addr & 15U));
+					wb_last_addr = addr;
+					wb_last_data = data;
+					if(--wb_remaining == 0) state = S_WB_CONFIRM;
+					return;
+				}
+			{
+				uint32_t s0, sz;
+				uint32_t k;
+				int bad = 0;
+				sector_of(addr, &s0, &sz);
+				if(cmd != 0x29U || s0 != wb_sector_start || hw_inject_buffer_abort) goto wb_abort;
+				for(k = 0; k < 16; k++)
+					if((wb_mask >> k) & 1U)
+						{
+							const uint32_t a = (wb_page << 4) | k;
+							if(wb_data[k] & (uint16_t)~mem[a]) bad = 1;
+						}
+				hw_buffer_programs++;
+				prog_addr = wb_last_addr;
+				prog_data = wb_last_data;
+				if(bad)
+					{
+						state = S_FAIL;
+						return;
+					}
+				for(k = 0; k < 16; k++)
+					if((wb_mask >> k) & 1U)
+						{
+							const uint32_t a = (wb_page << 4) | k;
+							mem[a] = (uint16_t)(mem[a] & wb_data[k]);
+							hw_program_ops++;
+						}
+				busy_until = hw_now_ns + cfg.program_ns * (uint64_t)__builtin_popcount(wb_mask) / 2U + cfg.program_ns;
+				state = S_PROG_BUSY;
+				return;
+			}
+		wb_abort:
+			state = S_WB_ABORT;
+			wb_abort_seq = 0;
+			hw_inject_buffer_abort = 0;
+			return;
+		}
 	if(cmd == 0xF0U && state != S_PROG_DATA)
 		{
 			state = S_READ;
@@ -99,6 +178,7 @@ static void chip_write(uint32_t addr, uint16_t data)
 			break;
 		case S_C2:
 			if(a11 == 0x555U && cmd == 0x90U) state = S_AUTO;
+			else if(cmd == 0x25U && cfg.write_buffer) { sector_of(addr, &wb_sector_start, &wb_sector_size); state = S_WB_COUNT; }
 			else if(a11 == 0x555U && cmd == 0xA0U) state = S_PROG_DATA;
 			else if(a11 == 0x555U && cmd == 0x80U) state = S_E1;
 			else state = S_READ;
@@ -160,6 +240,12 @@ static uint16_t status_word(uint16_t dq7, uint16_t dq5)
 	return (uint16_t)((dq7 ? 0x80U : 0U) | (toggle ? 0x40U : 0U) | (dq5 ? 0x20U : 0U));
 }
 
+/* a write buffer abort: DQ7 = data# of the last address loaded, DQ6 toggling, DQ5 = 0, DQ1 = 1 */
+static uint16_t abort_status_word(void)
+{
+	return (uint16_t)(status_word((uint16_t)((~wb_last_data) & 0x80U), 0) | 0x02U);
+}
+
 static uint16_t chip_read(uint32_t addr)
 {
 	switch(state)
@@ -190,6 +276,8 @@ static uint16_t chip_read(uint32_t addr)
 			return status_word(0, 0);
 		case S_FAIL:
 			return status_word((uint16_t)((~prog_data) & 0x80U), 1);
+		case S_WB_ABORT:
+			return abort_status_word();
 		default:
 			return mem[addr];
 		}
@@ -332,6 +420,7 @@ void hw_reset(const hw_chip_config_t *chip)
 	rom_only = 0;
 	toggle = 0;
 	hw_errors = hw_sector_erases = hw_chip_erases = hw_program_ops = hw_program_while_busy = 0;
+	hw_write_cycles = hw_buffer_programs = hw_inject_buffer_abort = 0;
 	hw_error_text[0] = 0;
 	hw_now_ns = 0;
 	hw_cdc_clear();

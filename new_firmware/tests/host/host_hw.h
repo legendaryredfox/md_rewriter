@@ -12,6 +12,7 @@ typedef struct {
 	uint64_t program_ns;        /* time one word takes to program */
 	uint64_t sector_erase_ns;
 	uint64_t chip_erase_ns;
+	int write_buffer;           /* takes 25h/29h Write Buffer Programming (16 words) */
 } hw_chip_config_t;
 
 /* Chips used by the tests. */
@@ -28,6 +29,9 @@ extern char hw_error_text[256];                  /* the first error */
 extern int hw_sector_erases;                     /* sector erase commands accepted */
 extern int hw_chip_erases;
 extern int hw_program_ops;                       /* word programs accepted */
+extern int hw_write_cycles;                      /* every write cycle the chip saw */
+extern int hw_buffer_programs;                   /* write buffer operations accepted */
+extern int hw_inject_buffer_abort;               /* 1: the next write buffer operation ends in an abort (DQ1) */
 extern int hw_program_while_busy;                /* program/erase commands that arrived while busy */
 extern uint64_t hw_now_ns;
 

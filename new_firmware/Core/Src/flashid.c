@@ -21,7 +21,8 @@ static const flash_chip_t flash_chips[] = {
 
 /* S29GL064N (Cypress/Infineon datasheet 001-98525, table "Autoselect Codes"): manufacturer 01,
  * cycle 1 low byte 7E. Cycle 2 is 0C (models 03/04, boot sector) or 10 (01/02/V1/V2, uniform).
- * For 03/04, cycle 3 is 00 (04, bottom boot) or 01 (03, top boot). Other chips of the GL family
+ * For 03/04, cycle 3 is 00 (04, bottom boot) or 01 (03, top boot). The datasheet documents the
+ * 16-word Write Buffer Programming command (25h/29h) for the whole family. Other chips of the GL family
  * share 01/7E with other cycle 2 values and are not accepted here. */
 static int identify_s29gl064n(const uint8_t id[4], flash_info_t *out)
 {
@@ -30,6 +31,7 @@ static int identify_s29gl064n(const uint8_t id[4], flash_info_t *out)
 	if(id[2] == 0x0CU)
 		{
 			out->name = "S29GL064N";
+			out->write_buffer = 1;
 			if(id[3] == 0x00U)
 				out->layout = FLASH_LAYOUT_BOTTOM_BOOT;
 			else if(id[3] == 0x01U)
@@ -41,6 +43,7 @@ static int identify_s29gl064n(const uint8_t id[4], flash_info_t *out)
 	if(id[2] == 0x10U)
 		{
 			out->name = "S29GL064N";
+			out->write_buffer = 1;
 			out->layout = FLASH_LAYOUT_NO_BOTTOM_BOOT;
 			return 1;
 		}
@@ -58,6 +61,7 @@ int flash_identify(const uint8_t id[4], flash_info_t *out)
 				{
 					out->name = flash_chips[i].name;
 					out->layout = flash_chips[i].layout;
+					out->write_buffer = 0;
 					return 1;
 				}
 		}

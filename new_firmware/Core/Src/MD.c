@@ -153,9 +153,11 @@
 	 * word just programmed (data bus D0-D7, the only part the bus read returns). While the chip is
 	 * busy, DQ7 reads as the complement of that bit; when done, it reads the real data. DQ5 set
 	 * means the chip gave up: read once more, then it is a failure (typically an attempt to program
-	 * a 0 back to 1 on a cell that was not erased). Leaves the bus in write mode. Returns 1 when
-	 * the word was programmed, 0 on failure or timeout (the chip is then put back in read mode). */
-	uint8_t flash_wait_program(uint32_t addr, uint8_t lastLowByte)
+	 * a 0 back to 1 on a cell that was not erased). `buffered`: after a Write Buffer Programming
+	 * operation, where DQ1 set also means failure (abort) and needs the three-cycle abort reset.
+	 * Leaves the bus in write mode. Returns 1 when the word was programmed, 0 on failure or
+	 * timeout (the chip is then put back in read mode). */
+	static uint8_t wait_programmed(uint32_t addr, uint8_t lastLowByte, uint8_t buffered)
 		{
 			uint8_t ok = 0;
 			uint32_t polls;
@@ -168,7 +170,7 @@
 							ok = 1;
 							break;
 						}
-					if(v & 0x20U)
+					if((v & 0x20U) || (buffered && (v & 0x02U)))
 						{
 							v = getByte(addr);
 							ok = ((v & 0x80U) == (lastLowByte & 0x80U)) ? 1 : 0;
@@ -178,9 +180,20 @@
 			bus_output_fast();
 			if(!ok)
 				{
+					if(buffered)
+						{
+							/* Write-to-Buffer-Abort Reset: AAh, 55h, F0h (also resets after DQ5) */
+							setByte(FLASH_UNLOCK_1, 0xaa);
+							setByte(FLASH_UNLOCK_2, 0x55);
+						}
 					setByte(FLASH_UNLOCK_1, 0xf0);   /* reset: back to read array mode */
 				}
 			return ok;
+		}
+
+	uint8_t flash_wait_program(uint32_t addr, uint8_t lastLowByte)
+		{
+			return wait_programmed(addr, lastLowByte, 0);
 		}
 
 	/* One word program cycle: unlock, program command, data, then (FLASH_POLL) wait for the chip.
@@ -205,6 +218,76 @@
 #else
 			return 1;
 #endif
+		}
+
+	/* ---- Write Buffer Programming (FLASH_FAST) ---- */
+
+	static uint8_t flash_fast_state = 0;   /* 0 not probed, 1 chip takes the write buffer, 2 it does not */
+
+	/* Forget the probe result: the cartridge may have been changed. Called at the start of an image. */
+	void flash_fast_forget(void)
+		{
+			flash_fast_state = 0;
+		}
+
+	/* 1 when FLASH_FAST is built in and the cartridge's chip is known to take Write Buffer
+	 * Programming. Probes the chip ID once, then remembers it. */
+	uint8_t flash_fast_available(void)
+		{
+#if FLASH_FAST
+			if(flash_fast_state == 0)
+				{
+					uint8_t id[4];
+					flash_info_t info;
+					flash_autoselect(id);
+					flash_fast_state = (flash_identify(id, &info) && info.write_buffer) ? 1 : 2;
+				}
+			return (flash_fast_state == 1) ? 1 : 0;
+#else
+			return 0;
+#endif
+		}
+
+	/* Programs one 16-word page with a Write Buffer Programming operation (S29GL064N datasheet,
+	 * "Write to Buffer": AAh@555, 55h@2AA, 25h@SA, count-1@SA, the words, 29h@SA, then data polling
+	 * on the last word loaded). `page_addr` is 16-word aligned, `data` holds the 16 words big
+	 * endian (the order they arrive from the PC). Only the span from the first to the last word that
+	 * is not 0xFFFF is loaded; a page that is all 0xFFFF costs nothing. Returns 1 on success, 0 when
+	 * the chip aborted or timed out (the chip is then reset). Same delays as flash_program_word. */
+	uint8_t flash_program_page(uint32_t page_addr, const uint8_t data[32])
+		{
+			uint8_t first = 16, last = 0, k;
+			for(k = 0; k < 16; k++)
+				{
+					if((data[2 * k] != 0xFF) || (data[2 * k + 1] != 0xFF))
+						{
+							if(first == 16) first = k;
+							last = k;
+						}
+				}
+			if(first == 16)
+				return 1;
+			{
+				const uint32_t sa = page_addr + first;
+				setByte(FLASH_UNLOCK_1, 0xaa);
+				setByte(FLASH_UNLOCK_2, 0x55);
+				setByte(sa, 0x25);
+				setByte(sa, (uint16_t)(last - first));       /* number of words minus one */
+				for(k = first; k <= last; k++)
+					{
+						GPIO_WriteHigh(GPIOE, data[2 * k]);
+						GPIO_WriteLow(GPIOE, data[2 * k + 1]);
+						setAddress(page_addr + k);
+						MD_CS = 0;
+						MD_WR = 0;
+						Delay_nop(35);
+						MD_WR = 1;
+						MD_CS = 1;
+						Delay_nop(80);
+					}
+				setByte(sa, 0x29);                           /* Program Buffer to Flash */
+			}
+			return wait_programmed(page_addr + last, data[2 * last + 1], 1);
 		}
 
 	uint8_t erase_sector(uint32_t sector_addr) 

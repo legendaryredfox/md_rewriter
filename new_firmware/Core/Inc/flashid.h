@@ -17,6 +17,7 @@ typedef enum {
 typedef struct {
 	const char *name;
 	flash_layout_t layout;
+	int write_buffer;               /* 1: takes the 16-word Write Buffer Programming command (datasheet-confirmed) */
 } flash_info_t;
 
 /* id[0] = manufacturer, id[1] = device (cycle 1), id[2] = cycle 2 (word 0x0E), id[3] = cycle 3

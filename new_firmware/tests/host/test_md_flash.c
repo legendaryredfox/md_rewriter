@@ -252,6 +252,124 @@ static void test_read_back(void)
 	check_clean("read back");
 }
 
+/* ---- Write Buffer Programming ---- */
+
+static void make_block(uint8_t *block, unsigned seed)
+{
+	unsigned i;
+	for(i = 0; i < 1024; i++)
+		block[i] = (uint8_t)((i * 37U + seed * 11U) ^ (i >> 3));
+	/* gaps the PC pads with 0xFF: a whole page, and a page with FF at both ends */
+	memset(block + 64, 0xFF, 32);
+	memset(block + 160, 0xFF, 4);
+	memset(block + 188, 0xFF, 4);
+	memset(block + 512, 0xFF, 512);       /* second half of the block blank */
+}
+
+static void test_write_buffer(void)
+{
+	uint8_t block[1024];
+	uint32_t base = 0x4000, k;
+	int ok = 1, words_written;
+	int cycles_word, cycles_page;
+
+	/* the same block through the word path and through the page path: same content, fewer bus cycles */
+	make_block(block, 1);
+	hw_reset(&HW_S29GL064N_03);
+	idle_bus();
+	for(k = 0; k < 512; k++)
+		if(!(block[2 * k] == 0xFF && block[2 * k + 1] == 0xFF))
+			ok &= flash_program_word(base + k, block[2 * k], block[2 * k + 1]);
+	check(ok, "word path programs the block");
+	cycles_word = hw_write_cycles;
+	words_written = hw_program_ops;
+
+	hw_reset(&HW_S29GL064N_03);
+	idle_bus();
+	for(k = 0; k < 32; k++)
+		ok &= flash_program_page(base + k * 16, block + k * 32);
+	check(ok, "page path programs the block");
+	cycles_page = hw_write_cycles;
+	for(k = 0; k < 512; k++)
+		if(hw_word(base + k) != (uint16_t)((block[2 * k] << 8) | block[2 * k + 1])) ok = 0;
+	check(ok, "page path: chip holds the same data as the PC sent");
+	check(hw_buffer_programs > 0 && hw_buffer_programs <= 32, "page path used write buffer operations");
+	check(hw_program_while_busy == 0, "page path: no command while the chip was busy");
+	check(cycles_page * 2 < cycles_word, "page path needs less than half the bus write cycles");
+	printf("  info: block of %d programmed words: %d write cycles with the word path, %d with write buffer (%d operations)\n",
+	       words_written, cycles_word, cycles_page, hw_buffer_programs);
+	check_clean("write buffer");
+
+	/* a page that is all 0xFFFF costs nothing */
+	hw_reset(&HW_S29GL064N_03);
+	idle_bus();
+	{
+		uint8_t blank[32];
+		memset(blank, 0xFF, sizeof(blank));
+		check(flash_program_page(0x100, blank) == 1 && hw_write_cycles == 0, "blank page: nothing sent to the chip");
+	}
+
+	/* a single word at the end of a page (span of one word) */
+	hw_reset(&HW_S29GL064N_03);
+	idle_bus();
+	{
+		uint8_t one[32];
+		memset(one, 0xFF, sizeof(one));
+		one[30] = 0x12; one[31] = 0x34;
+		check(flash_program_page(0x200, one) == 1 && hw_word(0x20F) == 0x1234 && hw_word(0x20E) == 0xFFFF, "page with one word at the end");
+	}
+
+	/* top boot sector area (4 Kword sectors): the page stays inside its sector */
+	hw_reset(&HW_S29GL064N_03);
+	idle_bus();
+	make_block(block, 3);
+	for(k = 0; k < 32; k++)
+		ok &= flash_program_page(0x3FF000 + k * 16, block + k * 32);
+	check(ok, "pages programmed inside a 4 Kword boot sector");
+	check_clean("boot sector pages");
+
+	/* programming over data that was not erased: failure reported, chip reset, usable afterwards */
+	hw_reset(&HW_S29GL064N_03);
+	idle_bus();
+	hw_set_word(0x303, 0x0000);
+	{
+		uint8_t page[32];
+		memset(page, 0xFF, sizeof(page));
+		page[6] = 0x12; page[7] = 0x34;       /* word 3 */
+		check(flash_program_page(0x300, page) == 0, "write buffer over unerased data is reported");
+		check_clean("write buffer failure");
+		check(flash_program_word(0x400, 0xAB, 0xCD) == 1 && hw_word(0x400) == 0xABCD, "chip usable after a write buffer failure");
+	}
+
+	/* the chip aborts the operation (DQ1): needs the abort reset, reported as failure, usable afterwards */
+	hw_reset(&HW_S29GL064N_03);
+	idle_bus();
+	{
+		uint8_t page[32];
+		memset(page, 0x55, sizeof(page));
+		hw_inject_buffer_abort = 1;
+		check(flash_program_page(0x500, page) == 0, "write buffer abort (DQ1) is reported");
+		check(flash_program_page(0x510, page) == 1 && hw_word(0x510) == 0x5555, "chip usable after the abort reset sequence");
+		check_clean("write buffer abort");
+	}
+
+	/* chip gating */
+#if FLASH_FAST
+	hw_reset(&HW_S29GL064N_03); flash_fast_forget(); check(flash_fast_available() == 1, "FLASH_FAST: S29GL064N is offered the write buffer");
+	hw_reset(&HW_MX29LV640EB);  flash_fast_forget(); check(flash_fast_available() == 0, "FLASH_FAST: MX29LV640EB keeps the word program");
+	hw_reset(&HW_M29W640DT);    flash_fast_forget(); check(flash_fast_available() == 0, "FLASH_FAST: M29W640DT keeps the word program");
+	hw_reset(&HW_S29GL064N_03); flash_fast_forget(); flash_fast_available();
+	hw_reset(&HW_MX29LV640EB);
+	check(flash_fast_available() == 1, "FLASH_FAST: the probe result is kept until forgotten");
+	flash_fast_forget();
+	check(flash_fast_available() == 0, "FLASH_FAST: after forgetting, the new cartridge is probed");
+	check_clean("fast gating");
+#else
+	hw_reset(&HW_S29GL064N_03); flash_fast_forget();
+	check(flash_fast_available() == 0, "FLASH_FAST=0: never offered");
+#endif
+}
+
 int main(void)
 {
 	test_detects();
@@ -259,6 +377,7 @@ int main(void)
 	test_program();
 	test_erase();
 	test_read_back();
+	test_write_buffer();
 	printf("%d checks, %d failed\n", checks, failures);
 	return failures ? 1 : 0;
 }

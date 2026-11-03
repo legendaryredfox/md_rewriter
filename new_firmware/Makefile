@@ -77,7 +77,8 @@ HOST_CC_FLAGS := -Wall -Wextra -Wformat=2 -DMD_HOST_TEST -DFLASH_POLL=1 -Itests/
 test:
 	@mkdir -p $(BUILD)
 	gcc -Wall -Wextra -ICore/Inc tests/test_flashid.c Core/Src/flashid.c -o $(BUILD)/test_flashid && $(BUILD)/test_flashid
-	gcc $(HOST_CC_FLAGS) tests/host/test_md_flash.c tests/host/host_hw.c Core/Src/MD.c Core/Src/flashid.c -o $(BUILD)/test_md_flash && $(BUILD)/test_md_flash
+	gcc $(HOST_CC_FLAGS) -DFLASH_FAST=0 tests/host/test_md_flash.c tests/host/host_hw.c Core/Src/MD.c Core/Src/flashid.c -o $(BUILD)/test_md_flash && $(BUILD)/test_md_flash
+	gcc $(HOST_CC_FLAGS) -DFLASH_FAST=1 tests/host/test_md_flash.c tests/host/host_hw.c Core/Src/MD.c Core/Src/flashid.c -o $(BUILD)/test_md_flash_fast && $(BUILD)/test_md_flash_fast
 
 clean:
 	rm -rf $(BUILD)

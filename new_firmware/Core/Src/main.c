@@ -269,6 +269,28 @@ int main(void)
 				uint32_t addw = bank*64*512+addj*512;
 				uint8_t writeFailed = 0;
 				uint32_t failAddr = 0;
+				if((addj == 0) && (bank == 0))
+					flash_fast_forget();          /* first block of an image: the cartridge may have been changed */
+				if(flash_fast_available())
+					{
+						/* FLASH_FAST: 32 Write Buffer operations of 16 words (the block is 512-word aligned) */
+						for(uint16_t p = 0;p<32;p++)
+							{
+								uint8_t page[32];
+								for(uint16_t j = 0;j<32;j++)
+									{
+										const uint16_t idx = p*32+j;
+										page[j] = receiveBuffer[idx/64][idx%64];
+									}
+								if(!flash_program_page(addw+p*16, page))
+									{
+										writeFailed = 1;
+										failAddr = addw+p*16;
+										break;
+									}
+							}
+					}
+				else
 				for(uint16_t i = 0;i<1024;i=i+2)
 					{
 						if((receiveBuffer[i/64][i%64]==0xff)&&(receiveBuffer[i/64][i%64+1]==0xff))
