@@ -18,7 +18,7 @@ const Chip kChips[] = {
     { 0x20, 0xDF, "M29W640DB (ST, 64 Mbit, bottom boot)", true },
     { 0x20, 0xDE, "M29W640DT (ST, 64 Mbit, top boot)", true },
     { 0x20, 0x7E, "M29W640G family (ST/Numonyx, 64 Mbit)", false },
-    { 0x01, 0x7E, "S29GL064N (Spansion/Cypress, 64 Mbit, boot sector at top or bottom)", true },
+    { 0x01, 0x7E, "S29GL064N (Spansion/Cypress, 64 Mbit; other GL-N chips share this ID)", true },
 };
 
 bool hex(const QString &s, int from, int len, quint8 *out)

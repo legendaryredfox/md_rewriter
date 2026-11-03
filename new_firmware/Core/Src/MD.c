@@ -262,14 +262,17 @@
 							return 0;
 						}
 					Delay_nop(100);
-					CDC_Transmit(".");
 					if(*address<0x8000)
 						{
+							/* One dot per 8 KiB, as 1.0 printed: the PC counts dots for its progress bar and
+							 * assumes eight below 64 KiB, also when this chip erases them as one sector. */
+							CDC_Transmit((smallstep == 0x8000U) ? "........" : ".");
 							*address = *address+smallstep;	
 							i = i+smallstep;	
 						}
 					else
 						{
+							CDC_Transmit(".");
 							*address = *address+0x8000;
 							i = i+0x8000;	
 						}		

@@ -182,6 +182,20 @@ static void test_erase(void)
 	check(address == 0x40000, "top boot: address ends after the range");
 	check_clean("erase_range top");
 
+	/* The PC counts dots for its progress bar (8 below 64 KiB, then one per 64 KiB): the same count on every layout */
+	{
+		const hw_chip_config_t *chips[] = { &HW_MX29LV640EB, &HW_S29GL064N_03, &HW_S29GL064N_01 };
+		unsigned n;
+		for(n = 0; n < 3; n++)
+			{
+				hw_reset(chips[n]);
+				hw_cdc_clear();
+				address = 0;
+				erase_range(&address, 0x40000);
+				check(strlen(hw_cdc_log) == 15 && strspn(hw_cdc_log, ".") == 15, "erase 512K prints 15 dots on every layout");
+			}
+	}
+
 	/* 4 MiB = 0x200000 words, every layout */
 	{
 		const hw_chip_config_t *chips[] = { &HW_MX29LV640EB, &HW_S29GL064N_03, &HW_S29GL064N_04, &HW_S29GL064N_01 };
