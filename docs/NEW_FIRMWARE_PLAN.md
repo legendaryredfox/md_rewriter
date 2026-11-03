@@ -14,7 +14,7 @@ Verify: `cd new_firmware && make && ./check.sh` (exit 0, 26 072 B flash, 9 200 B
 
 Files: `Core/Src/MD.c`, `Core/Src/main.c`, `Core/Inc/MD.h`, nothing else. One commit when the owner asks for it.
 
-Verify without hardware: `make`, `make OPT=-O3`, `./check.sh`, `diff -ru legacy_firmware/Core new_firmware/Core` (ten hunks, all listed in the spec), app tests (`Software/tests`) with the fake firmware.
+Verify without hardware: `make`, `make clean && make OPT=-O3` (the Makefile does not rebuild when only `OPT` changes), `make test`, `./check.sh`, `diff -ru legacy_firmware/Core new_firmware/Core` (ten hunks, all listed in the spec), app tests (`Software/tests`) with the fake firmware.
 
 ## Step 2: Back up the original firmware (hardware, before anything else)
 
@@ -42,6 +42,8 @@ Measure on the **1.0 firmware** first (original behaviour), with a cartridge in 
 | Time per word in a write | | | | |
 | Time for a 512 KiB read | | | | |
 
+Host-model hint (not a measurement): with the model's assumed 55 ns per `Delay_nop` iteration, the 1.0 write sequence starts the next unlock cycle about 6 us after a word program starts. A chip that ignores commands while it programs would then lose words with `FLASH_POLL=0`; the model does that for 9 us and 15 us chips. Measure the real gap (row "Time per word") before judging the control build.
+
 Rules: the new build must not be shorter than 1.0 on `/RD` low and `/WR` low. If `-O1` is shorter, use `-O3` or raise the `Delay_nop` counts in `MD.c` (a measured change, recorded here). Choose `OPT` from this table.
 
 ## Step 4: First run of the new build
@@ -61,10 +63,11 @@ Pass: dumps identical, write verifies, no `WRITE TIMEOUT` on a healthy cartridge
 | 1 | Old app (the original release) with the new firmware: connect, detect, read, write, erase | works; extra `FWVER:` line harmless |
 | 2 | New app with firmware 1.0 (reflash the backup) | works; no `WRITE TIMEOUT` line ever; verify still works |
 | 3 | Detect with the Macronix cartridge | `FLASHID:C2CB`, `MX29LV640EB MD FLASH CART` |
+| 3a | Detect with the Spansion cartridge (S29GL064N90TFI03, PCB Ver1.4) | `FLASHID:017E`, `S29GL064N MD FLASH CART` (needs ID cycle 2 = `0C`; if it prints `NO FIND NGP CARD`, record the real cycle 2/3 values and fix `flashid.c`) |
 | 4 | Detect with the ST-chip cartridge (the one bought) | `FLASHID:20xx`; name from the table or `NO FIND NGP CARD`; note the real ID in the table and in `Software/chipdb.cpp`, mark confirmed |
 | 5 | Write without erasing first, over existing data | `WRITE TIMEOUT` at the first word that needs 0 to 1 (the polling working as intended), not silent corruption |
 | 6 | Write to a mask-ROM game cartridge (not flash) | `WRITE TIMEOUT` within seconds, not a hang; the cartridge is untouched |
-| 7 | Erase by size, 512K / 1M / 2M / 4M, on the ST chip | completes; on a top-boot chip (`DT`) the first eight erase steps hit the same 64 KiB sector (the firmware steps by 8 KiB below 64 KiB), so it is slower but correct |
+| 7 | Erase by size, 512K / 1M / 2M / 4M, on the ST chip | completes; on a top-boot or uniform chip (`DT`, S29GL064N model 03) the firmware now erases the first 64 KiB sector once (NFW-10); on the Macronix chip it still steps by 8 KiB. Time both and compare with the 1.0 firmware |
 | 8 | Read 8 MiB (the app offers it after connecting to this firmware: size list, "8 MiB") | `8M ROM DUMP START!!!`, 8 388 608 bytes, `DUMPER ROM FINISH!!!` |
 | 9 | Save read/write (SRAM) on a battery cartridge | same bytes as with 1.0 |
 | 10 | Unplug during a write | the app reports it; reconnect works |
