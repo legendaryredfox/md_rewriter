@@ -62,6 +62,47 @@ sudo make install            # opcional: instala em /usr/local (programa, ícone
 
 Baixe o programa pronto na página de releases, ou abra `Software/MDRewriter.pro` no Qt Creator e compile. O Windows reconhece o dispositivo como uma porta COM (instale o driver "STM32 Virtual ComPort" se necessário).
 
+### Gerar pacotes (.deb, Windows, macOS)
+
+Só o pacote Linux foi construído e testado nesta máquina. As etapas de Windows e macOS abaixo seguem a documentação do Qt, mas **não foram executadas** neste projeto; se algo falhar, abra uma issue.
+
+**Linux (.deb).** O script usa a versão de `Software/MDRewriter.pro`, faz o build de release com prefixo `/usr` e inclui programa, atalho, ícone, regra udev e licença:
+
+```bash
+sudo apt install build-essential qt6-base-dev qt6-serialport-dev qt6-tools-dev qt6-l10n-tools dpkg-dev fakeroot
+tools/package-deb.sh                        # build/dist/mdrewriter_<version>_amd64.deb + .sha256
+sudo apt install ./build/dist/mdrewriter_*_amd64.deb
+```
+
+**Windows (.zip e .msi).** Instale o Qt 6.4 ou mais novo pelo instalador oficial (kit MinGW 64-bit e o módulo Qt Serial Port) e abra o prompt "Qt 6.x (MinGW 64-bit)". O `windeployqt` copia as DLLs do Qt para a pasta, que então vira um `.zip` portátil:
+
+```bat
+rem "Qt 6.x (MinGW 64-bit)" prompt from the Qt installer (Qt 6.4 or newer, with Qt Serial Port)
+mkdir build & cd build
+qmake ..\Software\MDRewriter.pro
+mingw32-make release
+mkdir MDRewriter & copy release\MDRewriter.exe MDRewriter\
+windeployqt --release MDRewriter\MDRewriter.exe
+powershell Compress-Archive MDRewriter MDRewriter-windows-x64.zip
+```
+
+Para um `.msi`, empacote essa pasta com o [WiX Toolset](https://wixtoolset.org/) v4 ou mais novo (um arquivo `MDRewriter.wxs` que lista `MDRewriter.exe`, as DLLs e `platforms\`, `styles\` etc.). Este repositório ainda não inclui o `.wxs`. (O Inno Setup ou o NSIS também servem se você prefere um instalador `.exe`.) Com o WiX instalado:
+
+```bat
+dotnet tool install --global wix
+wix build MDRewriter.wxs -o MDRewriter.msi
+```
+
+**macOS (.dmg).** Instale o Qt 6 (por exemplo com o Homebrew). O `qmake` gera `MDRewriter.app` e o `macdeployqt` embute o Qt e cria o `.dmg`. O app sai sem assinatura: o Gatekeeper pede "Abrir" com o botão direito, e assinar e notarizar exige uma conta de desenvolvedor Apple (`macdeployqt -codesign=...`). A porta aparece como `/dev/cu.usbmodem*`. Ainda não há ícone `.icns` no projeto.
+
+```bash
+brew install qt                              # Qt 6 with Qt Serial Port
+mkdir build && cd build
+"$(brew --prefix qt)/bin/qmake" ../Software/MDRewriter.pro CONFIG+=release
+make -j"$(sysctl -n hw.ncpu)"
+"$(brew --prefix qt)/bin/macdeployqt" MDRewriter.app -dmg      # MDRewriter.dmg
+```
+
 ## Como usar
 
 1. **Conecte o MD Rewriter** ao computador por USB e **insira o cartucho** no dispositivo.
@@ -188,6 +229,47 @@ sudo make install            # по желанию: установка в /usr/l
 
 Скачайте готовую программу в разделе релизов или откройте `Software/MDRewriter.pro` в Qt Creator и соберите проект. Windows определяет устройство как COM-порт (при необходимости установите драйвер «STM32 Virtual ComPort»).
 
+### Сборка пакетов (.deb, Windows, macOS)
+
+На машине автора собран и проверен только пакет для Linux. Шаги для Windows и macOS ниже следуют документации Qt, но для этого проекта **не выполнялись**; если что-то не работает, создайте issue.
+
+**Linux (.deb).** Скрипт берёт версию из `Software/MDRewriter.pro`, делает release-сборку с префиксом `/usr` и упаковывает программу, ярлык, иконку, правило udev и лицензию:
+
+```bash
+sudo apt install build-essential qt6-base-dev qt6-serialport-dev qt6-tools-dev qt6-l10n-tools dpkg-dev fakeroot
+tools/package-deb.sh                        # build/dist/mdrewriter_<version>_amd64.deb + .sha256
+sudo apt install ./build/dist/mdrewriter_*_amd64.deb
+```
+
+**Windows (.zip и .msi).** Установите Qt 6.4 или новее официальным установщиком (комплект MinGW 64-bit и модуль Qt Serial Port) и откройте консоль «Qt 6.x (MinGW 64-bit)». `windeployqt` копирует DLL Qt рядом с программой, а папка превращается в переносимый `.zip`:
+
+```bat
+rem "Qt 6.x (MinGW 64-bit)" prompt from the Qt installer (Qt 6.4 or newer, with Qt Serial Port)
+mkdir build & cd build
+qmake ..\Software\MDRewriter.pro
+mingw32-make release
+mkdir MDRewriter & copy release\MDRewriter.exe MDRewriter\
+windeployqt --release MDRewriter\MDRewriter.exe
+powershell Compress-Archive MDRewriter MDRewriter-windows-x64.zip
+```
+
+Для `.msi` упакуйте эту папку с помощью [WiX Toolset](https://wixtoolset.org/) v4 или новее (файл `MDRewriter.wxs`, перечисляющий `MDRewriter.exe`, DLL и каталоги `platforms\`, `styles\` и т. д.). Файла `.wxs` в репозитории пока нет. (Подойдут и Inno Setup или NSIS, если нужен установщик `.exe`.) Когда WiX установлен:
+
+```bat
+dotnet tool install --global wix
+wix build MDRewriter.wxs -o MDRewriter.msi
+```
+
+**macOS (.dmg).** Установите Qt 6 (например, через Homebrew). `qmake` создаёт `MDRewriter.app`, а `macdeployqt` встраивает Qt и создаёт `.dmg`. Приложение не подписано: Gatekeeper потребует открыть его правой кнопкой («Открыть»), а подпись и нотаризация требуют аккаунта разработчика Apple (`macdeployqt -codesign=...`). Порт виден как `/dev/cu.usbmodem*`. Иконки `.icns` в проекте пока нет.
+
+```bash
+brew install qt                              # Qt 6 with Qt Serial Port
+mkdir build && cd build
+"$(brew --prefix qt)/bin/qmake" ../Software/MDRewriter.pro CONFIG+=release
+make -j"$(sysctl -n hw.ncpu)"
+"$(brew --prefix qt)/bin/macdeployqt" MDRewriter.app -dmg      # MDRewriter.dmg
+```
+
 ## Как пользоваться
 
 1. **Подключите MD Rewriter** к компьютеру по USB и **вставьте картридж** в устройство.
@@ -312,6 +394,47 @@ sudo make install            # 可选：安装到 /usr/local（程序、图标�
 
 在发布页下载编译好的程序，或用 Qt Creator 打开 `Software/MDRewriter.pro` 自行编译。Windows 会把设备识别为 COM 口（必要时安装“STM32 Virtual ComPort”驱动）。
 
+### 构建安装包（.deb、Windows、macOS）
+
+只有 Linux 安装包在维护者的机器上构建并测试过。下面的 Windows 和 macOS 步骤遵循 Qt 文档，但本项目**尚未实际运行**；如果失败，请提交 issue。
+
+**Linux（.deb）。** 脚本从 `Software/MDRewriter.pro` 读取版本号，以前缀 `/usr` 做 release 构建，并打包程序、桌面入口、图标、udev 规则和许可证：
+
+```bash
+sudo apt install build-essential qt6-base-dev qt6-serialport-dev qt6-tools-dev qt6-l10n-tools dpkg-dev fakeroot
+tools/package-deb.sh                        # build/dist/mdrewriter_<version>_amd64.deb + .sha256
+sudo apt install ./build/dist/mdrewriter_*_amd64.deb
+```
+
+**Windows（.zip 和 .msi）。** 用官方安装器安装 Qt 6.4 或更新版本（MinGW 64-bit 套件和 Qt Serial Port 模块），并打开“Qt 6.x (MinGW 64-bit)”命令行。`windeployqt` 会把 Qt 的 DLL 复制到程序旁边，该文件夹即可压缩为便携的 `.zip`：
+
+```bat
+rem "Qt 6.x (MinGW 64-bit)" prompt from the Qt installer (Qt 6.4 or newer, with Qt Serial Port)
+mkdir build & cd build
+qmake ..\Software\MDRewriter.pro
+mingw32-make release
+mkdir MDRewriter & copy release\MDRewriter.exe MDRewriter\
+windeployqt --release MDRewriter\MDRewriter.exe
+powershell Compress-Archive MDRewriter MDRewriter-windows-x64.zip
+```
+
+要生成 `.msi`，请用 [WiX Toolset](https://wixtoolset.org/) v4 或更新版本打包该文件夹（一个列出 `MDRewriter.exe`、各 DLL 以及 `platforms\`、`styles\` 等目录的 `MDRewriter.wxs`）。仓库里暂时没有 `.wxs`。（如果想要 `.exe` 安装程序，也可以用 Inno Setup 或 NSIS。）安装好 WiX 后：
+
+```bat
+dotnet tool install --global wix
+wix build MDRewriter.wxs -o MDRewriter.msi
+```
+
+**macOS（.dmg）。** 安装 Qt 6（例如通过 Homebrew）。`qmake` 生成 `MDRewriter.app`，`macdeployqt` 嵌入 Qt 并创建 `.dmg`。应用未签名：Gatekeeper 会要求右键选择“打开”；签名和公证需要 Apple 开发者账号（`macdeployqt -codesign=...`）。端口显示为 `/dev/cu.usbmodem*`。项目里还没有 `.icns` 图标。
+
+```bash
+brew install qt                              # Qt 6 with Qt Serial Port
+mkdir build && cd build
+"$(brew --prefix qt)/bin/qmake" ../Software/MDRewriter.pro CONFIG+=release
+make -j"$(sysctl -n hw.ncpu)"
+"$(brew --prefix qt)/bin/macdeployqt" MDRewriter.app -dmg      # MDRewriter.dmg
+```
+
 ## 使用方法
 
 1. 用 USB 线把 **MD Rewriter 连接到电脑**，并把**卡带插入**设备。
@@ -435,6 +558,47 @@ sudo make install            # optional: installs to /usr/local (program, icon, 
 ### Windows
 
 Download the ready-made program from the releases page, or open `Software/MDRewriter.pro` in Qt Creator and build it. Windows exposes the device as a COM port (install the "STM32 Virtual ComPort" driver if needed).
+
+### Building packages (.deb, Windows, macOS)
+
+Only the Linux package was built and tested on the maintainer's machine. The Windows and macOS steps below follow the Qt documentation but have **not been run** for this project; open an issue if one fails.
+
+**Linux (.deb).** The script takes the version from `Software/MDRewriter.pro`, makes a release build with prefix `/usr` and packs the program, desktop entry, icon, udev rule and license:
+
+```bash
+sudo apt install build-essential qt6-base-dev qt6-serialport-dev qt6-tools-dev qt6-l10n-tools dpkg-dev fakeroot
+tools/package-deb.sh                        # build/dist/mdrewriter_<version>_amd64.deb + .sha256
+sudo apt install ./build/dist/mdrewriter_*_amd64.deb
+```
+
+**Windows (.zip and .msi).** Install Qt 6.4 or newer with the official installer (MinGW 64-bit kit and the Qt Serial Port module) and open the "Qt 6.x (MinGW 64-bit)" prompt. `windeployqt` copies the Qt DLLs next to the program, and the folder becomes a portable `.zip`:
+
+```bat
+rem "Qt 6.x (MinGW 64-bit)" prompt from the Qt installer (Qt 6.4 or newer, with Qt Serial Port)
+mkdir build & cd build
+qmake ..\Software\MDRewriter.pro
+mingw32-make release
+mkdir MDRewriter & copy release\MDRewriter.exe MDRewriter\
+windeployqt --release MDRewriter\MDRewriter.exe
+powershell Compress-Archive MDRewriter MDRewriter-windows-x64.zip
+```
+
+For an `.msi`, package that folder with the [WiX Toolset](https://wixtoolset.org/) v4 or newer (a `MDRewriter.wxs` that lists `MDRewriter.exe`, the DLLs and `platforms\`, `styles\` and so on). This repository does not include the `.wxs` yet. (Inno Setup or NSIS work too if you prefer an `.exe` installer.) With WiX installed:
+
+```bat
+dotnet tool install --global wix
+wix build MDRewriter.wxs -o MDRewriter.msi
+```
+
+**macOS (.dmg).** Install Qt 6 (for example with Homebrew). `qmake` produces `MDRewriter.app` and `macdeployqt` embeds Qt and creates the `.dmg`. The app is unsigned: Gatekeeper asks for right-click "Open", and signing and notarizing need an Apple developer account (`macdeployqt -codesign=...`). The port appears as `/dev/cu.usbmodem*`. The project has no `.icns` icon yet.
+
+```bash
+brew install qt                              # Qt 6 with Qt Serial Port
+mkdir build && cd build
+"$(brew --prefix qt)/bin/qmake" ../Software/MDRewriter.pro CONFIG+=release
+make -j"$(sysctl -n hw.ncpu)"
+"$(brew --prefix qt)/bin/macdeployqt" MDRewriter.app -dmg      # MDRewriter.dmg
+```
 
 ## How to use
 
