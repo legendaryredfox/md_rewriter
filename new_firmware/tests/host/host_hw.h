@@ -16,7 +16,7 @@ typedef struct {
 } hw_chip_config_t;
 
 /* Chips used by the tests. */
-extern const hw_chip_config_t HW_MX29LV640EB, HW_S29GL064N_03, HW_S29GL064N_04, HW_S29GL064N_01, HW_M29W640DT;
+extern const hw_chip_config_t HW_MX29LV640EB, HW_S29GL064N_03, HW_S29GL064N_04, HW_S29GL064N_01, HW_M29W640DT, HW_SST39VF6401B;
 
 void hw_reset(const hw_chip_config_t *chip);     /* new chip, fully erased (0xFFFF), clock at 0 */
 void hw_set_rom_only(int on);                    /* a mask ROM: reads return rom data, writes are ignored */

@@ -49,6 +49,7 @@ static void test_detects(void)
 	test_detect(&HW_S29GL064N_03, "FLASHID:017E\r\n", "S29GL064N MD FLASH CART\r\n", "detect S29GL064N model 03");
 	test_detect(&HW_S29GL064N_04, "FLASHID:017E\r\n", "S29GL064N MD FLASH CART\r\n", "detect S29GL064N model 04");
 	test_detect(&HW_S29GL064N_01, "FLASHID:017E\r\n", "S29GL064N MD FLASH CART\r\n", "detect S29GL064N uniform");
+	test_detect(&HW_SST39VF6401B, "FLASHID:BF6D\r\n", "SST39VF6401B MD FLASH CART\r\n", "detect SST39VF6401B");
 	test_detect(&HW_M29W640DT, "FLASHID:20DE\r\n", "M29W640DT MD FLASH CART\r\n", "detect M29W640DT");
 	none.id[0] = 0x0000; none.id[1] = 0x1234;
 	test_detect(&none, "FLASHID:0034\r\n", "NO FIND NGP CARD\r\n", "unknown chip is reported, not named");
@@ -72,6 +73,7 @@ static void test_layout_probe(void)
 	hw_reset(&HW_S29GL064N_03);    check(flash_has_bottom_boot_sectors() == 0, "probe: S29GL064N-03 (top boot) has none");
 	hw_reset(&HW_S29GL064N_01);    check(flash_has_bottom_boot_sectors() == 0, "probe: S29GL064N-01 (uniform) has none");
 	hw_reset(&HW_M29W640DT);       check(flash_has_bottom_boot_sectors() == 0, "probe: M29W640DT has none");
+	hw_reset(&HW_SST39VF6401B);    check(flash_has_bottom_boot_sectors() == 0, "probe: SST39VF6401B has none");
 	hw_reset(&HW_MX29LV640EB);
 	hw_set_rom_only(1);
 	check(flash_has_bottom_boot_sectors() == 1, "probe: unreadable/unknown keeps the 1.0 steps");
@@ -104,9 +106,9 @@ static void test_program(void)
 	hw_chip_config_t slow;
 	uint8_t id;
 
-	for(id = 0; id < 3; id++)
+	for(id = 0; id < 4; id++)
 		{
-			const hw_chip_config_t *c = id == 0 ? &HW_MX29LV640EB : (id == 1 ? &HW_S29GL064N_03 : &HW_M29W640DT);
+			const hw_chip_config_t *c = id == 0 ? &HW_MX29LV640EB : (id == 1 ? &HW_S29GL064N_03 : (id == 2 ? &HW_M29W640DT : &HW_SST39VF6401B));
 			hw_reset(c);
 			idle_bus();
 			fill_block(c, 0x100, 64);
@@ -184,9 +186,9 @@ static void test_erase(void)
 
 	/* The PC counts dots for its progress bar (8 below 64 KiB, then one per 64 KiB): the same count on every layout */
 	{
-		const hw_chip_config_t *chips[] = { &HW_MX29LV640EB, &HW_S29GL064N_03, &HW_S29GL064N_01 };
+		const hw_chip_config_t *chips[] = { &HW_MX29LV640EB, &HW_S29GL064N_03, &HW_S29GL064N_01, &HW_SST39VF6401B };
 		unsigned n;
-		for(n = 0; n < 3; n++)
+		for(n = 0; n < 4; n++)
 			{
 				hw_reset(chips[n]);
 				hw_cdc_clear();
@@ -198,9 +200,9 @@ static void test_erase(void)
 
 	/* 4 MiB = 0x200000 words, every layout */
 	{
-		const hw_chip_config_t *chips[] = { &HW_MX29LV640EB, &HW_S29GL064N_03, &HW_S29GL064N_04, &HW_S29GL064N_01 };
+		const hw_chip_config_t *chips[] = { &HW_MX29LV640EB, &HW_S29GL064N_03, &HW_S29GL064N_04, &HW_S29GL064N_01, &HW_SST39VF6401B };
 		unsigned n;
-		for(n = 0; n < 4; n++)
+		for(n = 0; n < 5; n++)
 			{
 				hw_reset(chips[n]);
 				for(i = 0; i < 0x200000; i += 0x800) hw_set_word(i, 0);

@@ -321,6 +321,16 @@
 						}
 					if (status2 & 0x20) 
 						{
+							/* Bit 5 is also part of the data when the erase has just finished (0xFF): look
+							 * again before treating it as the chip giving up. */
+							const uint8_t status3 = getByte(sector_addr);
+							const uint8_t status4 = getByte(sector_addr);
+							if (((status3 & 0x40) == (status4 & 0x40)) && (status4 & 0x80))
+								{
+									return 1;
+								}
+							/* The data bus is an input here (read_mode above): switch before writing the command. */
+							write_mode();
 							setByte(0x555, 0xaa);
 							setByte(0x2aa, 0x55);
 							setByte(0x555, 0x80);

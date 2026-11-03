@@ -1,7 +1,8 @@
 #include "flashid.h"
 #include <stddef.h>
 
-/* Flash chips that take the AMD/JEDEC command set used by this firmware (NFW-1).
+/* Flash chips that take the AMD/JEDEC command set used by this firmware (NFW-1). The layout field
+ * says how the 30h erase command behaves at the start of the chip (small sectors or not).
  * "confirmed": checked against a datasheet. Layout is only set where the codes (or the datasheet
  * for that exact ID) say so; everything else stays UNKNOWN so the erase loop keeps the 1.0 steps. */
 typedef struct {
@@ -17,6 +18,11 @@ static const flash_chip_t flash_chips[] = {
 	{ 0x20, 0xDF, "M29W640DB",   FLASH_LAYOUT_BOTTOM_BOOT },      /* confirmed (ST datasheet) */
 	{ 0x20, 0xDE, "M29W640DT",   FLASH_LAYOUT_NO_BOTTOM_BOOT },   /* confirmed (ST datasheet) */
 	{ 0x20, 0x7E, "M29W640G",    FLASH_LAYOUT_UNKNOWN },          /* not confirmed against a datasheet */
+	/* SST39VF6401B / 6402B (Microchip DS20005008B): same unlock addresses (555h/2AAh) as AMD, ID BFh
+	 * + 236Dh / 236Ch. Uniform 32 KWord blocks erased with 30h (the sector erase of the AMD
+	 * sequence), so there are no small sectors at the start: NO_BOTTOM_BOOT. No write buffer. */
+	{ 0xBF, 0x6D, "SST39VF6401B", FLASH_LAYOUT_NO_BOTTOM_BOOT },  /* confirmed (datasheet) */
+	{ 0xBF, 0x6C, "SST39VF6402B", FLASH_LAYOUT_NO_BOTTOM_BOOT },  /* confirmed (datasheet) */
 };
 
 /* S29GL064N (Cypress/Infineon datasheet 001-98525, table "Autoselect Codes"): manufacturer 01,

@@ -11,6 +11,8 @@ namespace {
 //  - 20/DE and 20/DF: M29W640DT and M29W640DB, confirmed in the ST datasheet.
 //  - 01/7E: S29GL064N, confirmed in the Cypress datasheet 001-98525. The low byte 7E is shared with
 //    other GL parts, so the second ID cycle (not read by the firmware) would be needed to be sure.
+//  - BF/6D and BF/6C: SST39VF6401B and 6402B, confirmed in the Microchip datasheet DS20005008B (same
+//    555h/2AAh unlock as AMD, so the commands of the firmware apply).
 //  - the others come from memory and are marked as not confirmed.
 const Chip kChips[] = {
     { 0xC2, 0xCB, "MX29LV640EB (Macronix, 64 Mbit, bottom boot)", true },
@@ -18,6 +20,8 @@ const Chip kChips[] = {
     { 0x20, 0xDF, "M29W640DB (ST, 64 Mbit, bottom boot)", true },
     { 0x20, 0xDE, "M29W640DT (ST, 64 Mbit, top boot)", true },
     { 0x20, 0x7E, "M29W640G family (ST/Numonyx, 64 Mbit)", false },
+    { 0xBF, 0x6D, "SST39VF6401B (Microchip/SST, 64 Mbit, uniform 32 KWord blocks)", true },
+    { 0xBF, 0x6C, "SST39VF6402B (Microchip/SST, 64 Mbit, uniform 32 KWord blocks)", true },
     { 0x01, 0x7E, "S29GL064N (Spansion/Cypress, 64 Mbit; other GL-N chips share this ID)", true },
 };
 

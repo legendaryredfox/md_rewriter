@@ -413,6 +413,7 @@ private slots:
         QTest::addColumn<QString>("expected");
         QTest::newRow("supported") << "C2CB" << "MX29LV640EB MD FLASH CART" << int(Sev::Success) << "Supported";
         QTest::newRow("st chip firmware does not list") << "20DF" << "NO FIND NGP CARD" << int(Sev::Info) << "M29W640DB";
+        QTest::newRow("sst chip firmware does not list") << "BF6D" << "NO FIND NGP CARD" << int(Sev::Info) << "SST39VF6401B";
         QTest::newRow("unconfirmed id says so") << "207E" << "NO FIND NGP CARD" << int(Sev::Info) << "not confirmed";
         QTest::newRow("unknown") << "FFFF" << "NO FIND NGP CARD" << int(Sev::Warning) << "Chip not in the list";
     }

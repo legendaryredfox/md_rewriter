@@ -32,6 +32,8 @@ int main(void)
 	const uint8_t gl01[4]   = { 0x01, 0x7E, 0x10, 0x01 };   /* uniform sectors */
 	const uint8_t glodd[4]  = { 0x01, 0x7E, 0x0C, 0x55 };   /* cycle 3 unreadable: do not guess */
 	const uint8_t gl128[4]  = { 0x01, 0x7E, 0x21, 0x01 };   /* another GL part sharing 01/7E */
+	const uint8_t sst1[4]   = { 0xBF, 0x6D, 0x00, 0x00 };
+	const uint8_t sst2[4]   = { 0xBF, 0x6C, 0x00, 0x00 };
 	const uint8_t none[4]   = { 0xFF, 0xFF, 0xFF, 0xFF };
 	const uint8_t rom[4]    = { 0x00, 0xFF, 0x00, 0x00 };
 
@@ -54,6 +56,8 @@ int main(void)
 	expect("S29GL064N model 04 (bottom boot)", gl04, 1, "S29GL064N", FLASH_LAYOUT_BOTTOM_BOOT);
 	expect("S29GL064N uniform", gl01, 1, "S29GL064N", FLASH_LAYOUT_NO_BOTTOM_BOOT);
 	expect("S29GL064N with odd cycle 3 is unknown layout", glodd, 1, "S29GL064N", FLASH_LAYOUT_UNKNOWN);
+	expect("SST39VF6401B", sst1, 1, "SST39VF6401B", FLASH_LAYOUT_NO_BOTTOM_BOOT);
+	expect("SST39VF6402B", sst2, 1, "SST39VF6402B", FLASH_LAYOUT_NO_BOTTOM_BOOT);
 	expect("other 01/7E chip is not named", gl128, 0, NULL, FLASH_LAYOUT_UNKNOWN);
 	expect("empty bus", none, 0, NULL, FLASH_LAYOUT_UNKNOWN);
 	expect("mask ROM data", rom, 0, NULL, FLASH_LAYOUT_UNKNOWN);
