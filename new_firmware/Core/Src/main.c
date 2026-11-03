@@ -276,27 +276,12 @@ int main(void)
 							}
 						else
 							{	
-								setByte(0x555,0xaa);
-								setByte(0x2aa,0x55);
-								setByte(0x555,0xa0);	
-								GPIO_WriteHigh(GPIOE, receiveBuffer[i/64][i%64]);								
-								GPIO_WriteLow(GPIOE,receiveBuffer[i/64][i%64+1]);
-								setAddress(i/2+addw);		
-								MD_CS = 0;
-								MD_WR = 0;
-								Delay_nop(35);
-								MD_WR = 1;
-								MD_CS = 1;
-								Delay_nop(80);
-#if FLASH_POLL
-								/* NFW-2: wait until the chip has really programmed the word. */
-								if(!flash_wait_program(i/2+addw, receiveBuffer[i/64][i%64+1]))
+								if(!flash_program_word(i/2+addw, receiveBuffer[i/64][i%64], receiveBuffer[i/64][i%64+1]))
 									{
 										writeFailed = 1;
 										failAddr = i/2+addw;
 										break;
 									}
-#endif
 							}
 					}	
 				buffcnt = 0;
@@ -440,26 +425,8 @@ int main(void)
 					}
 				uint8_t eraseok = 1;
 				if(cmdbuff[5] < 0x5){
-						for(uint32_t i = 0;i < sectoradd ;)
-							{
-								if(!erase_sector(address))
-								{
-									eraseok = 0;
-									break;
-								}
-								Delay_nop(100);
-								CDC_Transmit(".");
-								if(address<0x8000)
-									{
-										address = address+0x1000;	
-										i = i+0x1000;	
-									}
-								else
-									{
-										address = address+0x8000;
-										i = i+0x8000;	
-									}		
-							}
+						if(!erase_range(&address, sectoradd))
+							eraseok = 0;
 					}
 				else{
 						if(!eraseFLASH()) eraseok = 0;

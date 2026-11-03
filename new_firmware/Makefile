@@ -1,6 +1,7 @@
 # Build of the md_rewriter firmware with arm-none-eabi-gcc (no Keil needed).
 # Usage:  make            builds build/md-rewriter-new.{elf,hex,bin} and prints the size
 #         make clean
+#         make test       host tests on the PC: chip ID table, and the real MD.c against a flash chip model
 #         make check      static checks (-Wall -Wextra -Werror on our own sources, cppcheck)
 # Needs:  gcc-arm-none-eabi (and cppcheck for `make check`).
 # Nothing here flashes anything: see docs/NEW_FIRMWARE_PLAN.md for the flashing procedure.
@@ -48,7 +49,7 @@ STARTUP := Drivers/CMSIS/Device/ST/STM32F1xx/Source/Templates/gcc/startup_stm32f
 SRC  := $(OWN_SRC) $(HAL_SRC) $(USB_SRC)
 OBJS := $(addprefix $(BUILD)/,$(SRC:.c=.o)) $(BUILD)/startup.o
 
-.PHONY: all clean check
+.PHONY: all clean check test
 all: $(BUILD)/$(TARGET).hex $(BUILD)/$(TARGET).bin
 	@$(SIZE) $(BUILD)/$(TARGET).elf
 
@@ -70,6 +71,13 @@ $(BUILD)/$(TARGET).elf: $(OBJS) STM32F103VBTx_FLASH.ld
 
 check:
 	@./check.sh
+
+HOST_CC_FLAGS := -Wall -Wextra -Wformat=2 -DMD_HOST_TEST -DFLASH_POLL=1 -Itests/host -ICore/Inc
+
+test:
+	@mkdir -p $(BUILD)
+	gcc -Wall -Wextra -ICore/Inc tests/test_flashid.c Core/Src/flashid.c -o $(BUILD)/test_flashid && $(BUILD)/test_flashid
+	gcc $(HOST_CC_FLAGS) tests/host/test_md_flash.c tests/host/host_hw.c Core/Src/MD.c Core/Src/flashid.c -o $(BUILD)/test_md_flash && $(BUILD)/test_md_flash
 
 clean:
 	rm -rf $(BUILD)

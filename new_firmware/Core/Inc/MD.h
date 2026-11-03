@@ -6,6 +6,7 @@
 
 #define GPIO_WriteLow(GPIOx,a)    GPIOx->BSRR=(((uint32_t)(uint8_t)~(a))<<16)|((uint32_t)(uint8_t)(a))
 #define GPIO_WriteHigh(GPIOx,a)    GPIOx->BSRR=(((uint8_t)(uint8_t)~(a))<<24)|(((uint32_t)(uint8_t)(a))<<8)
+#ifndef MD_HOST_TEST   /* the PC test (tests/host) supplies its own pin accessors */
 #define BITBAND(addr, bitnum) ((addr & 0xF0000000)+0x2000000+((addr &0xFFFFF)<<5)+(bitnum<<2)) 
 #define MEM_ADDR(addr)  *((volatile unsigned long  *)(addr)) 
 #define BIT_ADDR(addr, bitnum)   MEM_ADDR(BITBAND(addr, bitnum)) 
@@ -47,6 +48,7 @@
 
 #define PGout(n)   BIT_ADDR(GPIOG_ODR_Addr,n)   
 #define PGin(n)    BIT_ADDR(GPIOG_IDR_Addr,n)  
+#endif
 
 #define MD_WR 			PBout(14)
 #define MD_RD  			PBout(4)
@@ -101,9 +103,13 @@ void write_data_bus(uint16_t data);
 void setByte(uint32_t address, uint16_t dat);
 uint8_t eraseFLASH(void);
 void checkid(void);
+void flash_autoselect(uint8_t id[4]);
+uint8_t flash_has_bottom_boot_sectors(void);
 void checkheadermenu(void);
 uint8_t erase_sector(uint32_t sector_addr);
 uint8_t flash_wait_program(uint32_t addr, uint8_t lastLowByte);
+uint8_t flash_program_word(uint32_t addr, uint8_t hi, uint8_t lo);
+uint8_t erase_range(uint32_t *address, uint32_t words);
 void bus_input_fast(void);
 void bus_output_fast(void);
 

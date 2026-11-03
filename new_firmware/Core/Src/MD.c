@@ -4,50 +4,28 @@
 #include <string.h>
 #include "usbd_cdc_if.h"
 #include "MD.h"
+#include "flashid.h"
 
 
 	char disbuff[40];
 
-	/* Flash chips that take the AMD/JEDEC command set used by this firmware (NFW-1).
-	 * Only the low byte of each ID word is read (the bus read is 8 bits wide), so the codes are
-	 * the low bytes of manufacturer and device. "confirmed": checked against a datasheet. */
-	typedef struct {
-		uint8_t manufacturer;
-		uint8_t device;
-		const char *name;
-	} flash_chip_t;
-
-	static const flash_chip_t flash_chips[] = {
-		{ 0xC2, 0xCB, "MX29LV640EB" },   /* 1.0 chip: confirmed by the released firmware */
-		{ 0xC2, 0xC9, "MX29LV640ET" },   /* not confirmed against a datasheet */
-		{ 0x20, 0xDF, "M29W640DB" },     /* confirmed (ST datasheet) */
-		{ 0x20, 0xDE, "M29W640DT" },     /* confirmed (ST datasheet) */
-		{ 0x20, 0x7E, "M29W640G" },      /* not confirmed against a datasheet */
-	};
-
-	static const flash_chip_t *find_flash_chip(uint8_t manufacturer, uint8_t device)
-		{
-			uint32_t i;
-			for(i = 0; i < (sizeof(flash_chips) / sizeof(flash_chips[0])); i++)
-				{
-					if((flash_chips[i].manufacturer == manufacturer) && (flash_chips[i].device == device))
-						return &flash_chips[i];
-				}
-			return NULL;
-		}
-	
-	
 	void Delay_nop(uint32_t nop)
 		{
+#ifdef MD_HOST_TEST
+			host_delay_nop(nop);   /* the PC test advances its clock and its chip model here */
+#else
 			while(nop--)
 			{
 				__ASM volatile("nop");
 			}
+#endif
 		}
 				
 	void softsystemreset(void)
 			{
+#ifndef MD_HOST_TEST
 			__ASM volatile ("cpsid i");
+#endif
 			HAL_NVIC_SystemReset();	
 			}
 
@@ -205,6 +183,30 @@
 			return ok;
 		}
 
+	/* One word program cycle: unlock, program command, data, then (FLASH_POLL) wait for the chip.
+	 * Same bus sequence and delays as the loop in 1.0's main.c. Returns 1 when done, 0 on failure. */
+	uint8_t flash_program_word(uint32_t addr, uint8_t hi, uint8_t lo)
+		{
+			setByte(0x555,0xaa);
+			setByte(0x2aa,0x55);
+			setByte(0x555,0xa0);	
+			GPIO_WriteHigh(GPIOE, hi);								
+			GPIO_WriteLow(GPIOE, lo);
+			setAddress(addr);		
+			MD_CS = 0;
+			MD_WR = 0;
+			Delay_nop(35);
+			MD_WR = 1;
+			MD_CS = 1;
+			Delay_nop(80);
+#if FLASH_POLL
+			/* NFW-2: wait until the chip has really programmed the word. */
+			return flash_wait_program(addr, lo);
+#else
+			return 1;
+#endif
+		}
+
 	uint8_t erase_sector(uint32_t sector_addr) 
 		{
 			uint32_t start = HAL_GetTick();
@@ -246,6 +248,35 @@
 			}
 		}
 				
+	/* Erase-by-size loop of the 1E command: erases sectors from *address on until `words` words are
+	 * covered, printing a dot per sector. *address is left on the next sector, as in 1.0 (the
+	 * "SECTORADD:" text prints it). Returns 0 when a sector never finished. Below 0x8000 words the
+	 * step is 8 KiB (eight small boot sectors) only on chips that may have them, see NFW-10. */
+	uint8_t erase_range(uint32_t *address, uint32_t words)
+		{
+			const uint32_t smallstep = flash_has_bottom_boot_sectors() ? 0x1000U : 0x8000U;
+			for(uint32_t i = 0;i < words ;)
+				{
+					if(!erase_sector(*address))
+						{
+							return 0;
+						}
+					Delay_nop(100);
+					CDC_Transmit(".");
+					if(*address<0x8000)
+						{
+							*address = *address+smallstep;	
+							i = i+smallstep;	
+						}
+					else
+						{
+							*address = *address+0x8000;
+							i = i+0x8000;	
+						}		
+				}
+			return 1;
+		}
+
 	uint8_t eraseFLASH(void)
 			{
 				CDC_Transmit("-- MD CART ERASE --\r\n");	
@@ -298,12 +329,63 @@
 			}
 			
 			
+	/* One autoselect session: reads manufacturer, device (cycles 1) and the two further ID cycles
+	 * (words 0x0E and 0x0F, low byte of each), then sends the reset command. Same bus sequence and
+	 * delays as the second half of 1.0's checkid(). Needs the chip in read-array mode. */
+	void flash_autoselect(uint8_t id[4])
+			{
+				write_mode();
+				HAL_Delay(10);
+				MD_RD= 1;
+				MD_CS= 1;
+				MD_WR= 1;
+				HAL_Delay(1);
+				setByte(0x555, 0xaa);
+				setByte(0x2aa, 0x55);
+				setByte(0x555, 0x90);			
+				MD_RD= 1;
+				MD_CS= 1;
+				MD_WR= 1;
+				read_mode();		
+				id[0] = getByte(0x0);
+				id[1] = getByte(0x1);
+				id[2] = getByte(0xE);
+				id[3] = getByte(0xF);
+				write_mode();
+				HAL_Delay(10);
+				MD_RD= 1;
+				MD_CS= 1;
+				MD_WR= 1;
+				HAL_Delay(1);
+				setByte(0x555, 0xaa);
+				setByte(0x2aa, 0x55);
+				setByte(0x555, 0xf0);				
+				MD_RD= 1;
+				MD_CS= 1;
+				MD_WR= 1;
+			}
+
+	/* 1 when erase-by-size must step through eight 8 KiB sectors at the start of the chip (what
+	 * 1.0 always did), 0 only when the chip is positively known not to have them (top boot or
+	 * uniform): there the first 64 KiB is one sector and stepping by 8 KiB would erase it eight
+	 * times. Unknown chips and unreadable IDs give 1, the 1.0 behaviour. */
+	uint8_t flash_has_bottom_boot_sectors(void)
+			{
+				uint8_t id[4];
+				flash_info_t info;
+				flash_autoselect(id);
+				if(flash_identify(id, &info) && (info.layout == FLASH_LAYOUT_NO_BOTTOM_BOOT))
+					return 0;
+				return 1;
+			}
+
 	void checkid(void)
 			{
 				CDC_Transmit("-- MD CART ID --\r\n");		
 				
 				char disbuff[50];
 				uint8_t s1,s2;
+				uint8_t id[4];
 				write_mode();
 				HAL_Delay(10);
 				MD_RD= 1;
@@ -333,31 +415,19 @@
 				MD_WR= 1;
 				read_mode();
 				HAL_Delay(100);
-				write_mode();
-				HAL_Delay(10);
-				MD_RD= 1;
-				MD_CS= 1;
-				MD_WR= 1;
-				HAL_Delay(1);
-				setByte(0x555, 0xaa);
-				setByte(0x2aa, 0x55);
-				setByte(0x555, 0x90);			
-				MD_RD= 1;
-				MD_CS= 1;
-				MD_WR= 1;
-				read_mode();		
-				s1 = getByte(0x0);
-				s2 = getByte(0x1);
+				flash_autoselect(id);
+				s1 = id[0];
+				s2 = id[1];
 				
 				/* %02X: both bytes always have two digits, so the PC can split the ID without guessing. */
 				sprintf(disbuff,"FLASHID:%02X%02X\r\n",s1,s2);
 				CDC_Transmit(disbuff);
 				{
-					const flash_chip_t *chip = find_flash_chip(s1,s2);
-					if(chip != NULL)
+					flash_info_t chip;
+					if(flash_identify(id, &chip))
 						{
 							/* Same line layout as 1.0 ("<name> MD FLASH CART"), so old apps still see a detected cart. */
-							sprintf(disbuff,"%s MD FLASH CART\r\n",chip->name);
+							sprintf(disbuff,"%s MD FLASH CART\r\n",chip.name);
 							CDC_Transmit(disbuff);
 						}
 					else
@@ -365,17 +435,4 @@
 							CDC_Transmit("NO FIND NGP CARD\r\n");
 						}
 				}
-				write_mode();
-				HAL_Delay(10);
-				MD_RD= 1;
-				MD_CS= 1;
-				MD_WR= 1;
-				HAL_Delay(1);
-				setByte(0x555, 0xaa);
-				setByte(0x2aa, 0x55);
-				setByte(0x555, 0xf0);				
-				MD_RD= 1;
-				MD_CS= 1;
-				MD_WR= 1;
 			}
-			

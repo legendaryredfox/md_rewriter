@@ -11,7 +11,8 @@ make                                  # build/md-rewriter-new.{elf,hex,bin}
 make OPT=-O3                          # other optimisation level (timing, see spec NFW-4)
 make OPT="-O1 -DFLASH_POLL=0"        # without DQ7 polling (the 1.0 write sequence)
 make FW_VERSION=1.1.0-test
-./check.sh                            # warnings and cppcheck, both polling modes
+make test                             # host tests: ID table, and MD.c against a flash chip model
+./check.sh                            # warnings, cppcheck, host test; both polling modes
 make clean
 ```
 
@@ -33,4 +34,5 @@ openocd -f interface/stlink.cfg -f target/stm32f1x.cfg \
 | `Core/`, `USB_DEVICE/` | Application code (from `legacy_firmware`, plus the changes in the spec) |
 | `Drivers/`, `Middlewares/` | Vendor code: STM32F1 HAL, CMSIS headers, GCC startup file, USB device library (unchanged, not the full CubeMX tree) |
 | `STM32F103VBTx_FLASH.ld` | Linker script: 128 KiB flash, 20 KiB RAM, no bootloader |
+| `tests/` | PC tests: `test_flashid.c` (ID table) and `host/` (the real `MD.c` against a flash chip model); run with `make test` |
 | `GBVBT6.ioc` | CubeMX project, kept for reference; regenerating code from it would overwrite the changes |

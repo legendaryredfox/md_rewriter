@@ -14,7 +14,7 @@ INC=(
   -IMiddlewares/ST/STM32_USB_Device_Library/Core/Inc
   -IMiddlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc
 )
-FILES=(Core/Src/main.c Core/Src/MD.c Core/Src/gpio.c Core/Src/usart.c Core/Src/stm32f1xx_it.c
+FILES=(Core/Src/main.c Core/Src/MD.c Core/Src/flashid.c Core/Src/gpio.c Core/Src/usart.c Core/Src/stm32f1xx_it.c
        USB_DEVICE/App/usbd_cdc_if.c USB_DEVICE/App/usbd_desc.c USB_DEVICE/App/usb_device.c)
 # USB_DEVICE/Target/usbd_conf.c is CubeMX-generated (three unused-parameter warnings), left out.
 
@@ -39,7 +39,7 @@ echo "gcc: $total warning/error line(s)"
 if command -v cppcheck >/dev/null 2>&1; then
   out=$(cppcheck --quiet --enable=warning,portability --inline-suppr \
         -DUSE_HAL_DRIVER -DSTM32F103xB -D__GNUC__=13 "${INC[@]}" \
-        Core/Src/main.c Core/Src/MD.c USB_DEVICE/App/usbd_cdc_if.c 2>&1 | grep -v -E "^$")
+        Core/Src/main.c Core/Src/MD.c Core/Src/flashid.c USB_DEVICE/App/usbd_cdc_if.c 2>&1 | grep -v -E "^$")
   if [ -n "$out" ]; then
     printf '%s\n' "$out"
     status=1
@@ -47,5 +47,24 @@ if command -v cppcheck >/dev/null 2>&1; then
   echo "cppcheck: $(printf '%s' "$out" | grep -c .) finding(s)"
 else
   echo "cppcheck: not installed, skipped"
+fi
+
+# host tests (no hardware needed): chip ID table, and MD.c against the flash chip model
+if command -v gcc >/dev/null 2>&1; then
+  tmp=$(mktemp -d)
+  if gcc -Wall -Wextra -Wformat=2 -ICore/Inc tests/test_flashid.c Core/Src/flashid.c -o "$tmp/t1" && "$tmp/t1" >"$tmp/out1"; then
+    echo "host test flashid: $(tail -1 "$tmp/out1")"
+  else
+    cat "$tmp/out1" 2>/dev/null; echo "host test flashid: FAILED"; status=1
+  fi
+  if gcc -Wall -Wextra -Wformat=2 -DMD_HOST_TEST -DFLASH_POLL=1 -Itests/host -ICore/Inc \
+       tests/host/test_md_flash.c tests/host/host_hw.c Core/Src/MD.c Core/Src/flashid.c -o "$tmp/t2" && "$tmp/t2" >"$tmp/out2"; then
+    echo "host test MD.c vs chip model: $(tail -1 "$tmp/out2")"
+  else
+    cat "$tmp/out2" 2>/dev/null; echo "host test MD.c vs chip model: FAILED"; status=1
+  fi
+  rm -rf "$tmp"
+else
+  echo "host tests: gcc not installed, skipped"
 fi
 exit $status
