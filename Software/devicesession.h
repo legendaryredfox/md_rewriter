@@ -56,6 +56,10 @@ public:
     QString firmwareVersion() const { return m_fwVersion; }
     // Firmware that announces a version can read 8 MiB (see Protocol::extendedRomSize).
     bool canRead8M() const { return !m_fwVersion.isEmpty(); }
+    // True after a detect found a chip the firmware does not list while firmware 1.0 is connected.
+    // Firmware 1.0 was written for one chip and does not wait for the chip to finish programming
+    // a word, so writes to other chips need the read-back check.
+    bool unlistedChipOnOldFirmware() const { return m_unlistedChip && m_fwVersion.isEmpty(); }
 
     // Forget what the firmware announced (the port was closed).
     void resetFirmwareInfo();
@@ -136,6 +140,7 @@ private:
 
     // detect
     QString m_flashIdLine;
+    bool m_unlistedChip = false;   // kept across operations, cleared when connecting
     void reportChip(const QString &firmwareLine);
 
     // erase by size

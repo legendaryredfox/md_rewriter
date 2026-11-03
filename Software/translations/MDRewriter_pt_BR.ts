@@ -208,6 +208,10 @@
         <source>Chip not in the list (ID %1). It may be an original game cartridge (not flash), an empty slot, or a flash chip this program does not know. Reading works with original cartridges. Writing needs a flash chip that uses the standard AMD/JEDEC commands. &quot;NO FIND NGP CARD&quot; only means the firmware did not recognise the chip.</source>
         <translation>Chip fora da lista (ID %1). Pode ser um cartucho original (sem flash), um slot vazio ou um chip flash que este programa não conhece. A leitura funciona com cartuchos originais. A gravação exige um chip flash com os comandos AMD/JEDEC padrão. &quot;NO FIND NGP CARD&quot; só significa que o firmware não reconheceu o chip.</translation>
     </message>
+    <message>
+        <source>Firmware 1.0 does not wait for the chip to finish programming each word, and it was written for the MX29LV640EB. Keep "Verify after writing" on; if verification fails, use the new firmware.</source>
+        <translation>O firmware 1.0 não espera o chip terminar de gravar cada palavra e foi escrito para o MX29LV640EB. Mantenha "Verificar após gravar" ligado; se a verificação falhar, use o firmware novo.</translation>
+    </message>
 </context>
 <context>
     <name>HelpDialog</name>
@@ -800,6 +804,14 @@ Não desconecte o dispositivo enquanto isso roda.</translation>
         <location filename="../mainwindow.cpp" line="733"/>
         <source>Close anyway</source>
         <translation>Fechar mesmo assim</translation>
+    </message>
+    <message>
+        <source>This chip is not the one firmware 1.0 was written for, and the firmware does not wait for the chip while programming. Keep "Verify after writing" on and check the result.</source>
+        <translation>Este chip não é o do qual o firmware 1.0 foi escrito, e o firmware não espera o chip durante a gravação. Mantenha "Verificar após gravar" ligado e confira o resultado.</translation>
+    </message>
+    <message>
+        <source>Verification is currently off.</source>
+        <translation>A verificação está desligada agora.</translation>
     </message>
 </context>
 <context>

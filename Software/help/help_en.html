@@ -137,7 +137,8 @@
 </ul>
 
 <h3 id="problem-detect">"NO FIND NGP CARD" on a flash cartridge</h3>
-<p>The firmware only recognises one chip, so it prints this for every other chip. Read the line the program adds below it: if it names a chip (for example M29W640DB), the cartridge is probably fine; if it says "Chip not in the list", the cartridge may not be flash or may not be inserted properly. Reinsert, clean the contacts, press <b>Detect cartridge</b> again. Test a new flash cartridge by erasing, writing a small ROM with <b>Verify after writing</b> on and checking that it passes.</p>
+<p>The firmware only recognises one chip, so it prints this for every other chip. Read the line the program adds below it: if it names a chip (for example M29W640DB or S29GL064N), the cartridge is probably fine; if it says "Chip not in the list", the cartridge may not be flash or may not be inserted properly. Reinsert, clean the contacts, press <b>Detect cartridge</b> again. Test a new flash cartridge by erasing, writing a small ROM with <b>Verify after writing</b> on and checking that it passes.</p>
+<p>With firmware 1.0 the program also warns that the firmware does not wait for the chip to finish programming each word, because it was written for the MX29LV640EB. Keep <b>Verify after writing</b> on: if the check fails, the new firmware (which does wait) is the fix, not a bad cartridge.</p>
 
 <h3 id="problem-closed">I closed the program or lost power during an operation</h3>
 <p>Reading: nothing was saved, just read again. Writing or erasing: the cartridge is in an unknown state. Erase it and write again. Saves: restore the save file you backed up.</p>

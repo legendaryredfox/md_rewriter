@@ -492,6 +492,13 @@ void MainWindow::writeRom()
                        .arg(QFileInfo(path).fileName(), humanSize(rom.data.size()));
     if (!rom.warnings.isEmpty())
         text += QStringLiteral("\n\n") + tr("Warning:") + QLatin1Char(' ') + rom.warnings.join(QStringLiteral("\n"));
+    if (m_session.unlistedChipOnOldFirmware()) {
+        text += QStringLiteral("\n\n")
+                + tr("This chip is not the one firmware 1.0 was written for, and the firmware does not wait for the chip while "
+                     "programming. Keep \"Verify after writing\" on and check the result.");
+        if (!ui->verifyCheck->isChecked())
+            text += QLatin1Char(' ') + tr("Verification is currently off.");
+    }
     if (!confirm(tr("Write ROM"), text, tr("Write")))
         return;
 

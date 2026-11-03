@@ -137,7 +137,8 @@
 </ul>
 
 <h3 id="problem-detect">"NO FIND NGP CARD" em um cartucho flash</h3>
-<p>O firmware só reconhece um chip, então mostra isto para todos os outros. Leia a linha que o programa acrescenta abaixo: se ela nomear um chip (por exemplo M29W640DB), o cartucho provavelmente está bem; se disser "Chip fora da lista", o cartucho pode não ser flash ou não estar bem encaixado. Reinsira, limpe os contatos e clique em <b>Detectar cartucho</b> de novo. Teste um cartucho flash novo apagando, gravando uma ROM pequena com <b>Verificar após gravar</b> ligado e conferindo que passa.</p>
+<p>O firmware só reconhece um chip, então mostra isto para todos os outros. Leia a linha que o programa acrescenta abaixo: se ela nomear um chip (por exemplo M29W640DB ou S29GL064N), o cartucho provavelmente está bem; se disser "Chip fora da lista", o cartucho pode não ser flash ou não estar bem encaixado. Reinsira, limpe os contatos e clique em <b>Detectar cartucho</b> de novo. Teste um cartucho flash novo apagando, gravando uma ROM pequena com <b>Verificar após gravar</b> ligado e conferindo que passa.</p>
+<p>Com o firmware 1.0 o programa também avisa que o firmware não espera o chip terminar de gravar cada palavra, porque foi escrito para o MX29LV640EB. Mantenha <b>Verificar após gravar</b> ligado: se a verificação falhar, a solução é o firmware novo (que espera o chip), não um cartucho ruim.</p>
 
 <h3 id="problem-closed">Fechei o programa ou faltou energia durante uma operação</h3>
 <p>Leitura: nada foi salvo, é só ler de novo. Gravação ou apagamento: o cartucho está em estado desconhecido. Apague e grave de novo. Saves: restaure o arquivo de save do seu backup.</p>

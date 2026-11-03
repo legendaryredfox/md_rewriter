@@ -392,6 +392,36 @@ private slots:
         QVERIFY(logText().contains("same commands"));
     }
 
+    void detectNamesTheSpansionChipAndWarnsOnFirmware10()
+    {
+        m_fw->flashId = "17E";   // firmware 1.0 prints the two bytes without padding
+        m_fw->chipLine = "NO FIND NGP CARD";
+        connectDevice();
+        QTest::mouseClick(w<QPushButton>("detectButton"), Qt::LeftButton);
+        QTRY_VERIFY_WITH_TIMEOUT(logText().contains("S29GL064N"), 5000);
+        QVERIFY(logText().contains("does not wait for the chip"));
+
+        m_fw->rom = QByteArray(0x40000, '\xFF');
+        const QString f = m_dir.filePath("s29.bin");
+        QVERIFY(writeFile(f, randomBytes(0x40000, 11)));
+        m_nextOpen = f;
+        QTest::mouseClick(w<QPushButton>("writeRomButton"), Qt::LeftButton);
+        QCOMPARE(m_confirms.size(), 1);
+        QVERIFY(m_confirms[0].second.contains("does not wait for the chip"));
+        QTRY_VERIFY_WITH_TIMEOUT(logText().contains("Verified"), 30000);
+    }
+
+    void noWaitWarningWithTheNewFirmware()
+    {
+        m_fw->fwVersion = "1.1.0-test";
+        m_fw->flashId = "017E";
+        m_fw->chipLine = "S29GL064N MD FLASH CART";
+        connectDevice();
+        QTest::mouseClick(w<QPushButton>("detectButton"), Qt::LeftButton);
+        QTRY_VERIFY_WITH_TIMEOUT(logText().contains("S29GL064N"), 5000);
+        QVERIFY(!logText().contains("does not wait for the chip"));
+    }
+
     void writeRomWithUnsupportedSizeIsRejectedBeforeAnything()
     {
         connectDevice();

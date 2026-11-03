@@ -97,6 +97,7 @@ bool DeviceSession::connectDevice()
 {
     if (!begin(Op::Connect, 3000))
         return false;
+    m_unlistedChip = false;
     if (!m_fwVersion.isEmpty()) {
         m_fwVersion.clear();
         emit firmwareVersionChanged(m_fwVersion);
@@ -569,6 +570,10 @@ void DeviceSession::reportChip(const QString &firmwareLine)
 {
     const bool firmwareKnows = firmwareLine.contains(QLatin1String("MD FLASH CART"));
     const ChipDb::Match m = ChipDb::identify(m_flashIdLine);
+    m_unlistedChip = !firmwareKnows && m.parsed;
+    const bool oldFirmwareWarning = m_unlistedChip && m_fwVersion.isEmpty();
+    const QString waitNote = tr("Firmware 1.0 does not wait for the chip to finish programming each word, and it was written for "
+                                "the MX29LV640EB. Keep \"Verify after writing\" on; if verification fails, use the new firmware.");
     if (m.chip) {
         const QString name = QString::fromLatin1(m.chip->name);
         if (firmwareKnows) {
@@ -582,6 +587,8 @@ void DeviceSession::reportChip(const QString &firmwareLine)
             if (!m.chip->confirmed)
                 text += QLatin1Char(' ') + tr("This ID is not confirmed against a datasheet.");
             emit message(Severity::Info, text);
+            if (oldFirmwareWarning)
+                emit message(Severity::Warning, waitNote);
         }
         return;
     }
@@ -595,6 +602,8 @@ void DeviceSession::reportChip(const QString &firmwareLine)
                         "or a flash chip this program does not know. Reading works with original cartridges. "
                         "Writing needs a flash chip that uses the standard AMD/JEDEC commands. "
                         "\"NO FIND NGP CARD\" only means the firmware did not recognise the chip.").arg(m.idText));
+        if (oldFirmwareWarning)
+            emit message(Severity::Warning, waitNote);
     }
 }
 
