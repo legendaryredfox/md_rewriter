@@ -1,7 +1,7 @@
 include(app.pri)
 
 TARGET = MDRewriter
-VERSION = 1.1.0
+VERSION = 1.2.0
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 TEMPLATE = app
 
