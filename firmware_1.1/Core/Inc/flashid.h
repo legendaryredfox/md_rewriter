@@ -11,13 +11,26 @@
 typedef enum {
 	FLASH_LAYOUT_UNKNOWN = 0,
 	FLASH_LAYOUT_BOTTOM_BOOT,       /* eight 8 KiB sectors at the start of the chip */
-	FLASH_LAYOUT_NO_BOTTOM_BOOT     /* top boot or uniform: the first 64 KiB is one sector */
+	FLASH_LAYOUT_NO_BOTTOM_BOOT,    /* uniform: the first 64 KiB is one sector */
+	FLASH_LAYOUT_TOP_BOOT           /* top boot: first 64 KiB is one sector, the last 64 KiB is eight 8 KiB sectors (needs `words`) */
 } flash_layout_t;
+
+/* Command set of the chip. AMD_555 is what 1.0 used and what every chip of the table had until
+ * 2026-11-04. AMD_5555 is the same sequence with unlock addresses 5555h/2AAAh (MX29L3211).
+ * INTEL is the Intel/Sharp set (28F400): FFh reset, 90h ID, 40h program, 20h+D0h block erase,
+ * status register bit 7 = ready. Zero must stay AMD_555: table rows that do not name one get it. */
+typedef enum {
+	FLASH_CMDSET_AMD_555 = 0,
+	FLASH_CMDSET_AMD_5555,
+	FLASH_CMDSET_INTEL
+} flash_cmdset_t;
 
 typedef struct {
 	const char *name;
 	flash_layout_t layout;
 	int write_buffer;               /* 1: takes the 16-word Write Buffer Programming command (datasheet-confirmed) */
+	flash_cmdset_t cmdset;
+	uint32_t words;                 /* chip size in 16-bit words, 0 = unknown (only TOP_BOOT needs it) */
 } flash_info_t;
 
 /* id[0] = manufacturer, id[1] = device (cycle 1), id[2] = cycle 2 (word 0x0E), id[3] = cycle 3

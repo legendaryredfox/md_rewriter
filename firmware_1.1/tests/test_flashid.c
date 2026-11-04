@@ -7,7 +7,7 @@ static int failures;
 
 static void expect(const char *what, const uint8_t id[4], int known, const char *name, flash_layout_t layout)
 {
-	flash_info_t info = { "untouched", FLASH_LAYOUT_UNKNOWN, 0 };
+	flash_info_t info = { "untouched", FLASH_LAYOUT_UNKNOWN, 0, FLASH_CMDSET_AMD_555, 0 };
 	const int got = flash_identify(id, &info);
 	int ok = (got == known);
 	if(ok && known)
@@ -39,12 +39,30 @@ int main(void)
 
 	expect("MX29LV640EB", mx, 1, "MX29LV640EB", FLASH_LAYOUT_BOTTOM_BOOT);
 	expect("MX29LV640EB, other cycles", mx0, 1, "MX29LV640EB", FLASH_LAYOUT_BOTTOM_BOOT);
+	{
+		const uint8_t m29w320eb[4] = { 0x20, 0x57, 0x00, 0x00 };
+		const uint8_t mx3211[4]    = { 0xC2, 0xF9, 0x00, 0x00 };
+		expect("M29W320EB (KY cart)", m29w320eb, 1, "M29W320EB", FLASH_LAYOUT_BOTTOM_BOOT);
+		flash_info_t ci = { "untouched", FLASH_LAYOUT_UNKNOWN, 0, FLASH_CMDSET_AMD_555, 0 };
+		const uint8_t pa28b[4] = { 0x89, 0x71, 0x00, 0x00 };
+		const uint8_t pa28t[4] = { 0x89, 0x70, 0x00, 0x00 };
+		expect("MX29L3211 (KY cart)", mx3211, 1, "MX29L3211", FLASH_LAYOUT_UNKNOWN);
+		expect("PA28F400B", pa28b, 1, "PA28F400B", FLASH_LAYOUT_BOTTOM_BOOT);
+		expect("PA28F400T", pa28t, 1, "PA28F400T", FLASH_LAYOUT_NO_BOTTOM_BOOT);
+		{
+			int ok = flash_identify(mx3211, &ci) && ci.cmdset == FLASH_CMDSET_AMD_5555;
+			ok = ok && flash_identify(pa28b, &ci) && ci.cmdset == FLASH_CMDSET_INTEL;
+			ok = ok && flash_identify(m29w320eb, &ci) && ci.cmdset == FLASH_CMDSET_AMD_555;
+			printf("%s command set per chip\n", ok ? "PASS" : "FAIL");
+			if(!ok) failures++;
+		}
+	}
 	expect("MX29LV640ET layout stays unknown", mxet, 1, "MX29LV640ET", FLASH_LAYOUT_UNKNOWN);
-	expect("M29W640DT", dt, 1, "M29W640DT", FLASH_LAYOUT_NO_BOTTOM_BOOT);
+	expect("M29W640DT", dt, 1, "M29W640DT", FLASH_LAYOUT_TOP_BOOT);
 	expect("M29W640DB", db, 1, "M29W640DB", FLASH_LAYOUT_BOTTOM_BOOT);
 	expect("M29W640G layout stays unknown", g, 1, "M29W640G", FLASH_LAYOUT_UNKNOWN);
 	{
-		flash_info_t i = { "", FLASH_LAYOUT_UNKNOWN, 0 };
+		flash_info_t i = { "", FLASH_LAYOUT_UNKNOWN, 0, FLASH_CMDSET_AMD_555, 0 };
 		int ok = flash_identify(gl03, &i) && i.write_buffer == 1;
 		ok = ok && flash_identify(gl01, &i) && i.write_buffer == 1;
 		ok = ok && flash_identify(mx, &i) && i.write_buffer == 0;
@@ -52,7 +70,7 @@ int main(void)
 		printf("%s write buffer only for the S29GL064N\n", ok ? "PASS" : "FAIL");
 		if(!ok) failures++;
 	}
-	expect("S29GL064N model 03 (top boot)", gl03, 1, "S29GL064N", FLASH_LAYOUT_NO_BOTTOM_BOOT);
+	expect("S29GL064N model 03 (top boot)", gl03, 1, "S29GL064N", FLASH_LAYOUT_TOP_BOOT);
 	expect("S29GL064N model 04 (bottom boot)", gl04, 1, "S29GL064N", FLASH_LAYOUT_BOTTOM_BOOT);
 	expect("S29GL064N uniform", gl01, 1, "S29GL064N", FLASH_LAYOUT_NO_BOTTOM_BOOT);
 	expect("S29GL064N with odd cycle 3 is unknown layout", glodd, 1, "S29GL064N", FLASH_LAYOUT_UNKNOWN);

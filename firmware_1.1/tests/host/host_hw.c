@@ -8,16 +8,24 @@
 #include <string.h>
 #include "main.h"
 #include "host_hw.h"
+#include "MD.h"
 
-#define WORDS 0x400000U
+#define WORDS 0x400000U           /* size of the array allocated; a chip may be smaller (cfg.words) */
+#define CHIP_WORDS (cfg.words ? cfg.words : WORDS)
 #define NS_PER_NOP 55ULL         /* one Delay_nop iteration, about 4 cycles at 72 MHz (assumed) */
 
-const hw_chip_config_t HW_MX29LV640EB    = { HW_BOTTOM_BOOT, { 0x00C2, 0x22CB, 0x0000, 0x0000 }, 9000, 500000000ULL, 40000000000ULL, 0 };
-const hw_chip_config_t HW_S29GL064N_03   = { HW_TOP_BOOT,    { 0x0001, 0x227E, 0x220C, 0x2201 }, 15000, 500000000ULL, 40000000000ULL, 1 };
-const hw_chip_config_t HW_S29GL064N_04   = { HW_BOTTOM_BOOT, { 0x0001, 0x227E, 0x220C, 0x2200 }, 15000, 500000000ULL, 40000000000ULL, 1 };
-const hw_chip_config_t HW_S29GL064N_01   = { HW_UNIFORM,     { 0x0001, 0x227E, 0x2210, 0x2201 }, 15000, 500000000ULL, 40000000000ULL, 1 };
-const hw_chip_config_t HW_SST39VF6401B  = { HW_UNIFORM,     { 0x00BF, 0x236D, 0x0000, 0x0000 }, 10000, 18000000ULL, 40000000ULL, 0 };
-const hw_chip_config_t HW_M29W640DT      = { HW_TOP_BOOT,    { 0x0020, 0x22DE, 0x0000, 0x0000 }, 10000, 800000000ULL, 40000000000ULL, 0 };
+const hw_chip_config_t HW_MX29LV640EB    = { HW_BOTTOM_BOOT, { 0x00C2, 0x22CB, 0x0000, 0x0000 }, 9000, 500000000ULL, 40000000000ULL, 0, HW_FAMILY_AMD, 0 };
+const hw_chip_config_t HW_S29GL064N_03   = { HW_TOP_BOOT,    { 0x0001, 0x227E, 0x220C, 0x2201 }, 15000, 500000000ULL, 40000000000ULL, 1, HW_FAMILY_AMD, 0 };
+const hw_chip_config_t HW_S29GL064N_04   = { HW_BOTTOM_BOOT, { 0x0001, 0x227E, 0x220C, 0x2200 }, 15000, 500000000ULL, 40000000000ULL, 1, HW_FAMILY_AMD, 0 };
+const hw_chip_config_t HW_S29GL064N_01   = { HW_UNIFORM,     { 0x0001, 0x227E, 0x2210, 0x2201 }, 15000, 500000000ULL, 40000000000ULL, 1, HW_FAMILY_AMD, 0 };
+const hw_chip_config_t HW_SST39VF6401B  = { HW_UNIFORM,     { 0x00BF, 0x236D, 0x0000, 0x0000 }, 10000, 18000000ULL, 40000000ULL, 0, HW_FAMILY_AMD, 0 };
+const hw_chip_config_t HW_M29W640DT      = { HW_TOP_BOOT,    { 0x0020, 0x22DE, 0x0000, 0x0000 }, 10000, 800000000ULL, 40000000000ULL, 0, HW_FAMILY_AMD, 0 };
+
+const hw_chip_config_t HW_M29W320EB      = { HW_BOTTOM_BOOT, { 0x0020, 0x2257, 0x0000, 0x0000 }, 10000, 800000000ULL, 40000000000ULL, 0, HW_FAMILY_AMD, 0 };
+const hw_chip_config_t HW_M29W320ET      = { HW_TOP_BOOT,    { 0x0020, 0x2256, 0x0000, 0x0000 }, 10000, 800000000ULL, 40000000000ULL, 0, HW_FAMILY_AMD, 0x200000U };
+const hw_chip_config_t HW_MX29L3211      = { HW_UNIFORM,     { 0x00C2, 0x00F9, 0x0000, 0x0000 }, 11000, 700000000ULL, 40000000000ULL, 0, HW_FAMILY_AMD_5555, 0 };
+const hw_chip_config_t HW_PA28F400B      = { HW_BOTTOM_BOOT, { 0x0089, 0x4471, 0x0000, 0x0000 }, 8000, 300000000ULL, 4000000000ULL, 0, HW_FAMILY_INTEL, 0 };
+const hw_chip_config_t HW_PA28F400T      = { HW_TOP_BOOT,    { 0x0089, 0x4470, 0x0000, 0x0000 }, 8000, 300000000ULL, 4000000000ULL, 0, HW_FAMILY_INTEL, 0 };
 
 typedef enum { S_READ, S_C1, S_C2, S_AUTO, S_PROG_DATA, S_E1, S_E2, S_E3, S_PROG_BUSY, S_ERASE_BUSY, S_FAIL,
                S_WB_COUNT, S_WB_DATA, S_WB_CONFIRM, S_WB_ABORT } state_t;
@@ -46,6 +54,34 @@ char hw_error_text[256];
 uint64_t hw_now_ns;
 char hw_cdc_log[4096];
 
+/* ---- unlock address decode: 11 bits for the usual AMD parts, 15 bits for the 5555h family ---- */
+static int is_u1(uint32_t addr)
+{
+	return (cfg.family == HW_FAMILY_AMD_5555) ? ((addr & 0x7FFFU) == 0x5555U) : ((addr & 0x7FFU) == 0x555U);
+}
+static int is_u2(uint32_t addr)
+{
+	return (cfg.family == HW_FAMILY_AMD_5555) ? ((addr & 0x7FFFU) == 0x2AAAU) : ((addr & 0x7FFU) == 0x2AAU);
+}
+
+/* ---- Intel/Sharp 28F400 model ---- */
+typedef enum { I_ARRAY, I_ID, I_PROG_DATA, I_ERASE_CONFIRM, I_STATUS } istate_t;
+static istate_t istate;
+static uint16_t isr;                   /* status register, bit 7 = ready */
+int hw_intel_block_erases, hw_intel_programs;
+
+static void intel_block_of(uint32_t a, uint32_t *start, uint32_t *size)
+{
+	static const uint32_t bs[7] = { 0x0000U, 0x2000U, 0x3000U, 0x4000U, 0x10000U, 0x20000U, 0x30000U };
+	static const uint32_t bn[7] = { 0x2000U, 0x1000U, 0x1000U, 0xC000U, 0x10000U, 0x10000U, 0x10000U };
+	const int top = (cfg.layout == HW_TOP_BOOT);
+	const uint32_t m = top ? (0x3FFFFU - (a & 0x3FFFFU)) : (a & 0x3FFFFU);
+	int i = 6;
+	while(i > 0 && bs[i] > m) i--;
+	if(top) { *start = 0x40000U - (bs[i] + bn[i]); *size = bn[i]; }
+	else { *start = bs[i]; *size = bn[i]; }
+}
+
 static void fail(const char *what)
 {
 	if(hw_errors == 0)
@@ -60,7 +96,7 @@ static void sector_of(uint32_t a, uint32_t *start, uint32_t *size)
 	if(cfg.layout == HW_BOTTOM_BOOT)
 		small = (a < 0x8000U);
 	else if(cfg.layout == HW_TOP_BOOT)
-		small = (a >= WORDS - 0x8000U);
+		small = (a >= CHIP_WORDS - 0x8000U);
 	*size = small ? 0x1000U : 0x8000U;
 	*start = a & ~(*size - 1U);
 }
@@ -76,7 +112,6 @@ static void erase_words(uint32_t start, uint32_t n)
 static void chip_write(uint32_t addr, uint16_t data)
 {
 	const uint8_t cmd = (uint8_t)(data & 0xFFU);
-	const uint32_t a11 = addr & 0x7FFU;
 
 	hw_write_cycles++;
 	if(state == S_PROG_BUSY || state == S_ERASE_BUSY)
@@ -92,12 +127,70 @@ static void chip_write(uint32_t addr, uint16_t data)
 		}
 	if(rom_only)
 		return;
+	if(cfg.family == HW_FAMILY_INTEL)
+		{
+			/* a command written while the chip is busy is ignored (the status register is not ready) */
+			if(hw_now_ns < busy_until && (istate == I_STATUS) && !(isr & 0x80U))
+				{
+					hw_program_while_busy++;
+					return;
+				}
+			switch(istate)
+				{
+				case I_PROG_DATA:
+					{
+						const uint16_t old = mem[addr];
+						hw_intel_programs++;
+						hw_program_ops++;
+						isr = 0x00;
+						if(data & (uint16_t)~old)
+							isr = 0x10;          /* 0 to 1 cannot be programmed: program error */
+						else
+							mem[addr] = (uint16_t)(old & data);
+						busy_until = hw_now_ns + cfg.program_ns;
+						istate = I_STATUS;
+						return;
+					}
+				case I_ERASE_CONFIRM:
+					if(cmd == 0xD0U)
+						{
+							uint32_t st, sz;
+							intel_block_of(addr, &st, &sz);
+							erase_words(st, sz);
+							hw_intel_block_erases++;
+							hw_sector_erases++;
+							isr = 0x00;
+							busy_until = hw_now_ns + cfg.sector_erase_ns;
+							istate = I_STATUS;
+						}
+					else
+						{
+							isr = 0x30;          /* command sequence error */
+							istate = I_STATUS;
+							busy_until = 0;
+						}
+					return;
+				default:
+					break;
+				}
+			switch(cmd)
+				{
+				case 0xFFU: istate = I_ARRAY; break;
+				case 0x90U: istate = I_ID; break;
+				case 0x70U: istate = I_STATUS; break;
+				case 0x50U: isr = 0; break;
+				case 0x40U: istate = I_PROG_DATA; break;
+				case 0x20U: istate = I_ERASE_CONFIRM; break;
+				default: break;                  /* AAh, 55h, F0h, A0h ...: not Intel commands, ignored */
+				}
+			return;
+		}
 	if(state == S_WB_ABORT)
 		{
 			/* Write-to-Buffer-Abort Reset: AAh@555, 55h@2AA, F0h@555 */
-			if(wb_abort_seq == 0 && a11 == 0x555U && cmd == 0xAAU) wb_abort_seq = 1;
-			else if(wb_abort_seq == 1 && a11 == 0x2AAU && cmd == 0x55U) wb_abort_seq = 2;
-			else if(wb_abort_seq == 2 && a11 == 0x555U && cmd == 0xF0U) { state = S_READ; wb_abort_seq = 0; }
+			if(wb_abort_seq == 0 && is_u1(addr) && cmd == 0xAAU) wb_abort_seq = 1;
+			else if(wb_abort_seq == 1 && is_u2(addr) && cmd == 0x55U) wb_abort_seq = 2;
+			else if(wb_abort_seq == 2 && is_u1(addr) && cmd == 0xF0U) { state = S_READ; wb_abort_seq = 0; }
 			else wb_abort_seq = 0;
 			return;
 		}
@@ -172,16 +265,16 @@ static void chip_write(uint32_t addr, uint16_t data)
 		{
 		case S_READ:
 		case S_AUTO:
-			state = (a11 == 0x555U && cmd == 0xAAU) ? S_C1 : state;
+			state = (is_u1(addr) && cmd == 0xAAU) ? S_C1 : state;
 			break;
 		case S_C1:
-			state = (a11 == 0x2AAU && cmd == 0x55U) ? S_C2 : S_READ;
+			state = (is_u2(addr) && cmd == 0x55U) ? S_C2 : S_READ;
 			break;
 		case S_C2:
-			if(a11 == 0x555U && cmd == 0x90U) state = S_AUTO;
+			if(is_u1(addr) && cmd == 0x90U) state = S_AUTO;
 			else if(cmd == 0x25U && cfg.write_buffer) { sector_of(addr, &wb_sector_start, &wb_sector_size); state = S_WB_COUNT; }
-			else if(a11 == 0x555U && cmd == 0xA0U) state = S_PROG_DATA;
-			else if(a11 == 0x555U && cmd == 0x80U) state = S_E1;
+			else if(is_u1(addr) && cmd == 0xA0U) state = S_PROG_DATA;
+			else if(is_u1(addr) && cmd == 0x80U) state = S_E1;
 			else state = S_READ;
 			break;
 		case S_PROG_DATA:
@@ -204,10 +297,10 @@ static void chip_write(uint32_t addr, uint16_t data)
 			}
 			break;
 		case S_E1:
-			state = (a11 == 0x555U && cmd == 0xAAU) ? S_E2 : S_READ;
+			state = (is_u1(addr) && cmd == 0xAAU) ? S_E2 : S_READ;
 			break;
 		case S_E2:
-			state = (a11 == 0x2AAU && cmd == 0x55U) ? S_E3 : S_READ;
+			state = (is_u2(addr) && cmd == 0x55U) ? S_E3 : S_READ;
 			break;
 		case S_E3:
 			if(cmd == 0x30U)
@@ -219,7 +312,7 @@ static void chip_write(uint32_t addr, uint16_t data)
 					busy_until = hw_now_ns + cfg.sector_erase_ns;
 					state = S_ERASE_BUSY;
 				}
-			else if(cmd == 0x10U && a11 == 0x555U)
+			else if(cmd == 0x10U && is_u1(addr))
 				{
 					erase_words(0, WORDS);
 					hw_chip_erases++;
@@ -249,6 +342,20 @@ static uint16_t abort_status_word(void)
 
 static uint16_t chip_read(uint32_t addr)
 {
+	if(cfg.family == HW_FAMILY_INTEL)
+		{
+			if(rom_only) return mem[addr];
+			switch(istate)
+				{
+				case I_ID:
+					return (addr & 0xFFU) == 0 ? cfg.id[0] : ((addr & 0xFFU) == 1 ? cfg.id[1] : 0);
+				case I_STATUS:
+					if(hw_now_ns >= busy_until) return (uint16_t)(isr | 0x80U);
+					return isr;
+				default:
+					return mem[addr];
+				}
+		}
 	switch(state)
 		{
 		case S_AUTO:
@@ -417,6 +524,11 @@ void hw_reset(const hw_chip_config_t *chip)
 	ports[4].CRL = ports[4].CRH = 0x88888888U;   /* power-up: floating inputs */
 	ports[4].ODR = 0xFFFFU;
 	state = S_READ;
+	istate = I_ARRAY;
+	isr = 0;
+	busy_until = 0;
+	hw_intel_block_erases = hw_intel_programs = 0;
+	flash_probe_forget();            /* a new chip: the firmware must probe it again */
 	wr_pending = 0;
 	rom_only = 0;
 	toggle = 0;

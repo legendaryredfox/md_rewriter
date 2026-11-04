@@ -14,7 +14,7 @@ OBJCOPY  := $(PREFIX)objcopy
 SIZE     := $(PREFIX)size
 
 # Version string reported in the connect banner log; override with `make FW_VERSION=...`.
-FW_VERSION ?= 1.1.0-dev
+FW_VERSION ?= 1.1.0
 
 CPU      := -mcpu=cortex-m3 -mthumb
 DEFS     := -DUSE_HAL_DRIVER -DSTM32F103xB -DFW_VERSION=\"$(FW_VERSION)\"

@@ -9,6 +9,18 @@
 
 	char disbuff[40];
 
+	/* Active flash command set. flash_probe() chooses it from the chip ID; until a chip proves
+	 * otherwise it stays AMD_555, which is what 1.0 always did (docs/KY_SUPPORT.md). */
+	static flash_cmdset_t g_cmdset = FLASH_CMDSET_AMD_555;
+	static uint32_t g_u1 = 0x555U, g_u2 = 0x2AAU;          /* unlock addresses of the AMD sets */
+	static uint8_t g_probed = 0;                           /* 1: the variables above and g_info describe the cartridge */
+	static flash_info_t g_info;
+	static uint8_t g_info_valid = 0;                       /* 1: the chip is in the table */
+	static void ensure_probed(void);
+	static uint8_t intel_program_word(uint32_t addr, uint8_t hi, uint8_t lo);
+	static uint8_t intel_erase_block(uint32_t addr);
+	static void intel_block(uint32_t a, uint32_t *start, uint32_t *size);
+
 	void Delay_nop(uint32_t nop)
 		{
 #ifdef MD_HOST_TEST
@@ -183,10 +195,10 @@
 					if(buffered)
 						{
 							/* Write-to-Buffer-Abort Reset: AAh, 55h, F0h (also resets after DQ5) */
-							setByte(FLASH_UNLOCK_1, 0xaa);
-							setByte(FLASH_UNLOCK_2, 0x55);
+							setByte(g_u1, 0xaa);
+							setByte(g_u2, 0x55);
 						}
-					setByte(FLASH_UNLOCK_1, 0xf0);   /* reset: back to read array mode */
+					setByte(g_u1, 0xf0);   /* reset: back to read array mode */
 				}
 			return ok;
 		}
@@ -200,9 +212,12 @@
 	 * Same bus sequence and delays as the loop in 1.0's main.c. Returns 1 when done, 0 on failure. */
 	uint8_t flash_program_word(uint32_t addr, uint8_t hi, uint8_t lo)
 		{
-			setByte(0x555,0xaa);
-			setByte(0x2aa,0x55);
-			setByte(0x555,0xa0);	
+			ensure_probed();
+			if(g_cmdset == FLASH_CMDSET_INTEL)
+				return intel_program_word(addr, hi, lo);
+			setByte(g_u1,0xaa);
+			setByte(g_u2,0x55);
+			setByte(g_u1,0xa0);	
 			GPIO_WriteHigh(GPIOE, hi);								
 			GPIO_WriteLow(GPIOE, lo);
 			setAddress(addr);		
@@ -238,9 +253,8 @@
 			if(flash_fast_state == 0)
 				{
 					uint8_t id[4];
-					flash_info_t info;
-					flash_autoselect(id);
-					flash_fast_state = (flash_identify(id, &info) && info.write_buffer) ? 1 : 2;
+					flash_probe(id);
+					flash_fast_state = (g_info_valid && g_info.write_buffer) ? 1 : 2;
 				}
 			return (flash_fast_state == 1) ? 1 : 0;
 #else
@@ -269,8 +283,8 @@
 				return 1;
 			{
 				const uint32_t sa = page_addr + first;
-				setByte(FLASH_UNLOCK_1, 0xaa);
-				setByte(FLASH_UNLOCK_2, 0x55);
+				setByte(g_u1, 0xaa);
+				setByte(g_u2, 0x55);
 				setByte(sa, 0x25);
 				setByte(sa, (uint16_t)(last - first));       /* number of words minus one */
 				for(k = first; k <= last; k++)
@@ -292,13 +306,17 @@
 
 	uint8_t erase_sector(uint32_t sector_addr) 
 		{
-			uint32_t start = HAL_GetTick();
+			uint32_t start;
+			ensure_probed();
+			if(g_cmdset == FLASH_CMDSET_INTEL)
+				return intel_erase_block(sector_addr);
+			start = HAL_GetTick();
 			write_mode();
-			setByte(0x555, 0xaa);
-			setByte(0x2aa, 0x55);
-			setByte(0x555, 0x80);
-			setByte(0x555, 0xaa);
-			setByte(0x2aa, 0x55);
+			setByte(g_u1, 0xaa);
+			setByte(g_u2, 0x55);
+			setByte(g_u1, 0x80);
+			setByte(g_u1, 0xaa);
+			setByte(g_u2, 0x55);
 			setByte(sector_addr, 0x30);
 			while (1) 
 				{
@@ -306,7 +324,7 @@
 						{
 							/* chip never finished: put it back in read-array mode and report failure */
 							write_mode();
-							setByte(0x555, 0xf0);
+							setByte(g_u1, 0xf0);
 							return 0;
 						}
 					read_mode();
@@ -331,11 +349,11 @@
 								}
 							/* The data bus is an input here (read_mode above): switch before writing the command. */
 							write_mode();
-							setByte(0x555, 0xaa);
-							setByte(0x2aa, 0x55);
-							setByte(0x555, 0x80);
-							setByte(0x555, 0xaa);
-							setByte(0x2aa, 0x55);
+							setByte(g_u1, 0xaa);
+							setByte(g_u2, 0x55);
+							setByte(g_u1, 0x80);
+							setByte(g_u1, 0xaa);
+							setByte(g_u2, 0x55);
 							setByte(sector_addr, 0x30);
 						}
 			}
@@ -347,9 +365,44 @@
 	 * step is 8 KiB (eight small boot sectors) only on chips that may have them, see NFW-10. */
 	uint8_t erase_range(uint32_t *address, uint32_t words)
 		{
+			ensure_probed();
+			if(g_cmdset == FLASH_CMDSET_INTEL)
+				{
+					/* Intel blocks are irregular (16/8/8/96/128/128/128 KB): erase the block holding each
+					 * address and step to the next one. Dots as for the AMD path: one per 8 KiB below
+					 * 64 KiB, one per 64 KiB above. */
+					for(uint32_t i = 0; i < words; )
+						{
+							uint32_t bs, bn, a;
+							intel_block(*address, &bs, &bn);
+							if(!erase_sector(*address))
+								return 0;
+							Delay_nop(100);
+							for(a = *address; a < bs + bn; a += (a < 0x8000U) ? 0x1000U : 0x8000U)
+								CDC_Transmit(".");
+							i += (bs + bn) - *address;
+							*address = bs + bn;
+						}
+					return 1;
+				}
 			const uint32_t smallstep = flash_has_bottom_boot_sectors() ? 0x1000U : 0x8000U;
 			for(uint32_t i = 0;i < words ;)
 				{
+					if(g_info_valid && (g_info.layout == FLASH_LAYOUT_TOP_BOOT) && (g_info.words != 0U) && (*address >= g_info.words - 0x8000U))
+						{
+							/* Top boot chip: the last 64 KiB is eight 8 KiB sectors, one 30h each (a
+							 * 4 MiB ROM on a 32 Mbit chip reaches them). One dot, as for a 64 KiB step. */
+							for(uint8_t k = 0; k < 8; k++)
+								{
+									if(!erase_sector(*address + (uint32_t)k * 0x1000U))
+										return 0;
+									Delay_nop(100);
+								}
+							CDC_Transmit(".");
+							*address = *address + 0x8000U;
+							i = i + 0x8000U;
+							continue;
+						}
 					if(!erase_sector(*address))
 						{
 							return 0;
@@ -377,18 +430,43 @@
 			{
 				CDC_Transmit("-- MD CART ERASE --\r\n");	
 				CDC_Transmit("FLASH ERASE START\r\n");		
+			ensure_probed();
+				if(g_cmdset == FLASH_CMDSET_INTEL)
+					{
+						/* Intel parts have no chip erase command: erase block after block. */
+						uint32_t a = 0;
+						const uint32_t t0 = HAL_GetTick();
+						while(a < 0x40000U)
+							{
+								uint32_t bs, bn;
+								intel_block(a, &bs, &bn);
+								if(!intel_erase_block(a))
+									{
+										HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13,GPIO_PIN_RESET);
+										return 0;
+									}
+								a = bs + bn;
+								HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
+								sprintf(disbuff,"USE TIME %lu s\r\n",(unsigned long)((HAL_GetTick() - t0) / 1000U));
+								CDC_Transmit(disbuff);
+							}
+						write_mode();
+						CDC_Transmit("FLASH ERASE FINISH!!!\r\n");
+						HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13,GPIO_PIN_RESET);
+						return 1;
+					}
 				write_mode();
 				HAL_Delay(10);
 				MD_RD= 1;
 				MD_CS= 1;
 				MD_WR= 1;
 				HAL_Delay(1);
-				setByte(0x555, 0xaa);
-				setByte(0x2aa, 0x55);
-				setByte(0x555, 0x80);
-				setByte(0x555, 0xaa);
-				setByte(0x2aa, 0x55);
-				setByte(0x555, 0x10);
+				setByte(g_u1, 0xaa);
+				setByte(g_u2, 0x55);
+				setByte(g_u1, 0x80);
+				setByte(g_u1, 0xaa);
+				setByte(g_u2, 0x55);
+				setByte(g_u1, 0x10);
 				MD_RD= 1;
 				MD_CS= 1;
 				MD_WR= 1;
@@ -413,7 +491,7 @@
 					{
 						/* chip never reported erased: back to read-array mode, report failure */
 						write_mode();
-						setByte(0x555, 0xf0);
+						setByte(g_u1, 0xf0);
 						HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13,GPIO_PIN_RESET);
 						return 0;
 					}
@@ -425,10 +503,11 @@
 			}
 			
 			
-	/* One autoselect session: reads manufacturer, device (cycles 1) and the two further ID cycles
-	 * (words 0x0E and 0x0F, low byte of each), then sends the reset command. Same bus sequence and
-	 * delays as the second half of 1.0's checkid(). Needs the chip in read-array mode. */
-	void flash_autoselect(uint8_t id[4])
+	/* One AMD autoselect session with the given unlock addresses: reads manufacturer, device (cycle 1)
+	 * and the two further ID cycles (words 0x0E and 0x0F, low byte of each), then sends the reset
+	 * command. With 0x555/0x2AA it is the same bus sequence and delays as the second half of 1.0's
+	 * checkid(). Needs the chip in read-array mode. */
+	static void autoselect_amd(uint32_t a1, uint32_t a2, uint8_t id[4])
 			{
 				write_mode();
 				HAL_Delay(10);
@@ -436,9 +515,9 @@
 				MD_CS= 1;
 				MD_WR= 1;
 				HAL_Delay(1);
-				setByte(0x555, 0xaa);
-				setByte(0x2aa, 0x55);
-				setByte(0x555, 0x90);			
+				setByte(a1, 0xaa);
+				setByte(a2, 0x55);
+				setByte(a1, 0x90);			
 				MD_RD= 1;
 				MD_CS= 1;
 				MD_WR= 1;
@@ -453,12 +532,116 @@
 				MD_CS= 1;
 				MD_WR= 1;
 				HAL_Delay(1);
-				setByte(0x555, 0xaa);
-				setByte(0x2aa, 0x55);
-				setByte(0x555, 0xf0);				
+				setByte(a1, 0xaa);
+				setByte(a2, 0x55);
+				setByte(a1, 0xf0);				
 				MD_RD= 1;
 				MD_CS= 1;
 				MD_WR= 1;
+			}
+
+	/* Intel/Sharp ID: FFh (read array), 90h (read ID), manufacturer at word 0, device at word 1
+	 * (FlashKit-MD-Plus flash28IdentMfr/Dev), then FFh again. Cycles 2 and 3 do not exist. */
+	static void autoselect_intel(uint8_t id[4])
+			{
+				write_mode();
+				HAL_Delay(10);
+				MD_RD= 1;
+				MD_CS= 1;
+				MD_WR= 1;
+				HAL_Delay(1);
+				setByte(0x0, 0xff);
+				setByte(0x0, 0x90);
+				MD_RD= 1;
+				MD_CS= 1;
+				MD_WR= 1;
+				read_mode();
+				id[0] = getByte(0x0);
+				id[1] = getByte(0x1);
+				id[2] = 0;
+				id[3] = 0;
+				write_mode();
+				setByte(0x0, 0xff);
+				MD_RD= 1;
+				MD_CS= 1;
+				MD_WR= 1;
+			}
+
+	/* ID read with the command set that is active now. */
+	void flash_autoselect(uint8_t id[4])
+			{
+				if(g_cmdset == FLASH_CMDSET_INTEL)
+					autoselect_intel(id);
+				else
+					autoselect_amd(g_u1, g_u2, id);
+			}
+
+	static void ensure_probed(void)
+			{
+				if(!g_probed)
+					{
+						uint8_t id[4];
+						flash_probe(id);
+					}
+			}
+
+	void flash_probe_forget(void)
+			{
+				g_probed = 0;
+				g_info_valid = 0;
+			}
+
+	static void flash_adopt(const flash_info_t *info)
+			{
+				g_info = *info;
+				g_info_valid = 1;
+				g_cmdset = info->cmdset;
+				g_u1 = (g_cmdset == FLASH_CMDSET_AMD_5555) ? 0x5555U : 0x555U;
+				g_u2 = (g_cmdset == FLASH_CMDSET_AMD_5555) ? 0x2AAAU : 0x2AAU;
+				g_probed = 1;
+				if(g_cmdset == FLASH_CMDSET_INTEL)
+					{
+						write_mode();
+						setByte(0x0, 0xff);        /* an Intel chip may still be in ID mode from an earlier probe */
+					}
+			}
+
+	/* Finds out which command set the cartridge speaks and keeps the answer until
+	 * flash_probe_forget(). Order: AMD 555h (what 1.0 did: nothing else touches the bus when the
+	 * chip is in the table), AMD 5555h, Intel. A chip found in none of them stays AMD 555h and
+	 * `id` holds the AMD 555h answer, which is what 1.0 printed. */
+	void flash_probe(uint8_t id[4])
+			{
+				uint8_t first[4], alt[4];
+				flash_info_t info;
+				g_probed = 0;
+				g_info_valid = 0;
+				g_cmdset = FLASH_CMDSET_AMD_555;
+				g_u1 = 0x555U;
+				g_u2 = 0x2AAU;
+				autoselect_amd(0x555U, 0x2AAU, first);
+				if(flash_identify(first, &info))
+					{
+						memcpy(id, first, 4);
+						flash_adopt(&info);
+						return;
+					}
+				autoselect_amd(0x5555U, 0x2AAAU, alt);
+				if(flash_identify(alt, &info) && (info.cmdset == FLASH_CMDSET_AMD_5555))
+					{
+						memcpy(id, alt, 4);
+						flash_adopt(&info);
+						return;
+					}
+				autoselect_intel(alt);
+				if(flash_identify(alt, &info) && (info.cmdset == FLASH_CMDSET_INTEL))
+					{
+						memcpy(id, alt, 4);
+						flash_adopt(&info);
+						return;
+					}
+				memcpy(id, first, 4);
+				g_probed = 1;
 			}
 
 	/* 1 when erase-by-size must step through eight 8 KiB sectors at the start of the chip (what
@@ -467,11 +650,107 @@
 	 * times. Unknown chips and unreadable IDs give 1, the 1.0 behaviour. */
 	uint8_t flash_has_bottom_boot_sectors(void)
 			{
-				uint8_t id[4];
-				flash_info_t info;
-				flash_autoselect(id);
-				if(flash_identify(id, &info) && (info.layout == FLASH_LAYOUT_NO_BOTTOM_BOOT))
+			ensure_probed();
+				if(g_info_valid && ((g_info.layout == FLASH_LAYOUT_NO_BOTTOM_BOOT) || (g_info.layout == FLASH_LAYOUT_TOP_BOOT)))
 					return 0;
+				return 1;
+			}
+
+	/* ---- Intel/Sharp command set (28F400, FlashKit-MD-Plus flash28*) ---- */
+
+	/* Block map of the 28F400 in words: 16 KB boot, 8 KB, 8 KB, 96 KB, then three 128 KB blocks.
+	 * Bottom boot (-B) as listed, top boot (-T) mirrored. Addresses past the chip: 128 KB blocks. */
+	static void intel_block(uint32_t a, uint32_t *start, uint32_t *size)
+			{
+				static const uint32_t bs[7] = { 0x0000U, 0x2000U, 0x3000U, 0x4000U, 0x10000U, 0x20000U, 0x30000U };
+				static const uint32_t bn[7] = { 0x2000U, 0x1000U, 0x1000U, 0xC000U, 0x10000U, 0x10000U, 0x10000U };
+				const int top = g_info_valid && (g_info.layout != FLASH_LAYOUT_BOTTOM_BOOT);
+				const uint32_t m = top ? (0x3FFFFU - a) : a;
+				uint8_t i;
+				if(a >= 0x40000U)
+					{
+						*start = a & ~0xFFFFU;
+						*size = 0x10000U;
+						return;
+					}
+				for(i = 6; i > 0 && bs[i] > m; i--) {}
+				if(top)
+					{
+						*start = 0x40000U - (bs[i] + bn[i]);
+						*size = bn[i];
+					}
+				else
+					{
+						*start = bs[i];
+						*size = bn[i];
+					}
+			}
+
+	/* 40h, then the data word, then poll the status register (bit 7 = ready). Errors: bit 4
+	 * (program), bit 3 (Vpp low), bit 1 (block locked). Always ends with FFh so the chip reads as
+	 * an array again. Returns 1 when the word was programmed. */
+	static uint8_t intel_program_word(uint32_t addr, uint8_t hi, uint8_t lo)
+			{
+				uint8_t sr = 0, ok = 0;
+				uint32_t polls;
+				setByte(addr, 0x40);
+				GPIO_WriteHigh(GPIOE, hi);
+				GPIO_WriteLow(GPIOE, lo);
+				setAddress(addr);
+				MD_CS = 0;
+				MD_WR = 0;
+				Delay_nop(35);
+				MD_WR = 1;
+				MD_CS = 1;
+				Delay_nop(80);
+				bus_input_fast();
+				for(polls = 0; polls < FLASH_PROGRAM_POLL_MAX; polls++)
+					{
+						sr = getByte(addr);
+						if(sr & 0x80U)
+							{
+								ok = 1;
+								break;
+							}
+					}
+				bus_output_fast();
+				if(!ok || (sr & 0x1AU))
+					{
+						setByte(addr, 0x50);       /* clear status register */
+						setByte(addr, 0xff);
+						return 0;
+					}
+				setByte(addr, 0xff);
+				return 1;
+			}
+
+	/* 20h, D0h (confirm) on the block, then poll bit 7. Errors: bit 5 (erase), 4 (command sequence),
+	 * 3 (Vpp low), 1 (locked). Returns 1 when the block is erased. */
+	static uint8_t intel_erase_block(uint32_t addr)
+			{
+				const uint32_t start = HAL_GetTick();
+				uint8_t sr = 0, ok = 0;
+				write_mode();
+				setByte(addr, 0x20);
+				setByte(addr, 0xd0);
+				bus_input_fast();
+				while((HAL_GetTick() - start) <= ERASE_SECTOR_TIMEOUT_MS)
+					{
+						sr = getByte(addr);
+						if(sr & 0x80U)
+							{
+								ok = 1;
+								break;
+							}
+					}
+				bus_output_fast();
+				if(!ok || (sr & 0x3AU))
+					{
+						setByte(addr, 0x50);
+						setByte(addr, 0xff);
+						return 0;
+					}
+				setByte(addr, 0xff);
 				return 1;
 			}
 
@@ -482,36 +761,9 @@
 				char disbuff[50];
 				uint8_t s1,s2;
 				uint8_t id[4];
-				write_mode();
-				HAL_Delay(10);
-				MD_RD= 1;
-				MD_CS= 1;
-				MD_WR= 1;
-				HAL_Delay(1);
-				setByte(0x555, 0xaa);
-				setByte(0x2aa, 0x55);
-				setByte(0x555, 0x90);			
-				MD_RD= 1;
-				MD_CS= 1;
-				MD_WR= 1;
-				read_mode();		
-				s1 = getByte(0x0);
-				s2 = getByte(0x1);
-				write_mode();
-				HAL_Delay(10);
-				MD_RD= 1;
-				MD_CS= 1;
-				MD_WR= 1;
-				HAL_Delay(1);
-				setByte(0x555, 0xaa);
-				setByte(0x2aa, 0x55);
-				setByte(0x555, 0xf0);	
-				MD_RD= 1;
-				MD_CS= 1;
-				MD_WR= 1;
-				read_mode();
-				HAL_Delay(100);
-				flash_autoselect(id);
+				/* flash_probe() does the autoselect session (AMD 555h first: the same bus sequence as 1.0's
+				 * second session) and picks the command set. 1.0's extra first session is gone. */
+				flash_probe(id);
 				s1 = id[0];
 				s2 = id[1];
 				

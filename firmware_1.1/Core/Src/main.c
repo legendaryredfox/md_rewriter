@@ -270,7 +270,10 @@ int main(void)
 				uint8_t writeFailed = 0;
 				uint32_t failAddr = 0;
 				if((addj == 0) && (bank == 0))
-					flash_fast_forget();          /* first block of an image: the cartridge may have been changed */
+					{
+						flash_fast_forget();          /* first block of an image: the cartridge may have been changed */
+						flash_probe_forget();
+					}
 				if(flash_fast_available())
 					{
 						/* FLASH_FAST: 32 Write Buffer operations of 16 words (the block is 512-word aligned) */
@@ -352,6 +355,7 @@ int main(void)
 			}
 		}
 		if (cmdbuff[0] == 0x0C) {//MD DUMPER CONNECT
+			flash_probe_forget();   /* the cartridge may have been swapped since the last command */
 			if((cmdbuff[1] == 0xAA)&&(cmdbuff[2] == 0x55)&&(cmdbuff[3] == 0xAA)&&(cmdbuff[4] == 0xBB)){
 			HAL_Delay(100);
 			CDC_Transmit("FlashMaster MD Dumper is connected\r\n");
@@ -375,6 +379,7 @@ int main(void)
 			}
 		}		
 		if (cmdbuff[0] == 0x0E) {//MDFLASHERASE
+			flash_probe_forget();   /* the cartridge may have been swapped since the last command */
 			if((cmdbuff[1] == 0xAA)&&(cmdbuff[2] == 0x55)&&(cmdbuff[3] == 0xAA)&&(cmdbuff[4] == 0xBB)){
 				if(!eraseFLASH())
 				{
@@ -408,6 +413,7 @@ int main(void)
 			}
 		}
 		if (cmdbuff[0] == 0x1E) {//MDCHOOSE SIZE SECTORERASE
+			flash_probe_forget();   /* the cartridge may have been swapped since the last command */
 			if((cmdbuff[1] == 0xAA)&&(cmdbuff[2] == 0x55)&&(cmdbuff[3] == 0xAA)&&(cmdbuff[4] == 0xBB)){
 				uint32_t address = 0;
 				uint32_t sectoradd = 0;
@@ -493,6 +499,7 @@ int main(void)
     }
 		
 		if (cmdbuff[0] == 0x2E) {//MDSECTORERASE
+			flash_probe_forget();   /* the cartridge may have been swapped since the last command */
 			if((cmdbuff[1] == 0xAA)&&(cmdbuff[2] == 0x55)&&(cmdbuff[3] == 0xAA)&&(cmdbuff[4] == 0xBB)){
 				write_mode();
 				uint32_t address = cmdbuff[5];

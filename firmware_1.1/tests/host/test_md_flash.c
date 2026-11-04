@@ -1,5 +1,5 @@
 /* Runs the real Core/Src/MD.c on the PC against the chip model in host_hw.c.
- * Build and run: make test   (in new_firmware/). */
+ * Build and run: make test   (in firmware_1.1/). */
 #include <stdio.h>
 #include <string.h>
 #include "main.h"
@@ -372,6 +372,156 @@ static void test_write_buffer(void)
 #endif
 }
 
+/* ---- other command sets: AMD with 5555h unlock (MX29L3211) and Intel (28F400), docs/KY_SUPPORT.md ---- */
+
+static void test_command_sets(void)
+{
+	uint32_t a;
+	uint32_t addr;
+	int ok;
+	const hw_chip_config_t *chips[] = { &HW_M29W320EB, &HW_MX29L3211, &HW_PA28F400B, &HW_PA28F400T };
+	/* top boot 32 Mbit chip: a 4 MiB ROM reaches the eight 8 KiB sectors at the end; each needs its own 30h */
+	hw_reset(&HW_M29W320ET);
+	idle_bus();
+	for(a = 0; a < 0x200000U; a += 0x800U)
+		hw_set_word(a, 0x0000);
+	addr = 0;
+	check(erase_range(&addr, 0x200000U) == 1, "M29W320ET: erase_range of 4 MiB succeeds");
+	ok = 1;
+	for(a = 0; a < 0x200000U; a += 0x800U)
+		if(hw_word(a) != 0xFFFF) ok = 0;
+	check(ok, "M29W320ET: every word blank, including the top 64 KiB (eight 8 KiB sectors)");
+	check_clean("M29W320ET erase_range");
+	const char *names[] = { "M29W320EB", "MX29L3211", "PA28F400B", "PA28F400T" };
+	const char *ids[] = { "FLASHID:2057\r\n", "FLASHID:C2F9\r\n", "FLASHID:8971\r\n", "FLASHID:8970\r\n" };
+	int k;
+
+	for(k = 0; k < 4; k++)
+		{
+			char what[80], line[64];
+			snprintf(what, sizeof(what), "detect %s", names[k]);
+			snprintf(line, sizeof(line), "%s MD FLASH CART\r\n", names[k]);
+			test_detect(chips[k], ids[k], line, what);
+		}
+
+	for(k = 0; k < 4; k++)
+		{
+			char what[100];
+			hw_reset(chips[k]);
+			idle_bus();
+			fill_block(chips[k], 0x100, 64);
+			snprintf(what, sizeof(what), "%s: program leaves the chip usable", names[k]);
+			check(hw_program_while_busy == 0, what);
+			check_clean(names[k]);
+			/* the chip must read as an array again after programming (Intel: FFh sent) */
+			read_mode();
+			check(getByte(0x100) == (uint8_t)(0x1234 & 0xFF), "array read after programming gives data, not status");
+			write_mode();
+		}
+
+	/* programming over data that is not erased: failure reported, chip usable afterwards */
+	for(k = 1; k < 4; k++)
+		{
+			hw_reset(chips[k]);
+			idle_bus();
+			hw_set_word(0x500, 0x00FF);
+			check(flash_program_word(0x500, 0x12, 0x34) == 0, "0->1 change reported on the new command sets");
+			check(flash_program_word(0x501, 0xAB, 0xCD) == 1 && hw_word(0x501) == 0xABCD, "usable after a program failure");
+			check_clean("program failure, new sets");
+		}
+
+	/* sector / block erase: erase_range and erase_sector */
+	hw_reset(&HW_MX29L3211);
+	idle_bus();
+	hw_set_word(0x10, 0x0000);
+	hw_set_word(0x8000, 0x0000);
+	check(erase_sector(0x8000) == 1 && hw_word(0x8000) == 0xFFFF && hw_word(0x10) == 0x0000, "MX29L3211: erase_sector erases one sector");
+	check(hw_sector_erases == 1, "MX29L3211: 30h accepted with the 5555h unlock");
+	check_clean("MX29L3211 erase");
+
+	hw_reset(&HW_PA28F400B);
+	idle_bus();
+	hw_set_word(0x1000, 0x0000);     /* in the 16 KB boot block (words 0..0x1FFF) */
+	hw_set_word(0x2000, 0x0000);     /* first 8 KB parameter block */
+	hw_set_word(0x5000, 0x0000);     /* inside the 96 KB block */
+	hw_set_word(0x10001, 0x0000);    /* 128 KB block */
+	check(erase_sector(0x1000) == 1 && hw_word(0x1000) == 0xFFFF && hw_word(0x2000) == 0x0000, "PA28F400B: boot block erased alone");
+	check(erase_sector(0x5000) == 1 && hw_word(0x5000) == 0xFFFF && hw_word(0x2000) == 0x0000, "PA28F400B: 96 KB block erased");
+	check(erase_sector(0x10001) == 1 && hw_word(0x10001) == 0xFFFF, "PA28F400B: 128 KB block erased");
+	check_clean("PA28F400B erase");
+
+	hw_reset(&HW_PA28F400T);
+	idle_bus();
+	hw_set_word(0x3F000, 0x0000);    /* last (boot) block of the top boot part: words 0x3E000..0x3FFFF */
+	hw_set_word(0x3D000, 0x0000);    /* the 8 KB block below it */
+	check(erase_sector(0x3F000) == 1 && hw_word(0x3F000) == 0xFFFF && hw_word(0x3D000) == 0x0000, "PA28F400T: top boot block erased alone");
+	check_clean("PA28F400T erase");
+
+	/* 1E path: erase_range steps over the irregular Intel blocks and covers the range */
+	hw_reset(&HW_PA28F400B);
+	idle_bus();
+	for(a = 0; a < 0x40000U; a += 0x800U)
+		hw_set_word(a, 0x0000);
+	addr = 0;
+	hw_cdc_clear();
+	check(erase_range(&addr, 0x40000U) == 1, "PA28F400B: erase_range of the whole chip succeeds");
+	ok = 1;
+	for(a = 0; a < 0x40000U; a += 0x800U)
+		if(hw_word(a) != 0xFFFF) ok = 0;
+	check(ok && addr == 0x40000U, "PA28F400B: the whole chip is blank, address ends past the chip");
+	check(hw_intel_block_erases == 7, "PA28F400B: seven blocks erased, none twice");
+	check_clean("PA28F400B erase_range");
+
+	/* chip erase on Intel = block after block */
+	hw_reset(&HW_PA28F400T);
+	idle_bus();
+	for(a = 0; a < 0x40000U; a += 0x800U)
+		hw_set_word(a, 0x0000);
+	hw_cdc_clear();
+	check(eraseFLASH() == 1 && strstr(hw_cdc_log, "FLASH ERASE FINISH!!!") != NULL, "PA28F400T: chip erase reports finish");
+	ok = 1;
+	for(a = 0; a < 0x40000U; a += 0x800U)
+		if(hw_word(a) != 0xFFFF) ok = 0;
+	check(ok && hw_intel_block_erases == 7, "PA28F400T: chip erase blanks all seven blocks");
+	check_clean("PA28F400T chip erase");
+
+	/* chip erase on the 5555h family uses the AMD chip erase with its own unlock */
+	hw_reset(&HW_MX29L3211);
+	idle_bus();
+	hw_set_word(0x1234, 0x0000);
+	check(eraseFLASH() == 1 && hw_word(0x1234) == 0xFFFF && hw_chip_erases == 1, "MX29L3211: chip erase works with the 5555h unlock");
+	check_clean("MX29L3211 chip erase");
+
+	/* the probe must not disturb chips the 1.0 sequence already knew: no 5555h or Intel traffic */
+	hw_reset(&HW_MX29LV640EB);
+	idle_bus();
+	{
+		uint8_t id[4];
+		flash_probe(id);
+		check(hw_write_cycles == 6, "known AMD chip: the probe costs the same 6 write cycles as 1.0");
+	}
+	/* an unknown chip is tried with all three sets and then stays on AMD 555h */
+	{
+		hw_chip_config_t odd = HW_MX29LV640EB;
+		uint8_t id[4];
+		odd.id[0] = 0x0055; odd.id[1] = 0x2266;
+		hw_reset(&odd);
+		idle_bus();
+		flash_probe(id);
+		check(id[0] == 0x55 && id[1] == 0x66, "unknown chip: the answer is the AMD 555h one");
+		check(flash_program_word(0x40, 0x12, 0x34) == 1 && hw_word(0x40) == 0x1234, "unknown chip: programs with the 1.0 AMD 555h sequence");
+		check_clean("unknown chip");
+	}
+	/* a cartridge swap is noticed after flash_probe_forget() */
+	hw_reset(&HW_PA28F400B);
+	idle_bus();
+	check(flash_program_word(0x20, 0x00, 0x55) == 1, "probe cache: Intel programmed");
+	hw_reset(&HW_M29W320EB);                  /* hw_reset forgets, as main.c does at connect/erase/first block */
+	idle_bus();
+	check(flash_program_word(0x20, 0x00, 0x55) == 1 && hw_word(0x20) == 0x0055, "probe cache: forgotten after a swap, AMD again");
+	check_clean("probe cache");
+}
+
 int main(void)
 {
 	test_detects();
@@ -380,6 +530,7 @@ int main(void)
 	test_erase();
 	test_read_back();
 	test_write_buffer();
+	test_command_sets();
 	printf("%d checks, %d failed\n", checks, failures);
 	return failures ? 1 : 0;
 }

@@ -66,7 +66,7 @@
 
 /* Version text sent right after the connect banner ("FWVER:x"). Set by the Makefile. */
 #ifndef FW_VERSION
-#define FW_VERSION "1.1.0-dev"
+#define FW_VERSION "1.1.0"
 #endif
 
 /* AMD/JEDEC unlock addresses (word addresses on the cartridge bus). */
@@ -110,6 +110,8 @@ void setByte(uint32_t address, uint16_t dat);
 uint8_t eraseFLASH(void);
 void checkid(void);
 void flash_autoselect(uint8_t id[4]);
+void flash_probe(uint8_t id[4]);          /* picks the command set from the chip ID */
+void flash_probe_forget(void);            /* the cartridge may have changed: probe again at the next use */
 uint8_t flash_has_bottom_boot_sectors(void);
 void checkheadermenu(void);
 uint8_t erase_sector(uint32_t sector_addr);
