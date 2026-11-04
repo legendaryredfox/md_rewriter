@@ -1,4 +1,4 @@
-# new_firmware
+# firmware_1.1
 
 Firmware for the md_rewriter STM32F103VB with the compatibility changes described in `../docs/NEW_FIRMWARE_SPEC.md`. **Not tested on hardware.** Do not flash it before reading `../docs/NEW_FIRMWARE_PLAN.md`, steps 2 and 3 (back up the original firmware first).
 
@@ -6,7 +6,7 @@ Firmware for the md_rewriter STM32F103VB with the compatibility changes describe
 
 ```bash
 sudo apt install gcc-arm-none-eabi make cppcheck        # once
-cd new_firmware
+cd firmware_1.1
 make                                  # build/md-rewriter-new.{elf,hex,bin}
 make OPT=-O3                          # other optimisation level (timing, see spec NFW-4)
 make OPT="-O1 -DFLASH_POLL=0"        # without DQ7 polling (the 1.0 write sequence)

@@ -165,7 +165,7 @@ cd ../.. && tools/check-firmware.sh                      # verificação estáti
 
 O firmware não pôde ser testado em hardware real nestas alterações: veja `docs/SPEC.md` e `docs/PLAN.md`.
 
-Firmware novo (`new_firmware/`): `cd new_firmware && make test && ./check.sh` roda os testes no PC (o `MD.c` real contra um modelo de chip flash) e a verificação estática. Nada do `new_firmware/` foi executado em hardware; estado, pendências e plano estão em `docs/NEW_FIRMWARE_PLAN.md` (tabela "Progress log") e `docs/NEW_FIRMWARE_SPEC.md`.
+Firmware novo (`firmware_1.1/`): `cd firmware_1.1 && make test && ./check.sh` roda os testes no PC (o `MD.c` real contra um modelo de chip flash) e a verificação estática. Nada do `firmware_1.1/` foi executado em hardware; estado, pendências e plano estão em `docs/NEW_FIRMWARE_PLAN.md` (tabela "Progress log") e `docs/NEW_FIRMWARE_SPEC.md`.
 
 ## Licença
 
@@ -332,7 +332,7 @@ cd ../.. && tools/check-firmware.sh                      # статическа�
 
 Изменения прошивки не проверялись на реальном оборудовании: см. `docs/SPEC.md` и `docs/PLAN.md`.
 
-Новая прошивка (`new_firmware/`): `cd new_firmware && make test && ./check.sh` запускает тесты на ПК (настоящий `MD.c` против модели flash-микросхемы) и статическую проверку. Ничего из `new_firmware/` не запускалось на реальном оборудовании; состояние, незавершённое и план — в `docs/NEW_FIRMWARE_PLAN.md` (таблица "Progress log") и `docs/NEW_FIRMWARE_SPEC.md`.
+Новая прошивка (`firmware_1.1/`): `cd firmware_1.1 && make test && ./check.sh` запускает тесты на ПК (настоящий `MD.c` против модели flash-микросхемы) и статическую проверку. Ничего из `firmware_1.1/` не запускалось на реальном оборудовании; состояние, незавершённое и план — в `docs/NEW_FIRMWARE_PLAN.md` (таблица "Progress log") и `docs/NEW_FIRMWARE_SPEC.md`.
 
 ## Лицензия
 
@@ -499,7 +499,7 @@ cd ../.. && tools/check-firmware.sh                      # 固件静态检查（
 
 固件的改动尚未在真实硬件上测试，详见 `docs/SPEC.md` 和 `docs/PLAN.md`。
 
-新固件（`new_firmware/`）：`cd new_firmware && make test && ./check.sh` 在电脑上运行测试（真实的 `MD.c` 对照 Flash 芯片模型）和静态检查。`new_firmware/` 的内容尚未在真实硬件上运行；状态、待办和计划见 `docs/NEW_FIRMWARE_PLAN.md`（"Progress log" 表）和 `docs/NEW_FIRMWARE_SPEC.md`。
+新固件（`firmware_1.1/`）：`cd firmware_1.1 && make test && ./check.sh` 在电脑上运行测试（真实的 `MD.c` 对照 Flash 芯片模型）和静态检查。`firmware_1.1/` 的内容尚未在真实硬件上运行；状态、待办和计划见 `docs/NEW_FIRMWARE_PLAN.md`（"Progress log" 表）和 `docs/NEW_FIRMWARE_SPEC.md`。
 
 ## 许可证
 
@@ -666,7 +666,7 @@ cd ../.. && tools/check-firmware.sh                      # static firmware check
 
 The firmware changes could not be tested on real hardware: see `docs/SPEC.md` and `docs/PLAN.md`.
 
-New firmware (`new_firmware/`): `cd new_firmware && make test && ./check.sh` runs the PC tests (the real `MD.c` against a flash chip model) and the static checks. Nothing in `new_firmware/` has run on hardware; status, open items and plan are in `docs/NEW_FIRMWARE_PLAN.md` (the "Progress log" table) and `docs/NEW_FIRMWARE_SPEC.md`.
+New firmware (`firmware_1.1/`): `cd firmware_1.1 && make test && ./check.sh` runs the PC tests (the real `MD.c` against a flash chip model) and the static checks. Nothing in `firmware_1.1/` has run on hardware; status, open items and plan are in `docs/NEW_FIRMWARE_PLAN.md` (the "Progress log" table) and `docs/NEW_FIRMWARE_SPEC.md`.
 
 ## License
 

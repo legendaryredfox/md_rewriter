@@ -5,16 +5,16 @@ Implements `docs/NEW_FIRMWARE_SPEC.md`. Steps 0 and 1 are done on this machine. 
 ## Step 0: Scaffold (done)
 
 1. `git mv Firmware legacy_firmware`; all references fixed (`README.md` in four languages, `docs/`, `tools/check-firmware.sh`, `.gitignore`).
-2. `new_firmware/` created from the legacy application code, trimmed vendor code, `.ioc`.
+2. `firmware_1.1/` created from the legacy application code, trimmed vendor code, `.ioc`.
 3. Added `Makefile`, `STM32F103VBTx_FLASH.ld`, `check.sh`.
 
-Verify: `cd new_firmware && make && ./check.sh` (exit 0, 26 072 B flash, 9 200 B RAM at `-O1`). `tools/check-firmware.sh` still passes on `legacy_firmware`.
+Verify: `cd firmware_1.1 && make && ./check.sh` (exit 0, 26 072 B flash, 9 200 B RAM at `-O1`). `tools/check-firmware.sh` still passes on `legacy_firmware`.
 
 ## Step 1: Firmware changes (done, NFW-1, 2, 2a, 3, 5, 6, 7, 8)
 
 Files: `Core/Src/MD.c`, `Core/Src/main.c`, `Core/Inc/MD.h`, nothing else. One commit when the owner asks for it.
 
-Verify without hardware: `make`, `make clean && make OPT=-O3` (the Makefile does not rebuild when only `OPT` changes), `make test`, `./check.sh`, `diff -ru legacy_firmware/Core new_firmware/Core` (ten hunks, all listed in the spec), app tests (`Software/tests`) with the fake firmware.
+Verify without hardware: `make`, `make clean && make OPT=-O3` (the Makefile does not rebuild when only `OPT` changes), `make test`, `./check.sh`, `diff -ru legacy_firmware/Core firmware_1.1/Core` (ten hunks, all listed in the spec), app tests (`Software/tests`) with the fake firmware.
 
 ## Step 2: Back up the original firmware (hardware, before anything else)
 
@@ -66,6 +66,9 @@ Pass: dumps identical, write verifies, no `WRITE TIMEOUT` on a healthy cartridge
 | 3a | Detect with the Spansion cartridge (S29GL064N90TFI03, PCB Ver1.4) | `FLASHID:017E`, `S29GL064N MD FLASH CART` (needs ID cycle 2 = `0C`; if it prints `NO FIND NGP CARD`, record the real cycle 2/3 values and fix `flashid.c`) |
 | 3b | Write buffer on the Spansion cartridge: build with `make OPT="-O1 -DFLASH_FAST=1"` | erase, write a 256 KiB ROM with Verify on, read back equal to the file; time it against the build without `FLASH_FAST` (the model predicts about a third of the bus cycles). On any chip that is not the S29GL064N the build must behave like the normal one. A `WRITE TIMEOUT` here means: stop, record the chip answer, go back to the normal build |
 | 3c | Detect with an SST39VF6401B/6402B cartridge, if one turns up | `FLASHID:BF6D` (or `BF6C`), `SST39VF640xB MD FLASH CART`; erase and write like the others |
+| 3d | Detect with a KY / FlashKit MD cartridge (ST logo chip, 32 Mbit) | note `FLASHID:` and the printed name; if it prints `NO FIND NGP CARD`, add the real ID to the tables (`docs/KY_SUPPORT.md` section 6); erase 4M, write a 256 KiB ROM with Verify on |
+| 3e | MX29L3211 cartridge (e.g. MiGeRA MD-Flash-Cart-4MB) | `FLASHID:C2F9`, `MX29L3211 MD FLASH CART`; erase, write 256 KiB, verify. Check the datasheet for sector size and set the layout in `flashid.c` |
+| 3f | Intel PA28F400 cartridge (code-cracker style) | `FLASHID:8970` or `8971`; `0E` takes seven block erases; write, verify. Check Vpp wiring first |
 | 4 | Detect with the ST-chip cartridge (the one bought) | `FLASHID:20xx`; name from the table or `NO FIND NGP CARD`; note the real ID in the table and in `Software/chipdb.cpp`, mark confirmed |
 | 5 | Write without erasing first, over existing data | `WRITE TIMEOUT` at the first word that needs 0 to 1 (the polling working as intended), not silent corruption |
 | 6 | Write to a mask-ROM game cartridge (not flash) | `WRITE TIMEOUT` within seconds, not a hang; the cartridge is untouched |
@@ -83,7 +86,7 @@ Any failure: reflash `backup_fw_1.0.bin` (`st-flash write backup_fw_1.0.bin 0x08
 
 ## Step 7: Results and release
 
-1. Fill the tables above, mark confirmed chip IDs in `new_firmware/Core/Src/MD.c` (`flash_chips[]`, the `not confirmed` comments) and `Software/chipdb.cpp`.
+1. Fill the tables above, mark confirmed chip IDs in `firmware_1.1/Core/Src/MD.c` (`flash_chips[]`, the `not confirmed` comments) and `Software/chipdb.cpp`.
 2. D6 is already in the app (8 MiB offered when `FWVER:` is present). If the 8 MiB read fails on hardware (checklist 8), remove it: either drop `FWVER:`/code 5 from the firmware or the `extendedRomSize()` entry in `Software/protocol.cpp`.
 3. Tag and publish `md-rewriter-firmware-1.1.hex` with the Makefile output, the `sha256sum`, and the backup/rollback instructions in the release notes.
 
@@ -97,6 +100,8 @@ Any failure: reflash `backup_fw_1.0.bin` (`st-flash write backup_fw_1.0.bin 0x08
 | 2026-11-03 | Write Buffer Programming, `-DFLASH_FAST=1`, S29GL064N only (NFW-12, D7) | done in the model, off by default |
 | 2026-11-03 | Releases: app 1.2.0 (tarball and `.deb`), no firmware `.hex` | published as pre-release |
 | 2026-11-03 | SST39VF6401B/6402B in the chip tables (firmware and app), `erase_sector` DQ5 fix (NFW-13); Intel J3 datasheet fetched | done in the model, SST needs a real chip; Intel not started (D2) |
+| 2026-11-04 | KY analysis (`docs/KY_SUPPORT.md`), 8 chips named (NFW-14), CLI `mdrewriter-cli`, read-only bench suite `tools/hwtest`, `tst_cli` | done, not run on hardware |
+| 2026-11-04 | AMD 5555h and Intel command sets with probe (NFW-15), chip model for both in the host tests, app warning for firmware 1.0 | done in the model, 171/176 host checks |
 | not started | USB bootloader (D1), EEPROM saves (D3), SSF2 mapper (D4): see the table in the spec, section 5 | blocked on hardware or on a decision |
 
 Next: everything in "Order of work" that needs the dumper. Then Intel J3 if a cartridge with that chip exists.
