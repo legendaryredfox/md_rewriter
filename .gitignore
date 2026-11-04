@@ -25,6 +25,7 @@ build*/
 *.build_log.htm
 legacy_firmware/MDK-ARM/Objects/
 legacy_firmware/MDK-ARM/Listings/
+/references/
 
 # Editors / OS
 .vscode/
@@ -32,4 +33,5 @@ legacy_firmware/MDK-ARM/Listings/
 *~
 .DS_Store
 
-new_firmware/build/
+firmware_1.1/build/
+test-results/

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Build script for md_rewriter.
 # Usage: tools/build.sh [app] [firmware] [tests] [all] [clean]
-#   app        Qt app (qmake6 + make) -> build/app/MDRewriter
-#   firmware   new_firmware (arm-none-eabi-gcc) -> new_firmware/build/md-rewriter-new.{elf,hex,bin}
+#   app        Qt app (qmake6 + make) -> build/app/MDRewriter and build/cli/mdrewriter-cli
+#   firmware   firmware_1.1 (arm-none-eabi-gcc) -> firmware_1.1/build/md-rewriter-new.{elf,hex,bin}
 #   tests      builds and runs the app tests (unit, integration, end to end)
 #   all        app + firmware (default when no target is given)
-#   clean      removes build/app and new_firmware/build
+#   clean      removes build/app and firmware_1.1/build
 # Variables: JOBS (default: nproc), QMAKE (default: qmake6), FW_VERSION, OPT (passed to the firmware make).
 # legacy_firmware is frozen and Keil-only: not built here. Nothing here flashes anything.
 set -euo pipefail
@@ -27,17 +27,23 @@ build_app() {
   "$QMAKE" "$ROOT/Software/MDRewriter.pro"
   make -j"$JOBS"
   echo "app: $ROOT/build/app/MDRewriter"
+  echo "==> cli"
+  mkdir -p "$ROOT/build/cli"
+  cd "$ROOT/build/cli"
+  "$QMAKE" "$ROOT/Software/cli/mdrewriter-cli.pro"
+  make -j"$JOBS"
+  echo "cli: $ROOT/build/cli/mdrewriter-cli"
 }
 
 build_firmware() {
   need arm-none-eabi-gcc "sudo apt install gcc-arm-none-eabi"
   need make "sudo apt install build-essential"
-  echo "==> firmware (new_firmware)"
+  echo "==> firmware (firmware_1.1)"
   local args=(-j"$JOBS")
   [ -n "${FW_VERSION:-}" ] && args+=("FW_VERSION=$FW_VERSION")
   [ -n "${OPT:-}" ] && args+=("OPT=$OPT")
-  make -C "$ROOT/new_firmware" "${args[@]}"
-  echo "firmware: $ROOT/new_firmware/build/md-rewriter-new.{elf,hex,bin}"
+  make -C "$ROOT/firmware_1.1" "${args[@]}"
+  echo "firmware: $ROOT/firmware_1.1/build/md-rewriter-new.{elf,hex,bin}"
 }
 
 run_tests() {
@@ -53,8 +59,8 @@ run_tests() {
 
 clean() {
   echo "==> clean"
-  rm -rf "$ROOT/build/app" "$ROOT/build/tests"
-  [ -f "$ROOT/new_firmware/Makefile" ] && make -C "$ROOT/new_firmware" clean
+  rm -rf "$ROOT/build/app" "$ROOT/build/cli" "$ROOT/build/tests"
+  [ -f "$ROOT/firmware_1.1/Makefile" ] && make -C "$ROOT/firmware_1.1" clean
 }
 
 targets=("$@")
