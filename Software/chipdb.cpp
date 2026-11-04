@@ -22,6 +22,17 @@ const Chip kChips[] = {
     { 0x20, 0x7E, "M29W640G family (ST/Numonyx, 64 Mbit)", false },
     { 0xBF, 0x6D, "SST39VF6401B (Microchip/SST, 64 Mbit, uniform 32 KWord blocks)", true },
     { 0xBF, 0x6C, "SST39VF6402B (Microchip/SST, 64 Mbit, uniform 32 KWord blocks)", true },
+    // 32 Mbit parts of KY / FlashKit MD carts (docs/KY_SUPPORT.md). IDs from MD_Dumper flashlist.csv.
+    { 0x20, 0xCA, "M29W320DT (ST, 32 Mbit, top boot)", false },
+    { 0x20, 0xCB, "M29W320DB (ST, 32 Mbit, bottom boot)", false },
+    { 0x20, 0x56, "M29W320ET (ST, 32 Mbit, top boot)", false },
+    { 0x20, 0x57, "M29W320EB (ST, 32 Mbit, bottom boot)", false },
+    { 0xC2, 0xA7, "MX29LV320T (Macronix, 32 Mbit, top boot)", false },
+    { 0xC2, 0xA8, "MX29LV320B (Macronix, 32 Mbit, bottom boot)", false },
+    // Other command sets (new firmware only, docs/KY_SUPPORT.md). Firmware 1.0 cannot write them.
+    { 0xC2, 0xF9, "MX29L3211 (Macronix, 32 Mbit, unlock at 5555h)", false, CommandSet::Amd5555 },
+    { 0x89, 0x70, "PA28F400T (Intel, 4 Mbit, top boot)", false, CommandSet::Intel },
+    { 0x89, 0x71, "PA28F400B (Intel, 4 Mbit, bottom boot)", false, CommandSet::Intel },
     { 0x01, 0x7E, "S29GL064N (Spansion/Cypress, 64 Mbit; other GL-N chips share this ID)", true },
 };
 

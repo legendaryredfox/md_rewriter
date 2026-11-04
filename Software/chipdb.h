@@ -12,11 +12,15 @@
 // writing only needs a chip that takes the AMD/JEDEC commands (0x555/0x2AA unlock).
 namespace ChipDb {
 
+// Command set the chip needs for writing. Firmware 1.0 only speaks Amd555.
+enum class CommandSet { Amd555, Amd5555, Intel };
+
 struct Chip {
     quint8 manufacturer;
     quint8 device;
     const char *name;
     bool confirmed;   // false: ID taken from memory, not checked against a datasheet
+    CommandSet commandSet = CommandSet::Amd555;
 };
 
 struct Match {

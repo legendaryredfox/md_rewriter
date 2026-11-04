@@ -415,6 +415,10 @@ private slots:
         QTest::newRow("st chip firmware does not list") << "20DF" << "NO FIND NGP CARD" << int(Sev::Info) << "M29W640DB";
         QTest::newRow("sst chip firmware does not list") << "BF6D" << "NO FIND NGP CARD" << int(Sev::Info) << "SST39VF6401B";
         QTest::newRow("unconfirmed id says so") << "207E" << "NO FIND NGP CARD" << int(Sev::Info) << "not confirmed";
+        QTest::newRow("m29w320 same commands") << "2057" << "NO FIND NGP CARD" << int(Sev::Info) << "M29W320EB";
+        QTest::newRow("5555h chip, firmware does not list it") << "C2F9" << "NO FIND NGP CARD" << int(Sev::Warning) << "needs firmware 1.1";
+        QTest::newRow("intel chip, firmware does not list it") << "8971" << "NO FIND NGP CARD" << int(Sev::Warning) << "needs firmware 1.1";
+        QTest::newRow("5555h chip, new firmware lists it") << "C2F9" << "MX29L3211 MD FLASH CART" << int(Sev::Success) << "Supported";
         QTest::newRow("unknown") << "FFFF" << "NO FIND NGP CARD" << int(Sev::Warning) << "Chip not in the list";
     }
     void detectNamesChips()

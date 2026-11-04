@@ -576,6 +576,16 @@ void DeviceSession::reportChip(const QString &firmwareLine)
                                 "the MX29LV640EB. Keep \"Verify after writing\" on; if verification fails, use the new firmware.");
     if (m.chip) {
         const QString name = QString::fromLatin1(m.chip->name);
+        if (m.chip->commandSet != ChipDb::CommandSet::Amd555 && !firmwareKnows) {
+            // Firmware 1.0 sends the AMD 555h sequence. An Intel chip takes its 90h as "read ID" and stays in
+            // that mode; a 5555h chip ignores it. Neither can be written, and reads may return ID words.
+            emit message(Severity::Warning,
+                         tr("Flash chip: %1 (ID %2). This chip needs firmware 1.1 or newer: your firmware sends commands the chip "
+                            "does not take, so writing fails and a read may return ID or status words until the cartridge is "
+                            "power-cycled. Update the firmware before using this cartridge.")
+                             .arg(name, m.idText));
+            return;
+        }
         if (firmwareKnows) {
             QString text = tr("Flash chip: %1 (ID %2). Supported.").arg(name, m.idText);
             if (!m.chip->confirmed)
