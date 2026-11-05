@@ -18,7 +18,7 @@ Ferramenta portátil para cartuchos de Sega Mega Drive: faz backup e restauraç�
 | `Software/` | Aplicativo de computador (Qt 6). Funciona em **Linux** e Windows. |
 | `docs/` | Especificação e plano das correções, e notas técnicas. |
 
-Loja oficial da Epicjoy no AliExpress: [comprar](https://www.aliexpress.us/item/3256809599500641.html?pdp_npi=4%40dis%21USD%21US%20%2428.79%21US%20%2412.59%21%21%21204.30%2189.34%21%402103244817599933506882056ef13b%2112000050402273301%21sh%21US%212937514916%21X&spm=a2g0o.store_pc_allItems_or_groupList.new_all_items_2007603309925.1005009785815393&gatewayAdapt=glo2usa)
+Loja oficial da Epicjoy no AliExpress: [comprar](https://s.click.aliexpress.com/e/_c314U0QB)
 
 Gostou do projeto? Apoie: [Buy Me a Coffee](https://buymeacoffee.com/legendaryredfox)
 
@@ -187,7 +187,7 @@ Licença [MIT](LICENSE). O código de terceiros em `legacy_firmware/Drivers` e `
 | `Software/` | Программа для компьютера (Qt 6). Работает в **Linux** и Windows. |
 | `docs/` | Спецификация и план исправлений, технические заметки. |
 
-Официальный магазин Epicjoy на AliExpress: [купить](https://www.aliexpress.us/item/3256809599500641.html?pdp_npi=4%40dis%21USD%21US%20%2428.79%21US%20%2412.59%21%21%21204.30%2189.34%21%402103244817599933506882056ef13b%2112000050402273301%21sh%21US%212937514916%21X&spm=a2g0o.store_pc_allItems_or_groupList.new_all_items_2007603309925.1005009785815393&gatewayAdapt=glo2usa)
+Официальный магазин Epicjoy на AliExpress: [купить](https://s.click.aliexpress.com/e/_c314U0QB)
 
 Нравится проект? Поддержите: [Buy Me a Coffee](https://buymeacoffee.com/legendaryredfox)
 
@@ -354,7 +354,7 @@ cd ../.. && tools/check-firmware.sh                      # статическа�
 | `Software/` | 上位机软件（Qt 6），支持 **Linux** 和 Windows。 |
 | `docs/` | 修复规格说明与计划、技术说明。 |
 
-Epicjoy 官方速卖通店铺：[购买](https://www.aliexpress.us/item/3256809599500641.html?pdp_npi=4%40dis%21USD%21US%20%2428.79%21US%20%2412.59%21%21%21204.30%2189.34%21%402103244817599933506882056ef13b%2112000050402273301%21sh%21US%212937514916%21X&spm=a2g0o.store_pc_allItems_or_groupList.new_all_items_2007603309925.1005009785815393&gatewayAdapt=glo2usa)
+Epicjoy 官方速卖通店铺：[购买](https://s.click.aliexpress.com/e/_c314U0QB)
 
 喜欢这个项目？欢迎支持：[Buy Me a Coffee](https://buymeacoffee.com/legendaryredfox)
 
@@ -521,7 +521,7 @@ A portable Sega Mega Drive cartridge tool: back up and restore game ROMs and sav
 | `Software/` | Desktop application (Qt 6). Runs on **Linux** and Windows. |
 | `docs/` | Specification and plan of the fixes, technical notes. |
 
-Epicjoy official AliExpress store: [Buy now](https://www.aliexpress.us/item/3256809599500641.html?pdp_npi=4%40dis%21USD%21US%20%2428.79%21US%20%2412.59%21%21%21204.30%2189.34%21%402103244817599933506882056ef13b%2112000050402273301%21sh%21US%212937514916%21X&spm=a2g0o.store_pc_allItems_or_groupList.new_all_items_2007603309925.1005009785815393&gatewayAdapt=glo2usa)
+Epicjoy official AliExpress store: [Buy now](https://s.click.aliexpress.com/e/_c314U0QB)
 
 Like the project? Support it: [Buy Me a Coffee](https://buymeacoffee.com/legendaryredfox)
 
