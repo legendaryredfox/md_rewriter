@@ -12,8 +12,8 @@ Linear order of work. Implements `docs/GLOBAL_SPEC.md`. Each step names its deta
 | A4 | Read-only bench suite | `docs/HWTEST.md` | done 2026-11-04 |
 | A5 | Command sets AMD 5555h and Intel, probe, host model | `NEW_FIRMWARE_SPEC.md` NFW-15 | done 2026-11-04 |
 | A6 | Code review of everything above | 10 findings, 8 fixed (top-boot erase, SST 3201/3202 removed, probe helper, dead code in `checkid`, app wording, CLI detect/JSON, hwtest SEGA check, `.gitignore` anchor), 1 checked and rejected (SST 6401B `30h`), 1 documented (Intel map is only checked against itself) | done 2026-11-04 |
-| A7 | README (4 languages) and in-app help: CLI, new chips, bench suite | | open |
-| A8 | Commit in logical pieces, only when the owner asks | | open |
+| A7 | README (4 languages) and in-app help: CLI, new chips, bench suite | README features and tests sections in pt/ru/zh/en (CLI, KY chips, 8 MiB, `tst_cli`, `hwtest`); help section `cli` and KY chip note in en/pt_BR; all app tests pass (protocol 77, session 59, help 19, e2e 30, cli 10) | done 2026-11-10 |
+| A8 | Commit in logical pieces, only when the owner asks | `874e7e6`, `d2e0b96`, `2b56488`, `5edd50a` pushed | done 2026-11-10 |
 
 ## Phase B: hardware arrives (needs the dumper, ST-Link, a logic analyzer)
 
@@ -46,5 +46,8 @@ Publish app and firmware only after phase B passes (GLOBAL_SPEC section 6).
 
 | Date | What |
 |------|------|
+| 2026-11-10 (later still) | `CART_SUPPORT.md` section 4 item 4: SSF2 and Extended SSF2 read through `3A` (NFW-17), CLI only. Sharp LH28F320BJE and Toshiba TC58FVT160F looked up and **not** implemented (owner decision). Lock-on and SVP check still open. |
+| 2026-11-10 (later) | Phase C, `CART_SUPPORT.md` section 4 item 2: CFI query for unknown chips in `firmware_1.1` (NFW-16), host checks 190/195, app message, `tst_session` 62. Information only. |
+| 2026-11-10 | A7 done: README and in-app help describe the CLI, KY/FlashKit chips, 8 MiB writes and the read-only bench suite. Phase B and C still wait for hardware; phase D cancelled. |
 | 2026-11-04 (later) | Code review done and applied (10 findings: 8 fixed, 1 rejected, 1 documented); firmware 1.1 in `firmware_1.1/`, 1.2 reserved in `firmware_1.2/`; pushed to `origin/main` (`23eb863`). PCB rework **cancelled**, `hardware_new/` deleted; Mega Drive hardware ideas moved to `oscr_minimal` (board `16_bits` v. 1.2, D87 there). Still untested on hardware: chip IDs, the Intel 28F400 block map, the 5555h flow; the host model uses the same tables. |
 | 2026-11-04 | Phase A1 to A6 done (host checks 174/179 after the review fixes). Owner decisions: KiCad for V1.1, scope H1-H4, M2-M6, L2, L3; hardware work postponed; firmware KY command sets are the top priority. |
