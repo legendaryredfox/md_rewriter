@@ -140,8 +140,10 @@ private:
 
     // detect
     QString m_flashIdLine;
+    QString m_cfiLine;             // "CFI:SIZE=8192KB CMDSET=2", sent by firmware 1.1 for a chip outside its table
     bool m_unlistedChip = false;   // kept across operations, cleared when connecting
     void reportChip(const QString &firmwareLine);
+    void reportCfi();
 
     // erase by size
     int m_eraseSteps = 0;

@@ -28,7 +28,7 @@ States: **Yes** = in the code and checked on hardware. **Model** = in the code, 
 | Sharp LH28F320BJE | B0 E3 | 32M | Intel/Sharp family | MD_Dumper | Planned | same family as the Intel set; block map differs |
 | Toshiba TC58FVT160F | 98 C2 | 16M | AMD-like | MD_Dumper | Planned | |
 | MX26L6420 | C2 FC | 64M (8 MByte) | | FlashKit-MD-Plus, MD_Dumper | Planned | cart `/CE` above 4 MiB, bank commands |
-| Any CFI chip | | | detected by CFI query | flashkit-md-py | Planned | CFI read would replace most of this table |
+| Any CFI chip | | | detected by CFI query | flashkit-md-py | Model (size only) | an unknown chip that answers `QRY` is reported with its size and command set (NFW-16); it is not written with the CFI data, the chip stays on AMD 555h. Block map and unlock addresses still come from the table |
 
 ## 2. Cartridge types and mappers (reading and rewriting)
 
@@ -61,7 +61,7 @@ States: **Yes** = in the code and checked on hardware. **Model** = in the code, 
 ## 4. Order of work
 
 1. Everything marked Model: run it on hardware (`docs/NEW_FIRMWARE_PLAN.md` step 5), mark chip IDs confirmed.
-2. CFI query (replaces most per-chip rows and is what flashkit-md-py does).
+2. CFI query: size and command set reported for unknown chips (done in the model 2026-11-10, NFW-16). Using the CFI block map to erase and write unknown chips is not done: needs a chip and the unlock address question (555h or 5555h) answered.
 3. Missing flash chips (section 1, Planned), cheapest first: SST `50h` block erase, Sharp/Intel family, Toshiba.
 4. Mappers that only read: SSF2, Extended SSF2, Lock-on, SVP check.
 5. Open EverDrive (`A130E0h`), EverDrive v2, Magistr-16, MX26L6420.

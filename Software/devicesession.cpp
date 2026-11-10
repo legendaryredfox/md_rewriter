@@ -2,6 +2,7 @@
 
 #include <QCoreApplication>
 #include <QIODevice>
+#include <QRegularExpression>
 
 using Protocol::LineKind;
 
@@ -63,6 +64,7 @@ bool DeviceSession::begin(Op op, int idleMs)
     m_verify = false;
     m_verifier.reset();
     m_flashIdLine.clear();
+    m_cfiLine.clear();
     m_cancelled = false;
     m_finishing = false;
     m_lastPercent = -2;
@@ -386,6 +388,8 @@ void DeviceSession::onLine(const QString &line)
     case Op::Detect:
         if (line.trimmed().startsWith(QLatin1String("FLASHID:")))
             m_flashIdLine = line.trimmed();
+        else if (line.trimmed().startsWith(QLatin1String("CFI:")))
+            m_cfiLine = line.trimmed();
         if (kind == LineKind::DetectDone) {
             reportChip(line);
             finish(true);
@@ -620,7 +624,26 @@ void DeviceSession::reportChip(const QString &firmwareLine)
                         "\"NO FIND NGP CARD\" only means the firmware did not recognise the chip.").arg(m.idText));
         if (oldFirmwareWarning)
             emit message(Severity::Warning, waitNote);
+        reportCfi();
     }
+}
+
+// Firmware 1.1 asks a chip it does not know for its CFI table (the standard self-description of a flash chip)
+// and prints "CFI:SIZE=<n>KB CMDSET=<k>". Information only: the writing commands do not change because of it.
+void DeviceSession::reportCfi()
+{
+    static const QRegularExpression re(QStringLiteral("^CFI:SIZE=(\\d+)KB CMDSET=(\\d+)$"));
+    const QRegularExpressionMatch m = re.match(m_cfiLine);
+    if (!m.hasMatch())
+        return;
+    const qint64 kib = m.captured(1).toLongLong();
+    const int set = m.captured(2).toInt();
+    const QString size = kib >= 1024 && kib % 1024 == 0 ? tr("%1 MiB").arg(kib / 1024) : tr("%1 KiB").arg(kib);
+    const QString family = (set == 2 || set == 4) ? tr("AMD/Fujitsu")
+                           : ((set == 1 || set == 3) ? tr("Intel/Sharp") : tr("unknown"));
+    emit message(Severity::Info,
+                 tr("The chip describes itself (CFI): %1, %2 command set. This is information only; writing still uses the standard AMD commands.")
+                     .arg(size, family));
 }
 
 void DeviceSession::setProgress(int percent)

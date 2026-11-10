@@ -90,6 +90,22 @@ int main(void)
 	expect("other 01/7E chip is not named", gl128, 0, NULL, FLASH_LAYOUT_UNKNOWN);
 	expect("empty bus", none, 0, NULL, FLASH_LAYOUT_UNKNOWN);
 	expect("mask ROM data", rom, 0, NULL, FLASH_LAYOUT_UNKNOWN);
+	{
+		const uint8_t qry[3] = { 'Q', 'R', 'Y' }, bad[3] = { 'Q', 'R', 'X' }, ff[3] = { 0xFF, 0xFF, 0xFF };
+		flash_cfi_t c = { 0, 0 };
+		int ok = flash_cfi_decode(qry, 2, 23, &c) && c.bytes == 0x800000U && c.cmdset == 2;
+		ok = ok && flash_cfi_decode(qry, 1, 19, &c) && c.bytes == 0x80000U && c.cmdset == 1;
+		ok = ok && flash_cfi_decode(qry, 2, 17, &c) && c.bytes == 0x20000U;
+		ok = ok && flash_cfi_decode(qry, 2, 27, &c) && c.bytes == 0x8000000U;
+		printf("%s CFI: QRY table gives size 2^n and command set\n", ok ? "PASS" : "FAIL");
+		if(!ok) failures++;
+		c.bytes = 77;
+		ok = !flash_cfi_decode(bad, 2, 23, &c) && !flash_cfi_decode(ff, 2, 23, &c);
+		ok = ok && !flash_cfi_decode(qry, 2, 16, &c) && !flash_cfi_decode(qry, 2, 28, &c) && !flash_cfi_decode(qry, 2, 0, &c);
+		ok = ok && c.bytes == 77;
+		printf("%s CFI: no QRY or absurd size is refused and *out untouched\n", ok ? "PASS" : "FAIL");
+		if(!ok) failures++;
+	}
 
 	printf("%s\n", failures ? "FAILED" : "all passed");
 	return failures ? 1 : 0;

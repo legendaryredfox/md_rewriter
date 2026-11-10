@@ -102,6 +102,7 @@ Any failure: reflash `backup_fw_1.0.bin` (`st-flash write backup_fw_1.0.bin 0x08
 | 2026-11-03 | SST39VF6401B/6402B in the chip tables (firmware and app), `erase_sector` DQ5 fix (NFW-13); Intel J3 datasheet fetched | done in the model, SST needs a real chip; Intel not started (D2) |
 | 2026-11-04 | KY analysis (`docs/KY_SUPPORT.md`), 8 chips named (NFW-14), CLI `mdrewriter-cli`, read-only bench suite `tools/hwtest`, `tst_cli` | done, not run on hardware |
 | 2026-11-04 | AMD 5555h and Intel command sets with probe (NFW-15), chip model for both in the host tests, app warning for firmware 1.0 | done in the model, 171/176 host checks |
+| 2026-11-10 | CFI query for chips outside the table, reported in the detect output and in the app (NFW-16) | done in the model, 190/195 host checks |
 | not started | USB bootloader (D1), EEPROM saves (D3), SSF2 mapper (D4): see the table in the spec, section 5 | blocked on hardware or on a decision |
 
 Next: everything in "Order of work" that needs the dumper. Then Intel J3 if a cartridge with that chip exists.

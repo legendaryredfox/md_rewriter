@@ -39,4 +39,15 @@ typedef struct {
  * Returns 1 and fills *out when the chip is in the table, else 0 and *out is untouched. */
 int flash_identify(const uint8_t id[4], flash_info_t *out);
 
+/* What a CFI query (98h at word 55h) tells about a chip the table does not know. Information only:
+ * nothing is written to a chip because of it. */
+typedef struct {
+	uint32_t bytes;                 /* device size, 2^n bytes from word 27h */
+	uint8_t cmdset;                 /* low byte of the primary vendor command set, word 13h: 1 Intel/Sharp, 2 AMD/Fujitsu, 3 Intel ext., 4 AMD ext. */
+} flash_cfi_t;
+
+/* qry = words 10h..12h (low bytes, must be 'Q' 'R' 'Y'), cmdset_lo = word 13h, size_exp = word 27h.
+ * Returns 1 and fills *out when the answer is a CFI table with a size from 128 KiB to 128 MiB, else 0. */
+int flash_cfi_decode(const uint8_t qry[3], uint8_t cmdset_lo, uint8_t size_exp, flash_cfi_t *out);
+
 #endif

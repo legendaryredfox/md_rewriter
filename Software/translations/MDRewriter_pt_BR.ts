@@ -209,6 +209,30 @@
         <translation>Chip fora da lista (ID %1). Pode ser um cartucho original (sem flash), um slot vazio ou um chip flash que este programa não conhece. A leitura funciona com cartuchos originais. A gravação exige um chip flash com os comandos AMD/JEDEC padrão. &quot;NO FIND NGP CARD&quot; só significa que o firmware não reconheceu o chip.</translation>
     </message>
     <message>
+        <source>The chip describes itself (CFI): %1, %2 command set. This is information only; writing still uses the standard AMD commands.</source>
+        <translation>O chip se descreve (CFI): %1, conjunto de comandos %2. É só informação; a gravação continua usando os comandos AMD padrão.</translation>
+    </message>
+    <message>
+        <source>%1 MiB</source>
+        <translation>%1 MiB</translation>
+    </message>
+    <message>
+        <source>%1 KiB</source>
+        <translation>%1 KiB</translation>
+    </message>
+    <message>
+        <source>AMD/Fujitsu</source>
+        <translation>AMD/Fujitsu</translation>
+    </message>
+    <message>
+        <source>Intel/Sharp</source>
+        <translation>Intel/Sharp</translation>
+    </message>
+    <message>
+        <source>unknown</source>
+        <translation>desconhecido</translation>
+    </message>
+    <message>
         <source>Firmware 1.0 does not wait for the chip to finish programming each word, and it was written for the MX29LV640EB. Keep "Verify after writing" on; if verification fails, use the new firmware.</source>
         <translation>O firmware 1.0 não espera o chip terminar de gravar cada palavra e foi escrito para o MX29LV640EB. Mantenha "Verificar após gravar" ligado; se a verificação falhar, use o firmware novo.</translation>
     </message>

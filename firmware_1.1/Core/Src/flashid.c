@@ -88,6 +88,17 @@ static int identify_s29gl064n(const uint8_t id[4], flash_info_t *out)
 	return 0;
 }
 
+int flash_cfi_decode(const uint8_t qry[3], uint8_t cmdset_lo, uint8_t size_exp, flash_cfi_t *out)
+{
+	if((qry[0] != 0x51U) || (qry[1] != 0x52U) || (qry[2] != 0x59U))
+		return 0;
+	if((size_exp < 17U) || (size_exp > 27U))
+		return 0;
+	out->bytes = (uint32_t)1U << size_exp;
+	out->cmdset = cmdset_lo;
+	return 1;
+}
+
 int flash_identify(const uint8_t id[4], flash_info_t *out)
 {
 	size_t i;

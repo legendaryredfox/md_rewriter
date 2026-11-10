@@ -54,6 +54,14 @@ static void test_detects(void)
 	test_detect(&HW_M29W640DT, "FLASHID:20DE\r\n", "M29W640DT MD FLASH CART\r\n", "detect M29W640DT");
 	none.id[0] = 0x0000; none.id[1] = 0x1234;
 	test_detect(&none, "FLASHID:0034\r\n", "NO FIND NGP CARD\r\n", "unknown chip is reported, not named");
+	/* an unknown chip that answers CFI: the size is reported before the closing line, nothing else changes */
+	test_detect(&HW_UNKNOWN_CFI, "FLASHID:AB34\r\nCFI:SIZE=8192KB CMDSET=2\r\n", "NO FIND NGP CARD\r\n", "unknown CFI chip: size reported");
+	/* a known chip is not queried: the CFI line only appears for chips outside the table */
+	{
+		hw_chip_config_t known = HW_MX29LV640EB;
+		known.cfi_exp = 23; known.cfi_cmdset = 2;
+		test_detect(&known, "FLASHID:C2CB\r\n", "MX29LV640EB MD FLASH CART\r\n", "known chip: no CFI query");
+	}
 
 	/* a mask ROM game: the autoselect command is ignored, the bytes are game data */
 	hw_reset(&HW_MX29LV640EB);
@@ -524,6 +532,25 @@ static void test_command_sets(void)
 		check(id[0] == 0x55 && id[1] == 0x66, "unknown chip: the answer is the AMD 555h one");
 		check(flash_program_word(0x40, 0x12, 0x34) == 1 && hw_word(0x40) == 0x1234, "unknown chip: programs with the 1.0 AMD 555h sequence");
 		check_clean("unknown chip");
+	}
+	/* an unknown chip with a CFI table: size reported, still the 1.0 AMD 555h sequence, forgotten on a swap */
+	{
+		uint8_t id[4];
+		flash_cfi_t cfi;
+		hw_reset(&HW_UNKNOWN_CFI);
+		idle_bus();
+		flash_probe(id);
+		check(id[0] == 0xAB && id[1] == 0x34, "CFI chip: the answer is the AMD 555h one");
+		check(flash_cfi_info(&cfi) == 1 && cfi.bytes == 0x800000U && cfi.cmdset == 2, "CFI chip: size 8 MiB, AMD command set");
+		check(flash_has_bottom_boot_sectors() == 1, "CFI chip: layout stays the 1.0 behaviour");
+		check(flash_program_word(0x40, 0x12, 0x34) == 1 && hw_word(0x40) == 0x1234, "CFI chip: programs after the query (chip left in read mode)");
+		check_clean("CFI chip");
+		hw_reset(&HW_MX29LV640EB);
+		idle_bus();
+		flash_probe_forget();
+		flash_probe(id);
+		check(flash_cfi_info(&cfi) == 0, "known chip after a swap: no CFI info kept");
+		check_clean("CFI info cleared");
 	}
 	/* a cartridge swap is noticed after flash_probe_forget() */
 	hw_reset(&HW_PA28F400B);

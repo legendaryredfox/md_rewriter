@@ -15,6 +15,8 @@
 	static uint32_t g_u1 = 0x555U, g_u2 = 0x2AAU;          /* unlock addresses of the AMD sets */
 	static uint8_t g_probed = 0;                           /* 1: the variables above and g_info describe the cartridge */
 	static flash_info_t g_info;
+	static flash_cfi_t g_cfi;
+	static uint8_t g_cfi_valid = 0;                        /* 1: an unknown chip answered the CFI query */
 	static uint8_t g_info_valid = 0;                       /* 1: the chip is in the table */
 	static void ensure_probed(void);
 	static uint8_t intel_program_word(uint32_t addr, uint8_t hi, uint8_t lo);
@@ -595,6 +597,54 @@
 			{
 				g_probed = 0;
 				g_info_valid = 0;
+				g_cfi_valid = 0;
+			}
+
+	uint8_t flash_cfi_info(flash_cfi_t *out)
+			{
+				if(!g_cfi_valid)
+					return 0;
+				*out = g_cfi;
+				return 1;
+			}
+
+	/* CFI query: reset twice, 98h at word 55h, then "QRY" at words 10h..12h, the command set at 13h
+	 * and the size exponent at 27h; reset again. Used only for a chip the table does not know, and
+	 * only to report its size: the chip stays on the AMD 555h set (what 1.0 did). */
+	static uint8_t cfi_query(flash_cfi_t *out)
+			{
+				uint8_t q[3], cs, ex;
+				write_mode();
+				HAL_Delay(10);
+				MD_RD= 1;
+				MD_CS= 1;
+				MD_WR= 1;
+				HAL_Delay(1);
+				setByte(0x555, 0xf0);
+				HAL_Delay(2);
+				setByte(0x555, 0xf0);
+				HAL_Delay(2);
+				setByte(0x55, 0x98);
+				MD_RD= 1;
+				MD_CS= 1;
+				MD_WR= 1;
+				read_mode();
+				q[0] = getByte(0x10);
+				q[1] = getByte(0x11);
+				q[2] = getByte(0x12);
+				cs = getByte(0x13);
+				ex = getByte(0x27);
+				write_mode();
+				HAL_Delay(10);
+				MD_RD= 1;
+				MD_CS= 1;
+				MD_WR= 1;
+				HAL_Delay(1);
+				setByte(0x555, 0xf0);
+				MD_RD= 1;
+				MD_CS= 1;
+				MD_WR= 1;
+				return (uint8_t)flash_cfi_decode(q, cs, ex, out);
 			}
 
 	static void flash_adopt(const flash_info_t *info)
@@ -622,6 +672,7 @@
 				flash_info_t info;
 				g_probed = 0;
 				g_info_valid = 0;
+				g_cfi_valid = 0;
 				g_cmdset = FLASH_CMDSET_AMD_555;
 				g_u1 = 0x555U;
 				g_u2 = 0x2AAU;
@@ -647,6 +698,7 @@
 						return;
 					}
 				memcpy(id, first, 4);
+				g_cfi_valid = cfi_query(&g_cfi);
 				g_probed = 1;
 			}
 
@@ -786,6 +838,13 @@
 						}
 					else
 						{
+							flash_cfi_t cfi;
+							if(flash_cfi_info(&cfi))
+								{
+									/* Before the closing line: apps stop reading at "NO FIND NGP CARD". */
+									sprintf(disbuff,"CFI:SIZE=%luKB CMDSET=%u\r\n",(unsigned long)(cfi.bytes >> 10),(unsigned)cfi.cmdset);
+									CDC_Transmit(disbuff);
+								}
 							CDC_Transmit("NO FIND NGP CARD\r\n");
 						}
 				}

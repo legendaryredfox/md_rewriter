@@ -3,6 +3,7 @@
 
 #include "main.h"
 #include <stdint.h>
+#include "flashid.h"
 
 #define GPIO_WriteLow(GPIOx,a)    GPIOx->BSRR=(((uint32_t)(uint8_t)~(a))<<16)|((uint32_t)(uint8_t)(a))
 #define GPIO_WriteHigh(GPIOx,a)    GPIOx->BSRR=(((uint8_t)(uint8_t)~(a))<<24)|(((uint32_t)(uint8_t)(a))<<8)
@@ -111,7 +112,8 @@ uint8_t eraseFLASH(void);
 void checkid(void);
 void flash_autoselect(uint8_t id[4]);
 void flash_probe(uint8_t id[4]);          /* picks the command set from the chip ID */
-void flash_probe_forget(void);            /* the cartridge may have changed: probe again at the next use */
+void flash_probe_forget(void);
+uint8_t flash_cfi_info(flash_cfi_t *out);   /* 1: the last probe found a chip outside the table that answers the CFI query (information only) */            /* the cartridge may have changed: probe again at the next use */
 uint8_t flash_has_bottom_boot_sectors(void);
 void checkheadermenu(void);
 uint8_t erase_sector(uint32_t sector_addr);
