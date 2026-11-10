@@ -142,6 +142,19 @@ bool DeviceSession::readRom(const Protocol::RomSize &size, QIODevice *out)
     return startRead(Op::ReadRom, size.bytes, Protocol::DumpRom, size.code, out);
 }
 
+bool DeviceSession::readRomSsf2(int pages, QIODevice *out)
+{
+    if (pages < 1 || pages > 64) {
+        emit message(Severity::Error, tr("The SSF2 mapper has 1 to 64 pages of 512 KiB."));
+        return false;
+    }
+    if (!canRead8M()) {
+        emit message(Severity::Error, tr("Reading through the SSF2 mapper needs firmware 1.1 or later; this device has firmware 1.0."));
+        return false;
+    }
+    return startRead(Op::ReadRom, static_cast<quint32>(pages) * 0x80000U, Protocol::DumpRomSsf2, static_cast<quint8>(pages), out);
+}
+
 bool DeviceSession::readSave(const Protocol::SramSize &size, QIODevice *out)
 {
     return startRead(Op::ReadSave, size.bytes, Protocol::DumpSram, size.code, out);

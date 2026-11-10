@@ -209,6 +209,14 @@
         <translation>Chip fora da lista (ID %1). Pode ser um cartucho original (sem flash), um slot vazio ou um chip flash que este programa não conhece. A leitura funciona com cartuchos originais. A gravação exige um chip flash com os comandos AMD/JEDEC padrão. &quot;NO FIND NGP CARD&quot; só significa que o firmware não reconheceu o chip.</translation>
     </message>
     <message>
+        <source>The SSF2 mapper has 1 to 64 pages of 512 KiB.</source>
+        <translation>O mapper SSF2 tem de 1 a 64 páginas de 512 KiB.</translation>
+    </message>
+    <message>
+        <source>Reading through the SSF2 mapper needs firmware 1.1 or later; this device has firmware 1.0.</source>
+        <translation>Ler pelo mapper SSF2 exige o firmware 1.1 ou posterior; este dispositivo tem o firmware 1.0.</translation>
+    </message>
+    <message>
         <source>The chip describes itself (CFI): %1, %2 command set. This is information only; writing still uses the standard AMD commands.</source>
         <translation>O chip se descreve (CFI): %1, conjunto de comandos %2. É só informação; a gravação continua usando os comandos AMD padrão.</translation>
     </message>

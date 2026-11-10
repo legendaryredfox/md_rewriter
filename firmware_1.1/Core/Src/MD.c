@@ -102,6 +102,53 @@
 				read_mode();
 			}		
 	
+	/* One write cycle to the mapper register area ($A130xx): the cartridge sees /TIME and /LWR low
+	 * with /CE0 high. The data goes on D0-D7 (the register keeps its low bits). `byte_addr` is the
+	 * 68000 byte address, the bus carries it divided by two. */
+	void mapper_write(uint32_t byte_addr, uint8_t value)
+			{
+				write_mode();
+				write_data_bus(value);
+				setAddress(byte_addr >> 1);
+				MD_CS = 1;
+				MD_RD = 1;
+				MD_WR = 1;
+				MD_TIME = 1;
+				Delay_nop(60);
+				MD_TIME = 0;
+				MD_WR = 0;
+				Delay_nop(30);
+				MD_WR = 1;
+				MD_TIME = 1;
+				Delay_nop(60);
+			}
+
+	void ssf2_select_page(uint8_t page)
+			{
+				mapper_write(0xA130F3U, (uint8_t)(page & 0x3FU));
+			}
+
+	void ssf2_read_block(uint16_t block, uint8_t out[1024])
+			{
+				uint16_t i;
+				read_mode();
+				MD_WR = 1;
+				MD_RD = 1;
+				MD_CS = 1;
+				for(i = 0; i < 512U; i++)
+					{
+						setAddress(0x40000UL + (uint32_t)block * 512UL + i);
+						MD_CS = 0;
+						MD_RD = 0;
+						Delay_nop(30);
+						out[i * 2U] = (uint8_t)(((GPIOE->IDR) >> 8) & 0xffU);
+						out[i * 2U + 1U] = (uint8_t)((GPIOE->IDR) & 0xffU);
+						MD_RD = 1;
+						MD_CS = 1;
+						Delay_nop(50);
+					}
+			}
+
 	/* Same pin state as read_mode()/write_mode() (inputs with pull-up / push-pull outputs at 50 MHz),
 	 * set with two register writes instead of HAL_GPIO_Init, because the polling loop switches
 	 * the direction for every word. CNF/MODE nibble: 0x8 = input pull-up, 0x3 = output 50 MHz. */

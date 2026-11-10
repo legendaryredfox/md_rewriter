@@ -21,6 +21,7 @@ enum Command : quint8 {
     Detect = 0x0D,
     EraseAll = 0x0E,
     ClearBuffers = 0x0F,
+    DumpRomSsf2 = 0x3A,      // firmware 1.1+: dump `pages` x 512 KiB through the SSF2 mapper (argument: pages, 1..64)
     DumpSram = 0x1A,
     WriteSramBlock = 0x1B,
     EraseBySize = 0x1E,

@@ -25,8 +25,8 @@ States: **Yes** = in the code and checked on hardware. **Model** = in the code, 
 | SST36VF3204 | BF 53 | 32M | | MD_Dumper | Planned | |
 | SST39SF040 | BF B7 | 4M | 5 V part | MD_Dumper | Planned | 5 V chip, byte-wide: check the cart wiring |
 | Intel PA28F400 T/B | 89 70 / 71 | 4M | Intel/Sharp | FlashKit-MD-Plus (code cracker) | Model | block map and status bits from memory |
-| Sharp LH28F320BJE | B0 E3 | 32M | Intel/Sharp family | MD_Dumper | Planned | same family as the Intel set; block map differs |
-| Toshiba TC58FVT160F | 98 C2 | 16M | AMD-like | MD_Dumper | Planned | |
+| Sharp LH28F320BJE | B0 E3 | 32M | Intel/Sharp family | MD_Dumper | Planned | same family as the Intel set; block map differs. Looked up 2026-11-10: 8 blocks of 4 KWord plus 63 of 32 KWord, two-cycle block erase; the `20h`/`D0h` codes and the top/bottom position for `B0E3` were not confirmed. Not implemented on purpose |
+| Toshiba TC58FVT160F | 98 C2 | 16M | AMD-like | MD_Dumper | Planned | top boot, JEDEC-compatible commands per the datasheet summary; ID and unlock addresses not confirmed (2026-11-10). Not implemented on purpose |
 | MX26L6420 | C2 FC | 64M (8 MByte) | | FlashKit-MD-Plus, MD_Dumper | Planned | cart `/CE` above 4 MiB, bank commands |
 | Any CFI chip | | | detected by CFI query | flashkit-md-py | Model (size only) | an unknown chip that answers `QRY` is reported with its size and command set (NFW-16); it is not written with the CFI data, the chip stays on AMD 555h. Block map and unlock addresses still come from the table |
 
@@ -37,8 +37,8 @@ States: **Yes** = in the code and checked on hardware. **Model** = in the code, 
 | Classic ROM up to 4 MiB (mask ROM and FlashKit style) | all | Model (reads 512K..4M; unchanged from 1.0 read path) | hardware check |
 | ROM 8 MiB (whole 64 Mbit flash, `/CE0` held) | | Model (dump code 05) | hardware check |
 | Sega Virtua Racing (SVP) | MD_Dumper `gameslist.csv` | Planned | probably reads as a classic 2 MiB ROM: verify |
-| SSF2 mapper (`A130F3h`..`A130FFh`, 512 KB windows) | MD_Dumper | Planned | bank register writes through `/TIME`; needs a cart (D4) |
-| Extended SSF2 (Titan Overdrive 2, Demons of Asterborg) | MD_Dumper | Planned | |
+| SSF2 mapper (`A130F3h`..`A130FFh`, 512 KB windows) | MD_Dumper | Model (read only) | `mdrewriter-cli read-rom --mapper ssf2 --size 5M` (firmware command `3A`, NFW-17); never run on a cartridge, the `/TIME` + `/LWR` cycle is new on this PCB; no GUI yet |
+| Extended SSF2 (Titan Overdrive 2, Demons of Asterborg) | MD_Dumper | Model (read only) | same command, up to 64 pages (32 MiB); the page register is assumed to be 6 bits wide, not checked against these cartridges |
 | Sega Lock-on (Sonic & Knuckles) | MD_Dumper | Planned | |
 | WaterMelon T-5740 / T-5741 (Pier Solar, Paprium) | MD_Dumper | Planned | mapper and serial save |
 | Open EverDrive (`A130E0h` init, CTRL_REG `A13000h`, 4 MiB + menu in an 8 MiB flash) | open-ed, FlashKit-MD-Plus | Planned | write `0404h` to `A130E0h`; the programmer needs `/VRES` handling (open-ed README) |
@@ -63,6 +63,6 @@ States: **Yes** = in the code and checked on hardware. **Model** = in the code, 
 1. Everything marked Model: run it on hardware (`docs/NEW_FIRMWARE_PLAN.md` step 5), mark chip IDs confirmed.
 2. CFI query: size and command set reported for unknown chips (done in the model 2026-11-10, NFW-16). Using the CFI block map to erase and write unknown chips is not done: needs a chip and the unlock address question (555h or 5555h) answered.
 3. Missing flash chips (section 1, Planned), cheapest first: SST `50h` block erase, Sharp/Intel family, Toshiba.
-4. Mappers that only read: SSF2, Extended SSF2, Lock-on, SVP check.
+4. Mappers that only read: SSF2 and Extended SSF2 done in the model 2026-11-10 (NFW-17, CLI only). Lock-on and the SVP check are still open.
 5. Open EverDrive (`A130E0h`), EverDrive v2, Magistr-16, MX26L6420.
 6. Needs the revised PCB (firmware 1.2): I2C/SPI saves, Master System / Game Gear adapter.

@@ -221,6 +221,34 @@ int main(void)
 			cmdclear();
 			buffcnt = 0;
 			}		
+		if (cmdbuff[0] == 0x3A) {//NFW-17: MD ROM DUMP THROUGH THE SSF2 MAPPER, cmdbuff[5] = number of 512 KiB pages (1..64)
+			if((cmdbuff[1] == 0xAA)&&(cmdbuff[2] == 0x55)&&(cmdbuff[3] == 0xAA)&&(cmdbuff[4] == 0xBB)&&(cmdbuff[5] >= 1)&&(cmdbuff[5] <= 64)){
+				const uint8_t pages = cmdbuff[5];
+				CDC_Transmit("SSF2 ROM DUMP START!!!\r\n");
+				read_mode();
+				MD_WR = 1;
+				MD_RD = 1;
+				MD_CS = 1;
+				memclearTX();
+				HAL_Delay(100);
+				for(uint8_t p = 0; p < pages; p++){
+					ssf2_select_page(p);
+					for(uint16_t b = 0; b < 512; b++){
+						/* previous block must have left the device before the buffer is reused */
+						if(!CDC_WaitTxIdle(CDC_TX_TIMEOUT_MS)) { p = pages; break; }
+						ssf2_read_block(b, transmitBuffer);
+						if(CDC_Transmit_FS(transmitBuffer, 1024) != USBD_OK) { p = pages; break; }
+					}
+				}
+				ssf2_select_page(1);   /* back to the power-up mapping of window 1 */
+				HAL_Delay(150);
+				CDC_Transmit("DUMPER ROM FINISH!!!\r\n");
+			}
+			CDC_Transmit("PUSH SAVE GAME BUTTON!!!\r\n");
+			write_mode();
+			cmdclear();
+			buffcnt = 0;
+			}
 		if (cmdbuff[0] == 0x1A) {//MD SRAM CHOOSE SIZE DUMP
 			if((cmdbuff[1] == 0xAA)&&(cmdbuff[2] == 0x55)&&(cmdbuff[3] == 0xAA)&&(cmdbuff[4] == 0xBB)){
 				uint32_t wsize = 0;

@@ -562,6 +562,62 @@ static void test_command_sets(void)
 	check_clean("probe cache");
 }
 
+/* ---- SSF2 bank-switched ROM (NFW-17) ---- */
+
+static uint16_t ssf2_pattern(uint32_t word_addr) { return (uint16_t)(word_addr * 7U + (word_addr >> 16) * 13U + 3U); }
+
+static int ssf2_block_ok(uint16_t page, uint16_t block)
+{
+	uint8_t out[1024];
+	uint16_t i;
+	ssf2_read_block(block, out);
+	for(i = 0; i < 512; i++)
+		{
+			const uint16_t w = ssf2_pattern(((uint32_t)page << 18) | ((uint32_t)block * 512U + i));
+			if(out[i * 2] != (uint8_t)(w >> 8) || out[i * 2 + 1] != (uint8_t)(w & 0xFF))
+				return 0;
+		}
+	return 1;
+}
+
+static void test_ssf2(void)
+{
+	uint32_t a;
+	static const uint16_t pages[] = { 0, 1, 7, 8, 11 };
+	size_t k;
+	hw_reset(&HW_MX29LV640EB);
+	hw_set_rom_only(1);
+	for(a = 0; a < 0x300000UL; a++)                  /* 6 MiB: 12 pages of 512 KiB */
+		hw_set_word(a, ssf2_pattern(a));
+	hw_set_ssf2(1);
+	idle_bus();
+	check(hw_ssf2_window1_page == 1, "SSF2: window 1 shows page 1 at power-up");
+	for(k = 0; k < sizeof(pages) / sizeof(pages[0]); k++)
+		{
+			char msg[80];
+			ssf2_select_page((uint8_t)pages[k]);
+			snprintf(msg, sizeof(msg), "SSF2: page %u selected", (unsigned)pages[k]);
+			check(hw_ssf2_window1_page == pages[k], msg);
+			snprintf(msg, sizeof(msg), "SSF2: page %u, first, middle and last block", (unsigned)pages[k]);
+			check(ssf2_block_ok(pages[k], 0) && ssf2_block_ok(pages[k], 255) && ssf2_block_ok(pages[k], 511), msg);
+		}
+	check(hw_mapper_writes == 5, "SSF2: one /TIME cycle per page select");
+	ssf2_select_page(0x41);                           /* the register keeps 6 bits */
+	check(hw_ssf2_window1_page == 1, "SSF2: register keeps the low 6 bits");
+	check_clean("SSF2 pages");
+
+	/* a cartridge without the mapper: the writes are harmless and window 1 stays page 1 */
+	hw_reset(&HW_MX29LV640EB);
+	hw_set_rom_only(1);
+	for(a = 0; a < 0x100000UL; a++)
+		hw_set_word(a, ssf2_pattern(a));
+	idle_bus();
+	ssf2_select_page(3);
+	check(hw_mapper_writes == 1, "plain cartridge: the write cycle happened");
+	check(ssf2_block_ok(1, 0) && ssf2_block_ok(1, 511), "plain cartridge: window 1 is $080000..$0FFFFF whatever was written");
+	check_clean("plain cartridge");
+}
+
 int main(void)
 {
 	test_detects();
@@ -571,6 +627,7 @@ int main(void)
 	test_read_back();
 	test_write_buffer();
 	test_command_sets();
+	test_ssf2();
 	printf("%d checks, %d failed\n", checks, failures);
 	return failures ? 1 : 0;
 }

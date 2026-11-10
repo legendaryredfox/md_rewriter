@@ -10,6 +10,7 @@
 #include <QJsonObject>
 #include <QSerialPort>
 #include <QSerialPortInfo>
+#include <QRegularExpression>
 #include <QSaveFile>
 #include <QTimer>
 
@@ -31,6 +32,7 @@ struct Options {
     QString port;
     QString out;
     QString size;
+    QString mapper;         // read-rom: "ssf2" reads a bank-switched cartridge page by page
     bool json = false;
     bool yes = false;
     bool verify = true;     // write-rom reads the cartridge back unless --no-verify
@@ -55,6 +57,7 @@ Options parse(const QStringList &args)
         if (a == QLatin1String("--port") || a == QLatin1String("-p")) value(&o.port);
         else if (a == QLatin1String("--out") || a == QLatin1String("-o")) value(&o.out);
         else if (a == QLatin1String("--size") || a == QLatin1String("-s")) value(&o.size);
+        else if (a == QLatin1String("--mapper")) value(&o.mapper);
         else if (a == QLatin1String("--timeout")) {
             QString t;
             value(&t);
@@ -125,6 +128,7 @@ QString CliRunner::usage()
         "  info                      connect, print firmware version\n"
         "  detect                    read the flash chip ID (read only)\n"
         "  read-rom --size 512K|1M|2M|4M|8M --out <file>      dump the ROM (8M needs firmware 1.1+)\n"
+        "  read-rom --mapper ssf2 --size 512K..32M --out <file>   dump an SSF2 bank-switched cartridge (firmware 1.1+, size in 512K steps)\n"
         "  read-save --size 8K|32K --out <file>               dump the save RAM\n"
         "  verify <file> [--size S]  read the cartridge back and compare with <file> (read only)\n"
         "  write-rom <file> --yes    write a flash cartridge (erase it first: erase <size> --yes); reads it back unless --no-verify\n"
@@ -269,7 +273,19 @@ int CliRunner::run(const QStringList &args, QIODevice *injected)
     QByteArray image;                 // ROM to write / to compare with
     QByteArray saveImage;
     const bool needsRead = o.command == QLatin1String("read-rom") || o.command == QLatin1String("read-save");
-    if (o.command == QLatin1String("read-rom")) {
+    int mapperPages = 0;              // read-rom --mapper ssf2: number of 512 KiB pages
+    if (!o.mapper.isEmpty() && o.command != QLatin1String("read-rom"))
+        return finish(Usage, QStringLiteral("--mapper is only for read-rom"));
+    if (o.command == QLatin1String("read-rom") && !o.mapper.isEmpty()) {
+        if (o.mapper.compare(QLatin1String("ssf2"), Qt::CaseInsensitive) != 0)
+            return finish(Usage, QStringLiteral("unknown --mapper %1 (only ssf2)").arg(o.mapper));
+        static const QRegularExpression re(QStringLiteral("^(\\d+)([KkMm])$"));
+        const QRegularExpressionMatch m = re.match(o.size);
+        const qint64 bytes = m.hasMatch() ? m.captured(1).toLongLong() * (m.captured(2).toUpper() == QLatin1String("M") ? 1048576 : 1024) : 0;
+        if (bytes <= 0 || bytes % 0x80000 != 0 || bytes / 0x80000 > 64)
+            return finish(Usage, QStringLiteral("--mapper ssf2 needs --size in 512K steps, 512K to 32M (for example 5M)"));
+        mapperPages = static_cast<int>(bytes / 0x80000);
+    } else if (o.command == QLatin1String("read-rom")) {
         romSize = findRomSize(o.size, true);
         if (!romSize) return finish(Usage, QStringLiteral("read-rom needs --size 512K, 1M, 2M, 4M or 8M"));
     }
@@ -419,17 +435,23 @@ int CliRunner::run(const QStringList &args, QIODevice *injected)
         }
         if (!o.json) m_out << "flash id: " << (m.parsed ? m.idText : QStringLiteral("none")) << "  chip: " << (m.chip ? QString::fromLatin1(m.chip->name) : QStringLiteral("unknown")) << "\n";
     } else if (o.command == QLatin1String("read-rom") || o.command == QLatin1String("read-save")) {
-        if (romSize && romSize->bytes == Protocol::extendedRomSize().bytes && !session.canRead8M()) {
+        if (mapperPages && !session.canRead8M()) {
+            code = Failed; err = QStringLiteral("--mapper ssf2 needs firmware 1.1 or newer (this one is 1.0)");
+        } else if (romSize && romSize->bytes == Protocol::extendedRomSize().bytes && !session.canRead8M()) {
             code = Failed; err = QStringLiteral("8M needs firmware 1.1 or newer (this one is 1.0)");
         } else {
             QSaveFile f(o.out);
             if (!f.open(QIODevice::WriteOnly)) return finish(FileError, QStringLiteral("cannot write %1: %2").arg(o.out, f.errorString()));
-            const bool rom = romSize != nullptr;
-            check(runOp([&] { return rom ? session.readRom(*romSize, &f) : session.readSave(*sramSize, &f); }), QStringLiteral("read failed"));
+            const bool rom = romSize != nullptr || mapperPages > 0;
+            check(runOp([&] {
+                      if (mapperPages) return session.readRomSsf2(mapperPages, &f);
+                      return romSize ? session.readRom(*romSize, &f) : session.readSave(*sramSize, &f);
+                  }), QStringLiteral("read failed"));
             if (code == Ok && !f.commit()) return finish(FileError, QStringLiteral("cannot finish %1").arg(o.out));
             if (code != Ok) f.cancelWriting();
             result.insert(QStringLiteral("out"), o.out);
-            result.insert(QStringLiteral("bytes"), static_cast<double>(rom ? romSize->bytes : sramSize->bytes));
+            if (mapperPages) result.insert(QStringLiteral("mapper"), QStringLiteral("ssf2"));
+            result.insert(QStringLiteral("bytes"), static_cast<double>(mapperPages ? static_cast<qint64>(mapperPages) * 0x80000 : (rom ? romSize->bytes : sramSize->bytes)));
         }
     } else if (o.command == QLatin1String("verify")) {
         if (!romSize) { code = Usage; err = QStringLiteral("file larger than 8 MiB"); }

@@ -112,8 +112,8 @@ uint8_t eraseFLASH(void);
 void checkid(void);
 void flash_autoselect(uint8_t id[4]);
 void flash_probe(uint8_t id[4]);          /* picks the command set from the chip ID */
-void flash_probe_forget(void);
-uint8_t flash_cfi_info(flash_cfi_t *out);   /* 1: the last probe found a chip outside the table that answers the CFI query (information only) */            /* the cartridge may have changed: probe again at the next use */
+void flash_probe_forget(void);            /* the cartridge may have changed: probe again at the next use */
+uint8_t flash_cfi_info(flash_cfi_t *out);   /* 1: the last probe found a chip outside the table that answers the CFI query (information only) */
 uint8_t flash_has_bottom_boot_sectors(void);
 void checkheadermenu(void);
 uint8_t erase_sector(uint32_t sector_addr);
@@ -123,6 +123,11 @@ uint8_t flash_program_page(uint32_t page_addr, const uint8_t data[32]);
 uint8_t flash_fast_available(void);
 void flash_fast_forget(void);
 uint8_t erase_range(uint32_t *address, uint32_t words);
+/* SSF2 bank-switched ROM (docs/CART_SUPPORT.md, NFW-17). Registers $A130F3..$A130FF map one 512 KiB page
+ * each into the windows $080000..$3FFFFF; the dump always uses window 1 and walks the pages. */
+void mapper_write(uint32_t byte_addr, uint8_t value);   /* write cycle with /TIME and /LWR low, /CE0 high */
+void ssf2_select_page(uint8_t page);                    /* window 1 (CPU $080000..$0FFFFF) shows 512 KiB page `page` */
+void ssf2_read_block(uint16_t block, uint8_t out[1024]); /* 1 KiB of window 1, block 0..511 */
 void bus_input_fast(void);
 void bus_output_fast(void);
 

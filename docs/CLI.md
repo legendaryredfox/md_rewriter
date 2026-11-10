@@ -18,6 +18,7 @@ mdrewriter-cli [options] <command> [args]
 | `detect` | yes | no | flash ID and chip name |
 | `read-rom --size 512K\|1M\|2M\|4M\|8M --out F` | yes | no | dump ROM (8M needs firmware 1.1) |
 | `read-save --size 8K\|32K --out F` | yes | no | dump save RAM |
+| `read-rom --mapper ssf2 --size 512K..32M --out F` | yes | no | dump an SSF2 bank-switched cartridge page by page (size in 512K steps, firmware 1.1+, not yet run on a cartridge) |
 | `verify F [--size S]` | yes | no | read the cartridge back and compare with F |
 | `write-rom F --yes [--no-verify]` | yes | **yes** | write a flash cartridge, read back by default |
 | `write-save F --yes` | yes | **yes** | overwrite save RAM |

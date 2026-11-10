@@ -44,7 +44,10 @@ static uint16_t toggle;
 
 static GPIO_TypeDef ports[5];
 volatile uint8_t host_pin_a[16], host_pin_b[16], host_pin_e[16];
-static int wr_pending;
+static int wr_pending, mapper_pending;
+static int ssf2_on;
+static uint8_t ssf2_bank[8];
+int hw_mapper_writes;
 
 int hw_errors, hw_sector_erases, hw_chip_erases, hw_program_ops, hw_program_while_busy;
 int hw_write_cycles, hw_buffer_programs, hw_inject_buffer_abort;
@@ -354,6 +357,12 @@ static uint16_t abort_status_word(void)
 
 static uint16_t chip_read(uint32_t addr)
 {
+	if(ssf2_on)
+		{
+			if(addr >= 0x200000UL)
+				return 0xFFFF;                 /* above 4 MiB the SSF2 cartridge does not answer */
+			addr = ((uint32_t)ssf2_bank[addr >> 18] << 18) | (addr & 0x3FFFFUL);
+		}
 	if(cfg.family == HW_FAMILY_INTEL)
 		{
 			if(rom_only) return mem[addr];
@@ -450,10 +459,36 @@ static uint32_t bus_address(void)
 	return ((ports[0].ODR & 0xFFU) << 16) | (ports[3].ODR & 0xFFFFU);
 }
 
+int hw_ssf2_window1_page;
+
+/* A write cycle with /TIME low and /LWR low (and /CE0 high): the mapper register area. */
+static void mapper_write_cycle(uint32_t word_addr, uint16_t data)
+{
+	hw_mapper_writes++;
+	if(ssf2_on && word_addr >= 0x509879UL && word_addr <= 0x50987FUL)
+		{
+			const int window = (int)(word_addr - 0x509879UL) + 1;     /* $A130F3 -> 1 ... $A130FF -> 7 */
+			ssf2_bank[window] = (uint8_t)(data & 0x3FU);
+			hw_ssf2_window1_page = ssf2_bank[1];
+		}
+}
+
 static void sync(void)
 {
-	const int cs = !host_pin_b[6], wr = !host_pin_b[14], rd = !host_pin_b[4];
+	const int cs = !host_pin_b[6], wr = !host_pin_b[14], rd = !host_pin_b[4], tm = !host_pin_b[12];
 	apply_bsrr();
+	if(tm && wr && !cs)
+		{
+			if(rd) fail("RD and WR low at the same time (mapper write)");
+			if(bus_is_input()) fail("mapper write cycle with the data bus as input");
+			mapper_pending = 1;
+			return;
+		}
+	if(mapper_pending)
+		{
+			mapper_pending = 0;
+			mapper_write_cycle(bus_address(), (uint16_t)(ports[4].ODR & 0xFFFFU));
+		}
 	if(cs && wr)
 		{
 			if(rd) fail("RD and WR low at the same time");
@@ -552,6 +587,9 @@ void hw_reset(const hw_chip_config_t *chip)
 	hw_intel_block_erases = hw_intel_programs = 0;
 	flash_probe_forget();            /* a new chip: the firmware must probe it again */
 	wr_pending = 0;
+	mapper_pending = 0;
+	hw_set_ssf2(0);
+	hw_mapper_writes = 0;
 	rom_only = 0;
 	toggle = 0;
 	hw_errors = hw_sector_erases = hw_chip_erases = hw_program_ops = hw_program_while_busy = 0;
@@ -559,6 +597,14 @@ void hw_reset(const hw_chip_config_t *chip)
 	hw_error_text[0] = 0;
 	hw_now_ns = 0;
 	hw_cdc_clear();
+}
+
+void hw_set_ssf2(int on)
+{
+	int i;
+	ssf2_on = on;
+	for(i = 0; i < 8; i++) ssf2_bank[i] = (uint8_t)i;     /* power-up: window k shows page k */
+	hw_ssf2_window1_page = 1;
 }
 
 void hw_set_rom_only(int on) { rom_only = on; }

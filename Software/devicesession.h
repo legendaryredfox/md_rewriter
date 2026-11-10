@@ -43,6 +43,8 @@ public:
     bool connectDevice();
     bool detect();
     bool readRom(const Protocol::RomSize &size, QIODevice *out);
+    // ROM of a cartridge with the SSF2 bank-switch mapper: `pages` x 512 KiB (1..64), firmware 1.1 or later.
+    bool readRomSsf2(int pages, QIODevice *out);
     // With `verify`, a successful write is followed by a read-back (the normal ROM dump command)
     // that is compared with `in`, which must be seekable. Same operation for the caller: one
     // finished() signal, ok only if the write and the comparison both succeeded.

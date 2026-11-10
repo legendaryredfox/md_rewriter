@@ -151,6 +151,38 @@ private slots:
         QCOMPARE(h.fw.commands.last(), QByteArray::fromHex("0AAA55AABB05"));
     }
 
+    void readRomSsf2FromNewFirmware()
+    {
+        Harness h;
+        h.fw.fwVersion = "1.1.0";
+        QVERIFY(h.s.connectDevice());
+        QVERIFY(h.waitDone());
+        h.fw.rom = randomBytes(0x500000, 53);                   // 5 MiB: 10 pages
+        QByteArray out;
+        QBuffer buf(&out); buf.open(QIODevice::WriteOnly);
+        QVERIFY(h.s.readRomSsf2(10, &buf));
+        QVERIFY(h.waitDone(2, 120000));
+        QVERIFY(h.done[1].ok);
+        QVERIFY(out == h.fw.rom);
+        QCOMPARE(h.fw.commands.last(), QByteArray::fromHex("3AAA55AABB0A"));
+    }
+
+    void readRomSsf2IsRefusedOnFirmware1_0AndBadPages()
+    {
+        Harness h;
+        QVERIFY(h.s.connectDevice());
+        QVERIFY(h.waitDone());
+        QByteArray out;
+        QBuffer buf(&out); buf.open(QIODevice::WriteOnly);
+        const int before = h.fw.commands.size();
+        QVERIFY(!h.s.readRomSsf2(10, &buf));
+        QVERIFY(h.hasMessage(Sev::Error, "firmware 1.1"));
+        QVERIFY(!h.s.readRomSsf2(0, &buf));
+        QVERIFY(!h.s.readRomSsf2(65, &buf));
+        QTest::qWait(30);
+        QCOMPARE(h.fw.commands.size(), before);                 // 1.0 would ignore the command and time out
+    }
+
     void readRom8MIsRefusedOnFirmware1_0()
     {
         Harness h;

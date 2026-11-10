@@ -96,6 +96,37 @@ private slots:
         QCOMPARE(f.readAll(), QByteArray("keep"));
     }
 
+    void readRomThroughSsf2Mapper()
+    {
+        QTemporaryDir d;
+        FakeFirmware fw;
+        fw.fwVersion = "1.1.0";
+        fw.rom = randomBytes(0x180000, 11);                     // 1.5 MiB: 3 pages
+        const QString out = d.filePath("ssf2.bin");
+        Run r = cli({"read-rom", "--mapper", "ssf2", "--size", "1536K", "--out", out, "--json", "-q"}, &fw);
+        QVERIFY2(r.code == 0, qPrintable(r.err + r.out));
+        QCOMPARE(r.json().value("mapper").toString(), QString("ssf2"));
+        QCOMPARE(r.json().value("bytes").toInt(), 0x180000);
+        QFile f(out);
+        QVERIFY(f.open(QIODevice::ReadOnly));
+        QCOMPARE(f.readAll(), fw.rom);
+        QCOMPARE(fw.commands.last(), QByteArray::fromHex("3AAA55AABB03"));
+    }
+
+    void ssf2MapperArguments()
+    {
+        QTemporaryDir d;
+        const QString out = d.filePath("x.bin");
+        QCOMPARE(cli({"read-rom", "--mapper", "ssf2", "--size", "700K", "--out", out}).code, int(CliRunner::Usage));   // not a multiple of 512K
+        QCOMPARE(cli({"read-rom", "--mapper", "ssf2", "--size", "33M", "--out", out}).code, int(CliRunner::Usage));   // 66 pages
+        QCOMPARE(cli({"read-rom", "--mapper", "ssf2", "--out", out}).code, int(CliRunner::Usage));                      // no size
+        QCOMPARE(cli({"read-rom", "--mapper", "sf2", "--size", "5M", "--out", out}).code, int(CliRunner::Usage));      // unknown mapper
+        QCOMPARE(cli({"detect", "--mapper", "ssf2"}).code, int(CliRunner::Usage));                                      // only for read-rom
+        FakeFirmware fw;                                                                                                  // firmware 1.0
+        QCOMPARE(cli({"read-rom", "--mapper", "ssf2", "--size", "5M", "--out", out}, &fw).code, int(CliRunner::Failed));
+        QVERIFY(!QFile::exists(out));
+    }
+
     void readDetectWriteVerify()
     {
         QTemporaryDir d;

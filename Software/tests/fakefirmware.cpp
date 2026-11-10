@@ -107,7 +107,7 @@ void FakeFirmware::process()
         if (shortCmd) {
             const quint8 c = static_cast<quint8>(m_rx.at(0));
             int len = 5;
-            if (c == 0x0A || c == 0x1A || c == 0x1E) len = 6;
+            if (c == 0x0A || c == 0x1A || c == 0x1E || c == 0x3A) len = 6;
             if (c == 0x2E) len = 8;
             if (c == 0x0B || c == 0x1B) {
                 errors << QStringLiteral("write command without 1024 data bytes in front");
@@ -184,6 +184,18 @@ void FakeFirmware::handle(const QByteArray &cmd, const QByteArray &blockData)
     case 0x1A:
         dump(sram, false, static_cast<quint8>(cmd.at(5)));
         break;
+    case 0x3A: {
+        // Firmware 1.1 only: pages x 512 KiB through the SSF2 mapper. Firmware 1.0 ignores the command.
+        const int pages = static_cast<quint8>(cmd.at(5));
+        if (fwVersion.isEmpty() || pages < 1 || pages > 64)
+            break;
+        reply(QStringLiteral("SSF2 ROM DUMP START!!!\r\n"));
+        for (int j = 0; j < pages * 512; ++j)
+            replyRaw(rom.mid(j * 1024, 1024).leftJustified(1024, '\xFF', true));
+        reply(QStringLiteral("DUMPER ROM FINISH!!!\r\n"));
+        reply(QStringLiteral("PUSH SAVE GAME BUTTON!!!\r\n"));
+        break;
+    }
     case 0x0B:
     case 0x1B: {
         const quint32 idx = static_cast<quint8>(cmd.at(5));
