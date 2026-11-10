@@ -176,6 +176,18 @@ O firmware só pode ser gravado por SWD. A PCB V1.0 tem 4 pads furados soltos, s
 - Alimente a placa por **uma** fonte só: ou USB-C com o fio 3V3 do ST-Link desconectado (ligue só GND, SWCLK e SWDIO), ou o 3V3 do ST-Link sem USB.
 - A ordem dos pads foi tirada do arquivo do projeto (`Hardware/PCB`). Confirme com o multímetro antes de ligar: GND tem continuidade com a carcaça do USB-C, e 3V3 mostra 3,3 V com o USB ligado.
 
+### Mapa de pinos do ST-Link V2
+
+| Sinal | Pad da PCB | ST-Link V2 original (conector de 20 pinos) | ST-Link V2 clone (dongle USB) |
+|-------|-----------|-------------------------------------------|-------------------------------|
+| SWCLK | 2 | pino 9 (TCK/SWCLK) | o pino marcado `SWCLK` |
+| SWDIO | 3 | pino 7 (TMS/SWDIO) | o pino marcado `SWDIO` (às vezes `SWIO`) |
+| GND | 4 | pino 4 (também 6, 8, 10, 12, 14, 16, 18, 20) | o pino marcado `GND` |
+| 3V3 | 1 | pino 1 (só referência de tensão: não alimenta a placa) | o pino marcado `3.3V` (saída; use só sem USB) |
+| NRST | sem pad | pino 15 (deixar solto) | `RST` (deixar solto) |
+
+Os clones em forma de dongle USB (4, 6 ou 10 pinos) **não seguem** a numeração de 20 pinos, e a ordem dos pinos muda de um modelo para outro. Ligue sempre pelo nome impresso na carcaça. Se não houver nome, descubra com o multímetro. Muitos clones nem têm o sinal NRST.
+
 Teste a conexão e faça o backup do firmware original **antes** de gravar qualquer coisa:
 
 ```bash
@@ -380,6 +392,18 @@ make -j"$(sysctl -n hw.ncpu)"
 - Площадки NRST нет: вывод RST ST-Link оставьте свободным. 5V ST-Link не подключайте.
 - Питайте плату только от **одного** источника: либо USB-C при отключённом проводе 3V3 ST-Link (подключите только GND, SWCLK и SWDIO), либо 3V3 от ST-Link без USB.
 - Порядок площадок взят из файла проекта (`Hardware/PCB`). Перед подключением проверьте мультиметром: GND звонится с корпусом USB-C, а на 3V3 при включённом USB есть 3,3 В.
+
+### Распиновка ST-Link V2
+
+| Сигнал | Площадка на плате | Оригинальный ST-Link V2 (20-контактный разъём) | Клон ST-Link V2 (USB-донгл) |
+|--------|-------------------|-----------------------------------------------|-----------------------------|
+| SWCLK | 2 | контакт 9 (TCK/SWCLK) | контакт с надписью `SWCLK` |
+| SWDIO | 3 | контакт 7 (TMS/SWDIO) | контакт с надписью `SWDIO` (иногда `SWIO`) |
+| GND | 4 | контакт 4 (также 6, 8, 10, 12, 14, 16, 18, 20) | контакт с надписью `GND` |
+| 3V3 | 1 | контакт 1 (только опорное напряжение: плату не питает) | контакт с надписью `3.3V` (выход; только без USB) |
+| NRST | нет площадки | контакт 15 (оставить свободным) | `RST` (оставить свободным) |
+
+Клоны в виде USB-донгла (4, 6 или 10 контактов) **не следуют** 20-контактной нумерации, а порядок контактов у разных моделей разный. Всегда подключайте по надписям на корпусе. Если надписей нет, определите контакты мультиметром. У многих клонов сигнала NRST вообще нет.
 
 Проверьте соединение и сделайте резервную копию оригинальной прошивки **до** любой записи:
 
@@ -586,6 +610,18 @@ make -j"$(sysctl -n hw.ncpu)"
 - 板子只能由**一路**电源供电：要么接 USB-C 并断开 ST-Link 的 3V3 线（只接 GND、SWCLK、SWDIO），要么由 ST-Link 的 3V3 供电且不接 USB。
 - 焊盘顺序来自工程文件（`Hardware/PCB`）。接线前请用万用表确认：GND 与 USB-C 外壳导通，USB 接通时 3V3 为 3.3 V。
 
+### ST-Link V2 引脚图
+
+| 信号 | PCB 焊盘 | 原装 ST-Link V2（20 针接口） | ST-Link V2 克隆版（USB 小板） |
+|------|----------|------------------------------|-------------------------------|
+| SWCLK | 2 | 第 9 脚 (TCK/SWCLK) | 标有 `SWCLK` 的引脚 |
+| SWDIO | 3 | 第 7 脚 (TMS/SWDIO) | 标有 `SWDIO` 的引脚（有时是 `SWIO`） |
+| GND | 4 | 第 4 脚（也可用 6、8、10、12、14、16、18、20） | 标有 `GND` 的引脚 |
+| 3V3 | 1 | 第 1 脚（仅作电压参考，不给板子供电） | 标有 `3.3V` 的引脚（输出；仅在不接 USB 时使用） |
+| NRST | 无焊盘 | 第 15 脚（悬空） | `RST`（悬空） |
+
+USB 小板形式的克隆版（4、6 或 10 针）**不遵循** 20 针编号，不同型号的引脚顺序也不同。请始终按外壳上印的名称接线。如果没有标注，用万用表确认。很多克隆版根本没有 NRST 信号。
+
 在写入任何内容**之前**，先测试连接并备份原始固件：
 
 ```bash
@@ -790,6 +826,18 @@ The firmware can only be flashed over SWD. The V1.0 PCB has 4 loose through-hole
 - There is no NRST pad: leave the ST-Link RST wire unconnected. Do not connect the ST-Link 5V.
 - Power the board from **one** source only: either USB-C with the ST-Link 3V3 wire disconnected (connect only GND, SWCLK and SWDIO), or the ST-Link 3V3 with no USB.
 - The pad order was taken from the project file (`Hardware/PCB`). Check it with a multimeter before connecting: GND has continuity with the USB-C shell, and 3V3 reads 3.3 V with USB plugged in.
+
+### ST-Link V2 pin map
+
+| Signal | PCB pad | Original ST-Link V2 (20-pin connector) | ST-Link V2 clone (USB dongle) |
+|--------|---------|----------------------------------------|-------------------------------|
+| SWCLK | 2 | pin 9 (TCK/SWCLK) | the pin marked `SWCLK` |
+| SWDIO | 3 | pin 7 (TMS/SWDIO) | the pin marked `SWDIO` (sometimes `SWIO`) |
+| GND | 4 | pin 4 (also 6, 8, 10, 12, 14, 16, 18, 20) | the pin marked `GND` |
+| 3V3 | 1 | pin 1 (voltage reference only: it does not power the board) | the pin marked `3.3V` (output; use only without USB) |
+| NRST | no pad | pin 15 (leave unconnected) | `RST` (leave unconnected) |
+
+USB dongle clones (4, 6 or 10 pins) **do not follow** the 20-pin numbering, and the pin order changes from one model to another. Always wire by the name printed on the case. If there is no label, find out with a multimeter. Many clones do not even have the NRST signal.
 
 Test the connection and back up the original firmware **before** writing anything:
 
