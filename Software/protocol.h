@@ -55,7 +55,7 @@ const RomSize &extendedRomSize();
 // Sizes of save RAM the firmware can dump.
 const QVector<SramSize> &sramSizes();
 
-// File sizes accepted for writing: even, 512 bytes to 4 MiB (the old app accepted five fixed sizes).
+// File sizes accepted for writing: even, 512 bytes to 8 MiB (the old app accepted five fixed sizes). More than 4 MiB needs firmware 1.1.
 bool isWritableRomSize(qint64 bytes);
 bool isWritableSramSize(qint64 bytes);
 

@@ -45,7 +45,7 @@ Commands `0A 0B 0C 0D 0E 0F 1A 1B 1E 2E`, header `AA 55 AA BB`, 1 KiB write bloc
 
 ### 3.3 App side (done in `Software/`, works with both firmwares)
 
-ROM of any even size up to 4 MiB (padded by the protocol with `0xFF`), `.smd` conversion, verify-after-write by reading back with the normal dump command, chip table keyed on `FLASHID:`, plain-language detect messages, header warnings, `WRITE TIMEOUT` handling. No firmware dependency except the last item, which only reacts to a new line.
+ROM of any even size up to 8 MiB (above 4 MiB with `FWVER:`; padded by the protocol with `0xFF`), `.smd` conversion, verify-after-write by reading back with the normal dump command, chip table keyed on `FLASHID:`, plain-language detect messages, header warnings, `WRITE TIMEOUT` handling. No firmware dependency except the last item, which only reacts to a new line.
 
 ## 4. Requirements
 
@@ -77,7 +77,7 @@ ROM of any even size up to 4 MiB (padded by the protocol with `0xFF`), `.smd` co
 | D3 | EEPROM saves (I2C 24Cxx cartridges). | **Not started.** New protocol and game-specific wiring (SDA/SCL on data lines at a game-dependent address); depends on `/UWR`/`/CAS2` (D5) and needs cartridges to test against. |
 | D4 | SSF2 bank-switch mapper and ROMs above 8 MiB. | **Not started.** The dumper already reads the whole 8 MiB of a flash chip by driving the address lines (NFW-3), so the mapper only matters for cartridges with their own bank registers (`A130F3h` to `A130FFh`, one 512 KB window each). Driving those through the `/TIME` line depends on how the cartridge decodes them; without such a cartridge and its schematic it would be guesswork. |
 | D5 | `/UWR`, `/CAS2` not wired on the PCB. | Hardware (`docs/HARDWARE_REVIEW.md` L2). |
-| D6 | ~~App support for the 8 MiB read and `FWVER`~~ **Done in the app (2026-11-02):** the size list gains 8 MiB only after a `FWVER:` line; firmware 1.0 never sends it, so 8 MiB is never offered there (`readRom` refuses it). Reading 8 MiB itself still needs the hardware check of NFW-3. Erase by size 8M is code 5, a full chip erase, on any firmware. Writing stays limited to 4 MiB. | — |
+| D6 | ~~App support for the 8 MiB read and `FWVER`~~ **Done in the app (2026-11-02):** the size list gains 8 MiB only after a `FWVER:` line; firmware 1.0 never sends it, so 8 MiB is never offered there (`readRom` refuses it). Reading 8 MiB itself still needs the hardware check of NFW-3. Erase by size 8M is code 5, a full chip erase, on any firmware. Writing up to 8 MiB added 2026-11-05 (app only: the write command already addresses 8 MiB; needs `FWVER:` so the read-back can use code 5; not run on a cartridge). | — |
 | D7 | Faster programming with the chip's write-buffer or unlock-bypass commands. | **Write buffer done, opt-in (NFW-12).** Unlock bypass (`20h`, then `A0h` + address/data pairs, exit `90h` `00h`) is documented for the S29GL064N but not implemented: the write buffer gives more and the plan item 3 timing must come first. |
 
 ## 6. Risks

@@ -413,6 +413,7 @@ void MainWindow::onSerialError(QSerialPort::SerialPortError error)
     if (m_session.busy())
         m_session.deviceLost(tr("The operation was interrupted."));
     m_serial.close();
+    m_session.resetFirmwareInfo();
     updateUi();
 }
 
@@ -473,7 +474,7 @@ void MainWindow::writeRom()
     }
     // Refuse before reading a huge file into memory (an SMD file has 512 bytes of header on top).
     if (file.size() > RomImage::kMaxRomBytes + RomImage::kSmdHeaderBytes) {
-        log(Severity::Error, tr("The file is %1, larger than the 4 MiB this device can write.").arg(humanSize(file.size())));
+        log(Severity::Error, tr("The file is %1, larger than the 8 MiB this device can write.").arg(humanSize(file.size())));
         return;
     }
     const RomImage::Result rom = RomImage::prepare(file.readAll());

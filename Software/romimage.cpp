@@ -97,7 +97,7 @@ QStringList headerWarnings(const QByteArray &image)
 
 qint64 coveringReadSize(qint64 bytes)
 {
-    static const qint64 sizes[] = { 0x080000, 0x100000, 0x200000, 0x400000 };
+    static const qint64 sizes[] = { 0x080000, 0x100000, 0x200000, 0x400000, 0x800000 };
     for (qint64 s : sizes) {
         if (bytes <= s)
             return s;
@@ -123,8 +123,8 @@ Result prepare(const QByteArray &file)
         return r;
     }
     if (image.size() > kMaxRomBytes) {
-        r.error = QCoreApplication::translate("RomImage", "The ROM is %1. The largest size this device can write and read back is 4 MiB "
-                     "(games above that need a bank-switching mapper the cartridge does not have).")
+        r.error = QCoreApplication::translate("RomImage", "The ROM is %1. The largest size this device can write and read back is 8 MiB "
+                     "(the whole chip of a 64 Mbit cartridge; games above that need a bank-switching mapper the cartridge does not have).")
                       .arg(humanSize(image.size()));
         return r;
     }

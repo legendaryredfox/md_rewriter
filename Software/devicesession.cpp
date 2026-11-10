@@ -155,8 +155,12 @@ bool DeviceSession::startWrite(Op op, QIODevice *in, Protocol::Command cmd, bool
     const bool isRom = (op == Op::WriteRom);
     if (isRom ? !Protocol::isWritableRomSize(size) : !Protocol::isWritableSramSize(size)) {
         emit message(Severity::Error,
-                     isRom ? tr("The file size (%1 bytes) is not supported. A ROM must have an even size between 512 bytes and 4 MiB.").arg(size)
+                     isRom ? tr("The file size (%1 bytes) is not supported. A ROM must have an even size between 512 bytes and 8 MiB.").arg(size)
                            : tr("The file size (%1 bytes) is not supported. Save files must be 8 KiB or 32 KiB.").arg(size));
+        return false;
+    }
+    if (isRom && size > 0x400000 && !canRead8M()) {
+        emit message(Severity::Error, tr("Writing more than 4 MiB needs firmware 1.1 or later; this device has firmware 1.0."));
         return false;
     }
     if (!begin(op, 10000))
@@ -169,7 +173,7 @@ bool DeviceSession::startWrite(Op op, QIODevice *in, Protocol::Command cmd, bool
     m_acked = 0;
     setProgress(0);
     sendNextBlock();
-    return true;
+    return m_op == op;
 }
 
 bool DeviceSession::writeRom(QIODevice *in, bool verify)
@@ -525,6 +529,8 @@ void DeviceSession::startVerify()
             break;
         }
     }
+    if (!size && static_cast<qint64>(Protocol::extendedRomSize().bytes) >= m_in->size())
+        size = &Protocol::extendedRomSize();
     if (!size || !m_in->seek(0)) {
         fail(tr("Could not start the verification of the write."));
         return;

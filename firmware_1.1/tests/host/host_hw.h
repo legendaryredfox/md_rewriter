@@ -18,10 +18,11 @@ typedef struct {
 	int write_buffer;           /* takes 25h/29h Write Buffer Programming (16 words) */
 	hw_family_t family;
 	uint32_t words;             /* chip size in words, 0 = 4 M words */
+	uint8_t erase_cmd;          /* 0 = 30h erases a sector; 50h = SST39VF320x: 50h erases the 32 KWord block, 30h only 2 KWords */
 } hw_chip_config_t;
 
 /* Chips used by the tests. */
-extern const hw_chip_config_t HW_MX29LV640EB, HW_S29GL064N_03, HW_S29GL064N_04, HW_S29GL064N_01, HW_M29W640DT, HW_SST39VF6401B, HW_M29W320EB, HW_M29W320ET, HW_MX29L3211, HW_PA28F400B, HW_PA28F400T;
+extern const hw_chip_config_t HW_MX29LV640EB, HW_S29GL064N_03, HW_S29GL064N_04, HW_S29GL064N_01, HW_M29W640DT, HW_SST39VF6401B, HW_M29W320EB, HW_M29W320ET, HW_MX29L3211, HW_PA28F400B, HW_PA28F400T, HW_SST39VF3201;
 
 void hw_reset(const hw_chip_config_t *chip);     /* new chip, fully erased (0xFFFF), clock at 0 */
 void hw_set_rom_only(int on);                    /* a mask ROM: reads return rom data, writes are ignored */

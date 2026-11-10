@@ -46,7 +46,7 @@
 <h3 id="recipe-flash">Gravar um jogo em um cartucho flash</h3>
 <ol>
 <li><b>Apague antes</b>, a menos que o cartucho esteja vazio (veja <a href="#recipe-erase">Apagar</a>). A memória flash só consegue mudar bits de 1 para 0; gravar sobre dados antigos sem apagar gera um jogo corrompido.</li>
-<li>Clique em <b>Gravar ROM...</b> e escolha o arquivo. Qualquer ROM de 512 bytes até <b>4 MiB</b> com tamanho par é aceita, inclusive jogos de 256 KiB, 768 KiB ou 1,5 MiB: ela é gravada como está e o resto do chip fica em branco. Arquivos <code>.bin</code>, <code>.md</code> e <code>.gen</code> são gravados como estão; arquivos <code>.smd</code> (Super Magic Drive) são convertidos automaticamente para uma ROM simples. Se o cabeçalho da ROM parecer errado (sem <code>SEGA</code>, checksum ruim, arquivo truncado), o programa avisa antes de gravar, mas nunca bloqueia a gravação.</li>
+<li>Clique em <b>Gravar ROM...</b> e escolha o arquivo. Qualquer ROM de 512 bytes até <b>8 MiB</b> com tamanho par é aceita (acima de 4 MiB exige a firmware 1.1), inclusive jogos de 256 KiB, 768 KiB ou 1,5 MiB: ela é gravada como está e o resto do chip fica em branco. Arquivos <code>.bin</code>, <code>.md</code> e <code>.gen</code> são gravados como estão; arquivos <code>.smd</code> (Super Magic Drive) são convertidos automaticamente para uma ROM simples. Se o cabeçalho da ROM parecer errado (sem <code>SEGA</code>, checksum ruim, arquivo truncado), o programa avisa antes de gravar, mas nunca bloqueia a gravação.</li>
 <li>Confirme o aviso. A barra de progresso enche conforme os blocos são gravados.</li>
 <li>Aguarde <code>Jogo gravado</code>.</li>
 <li><b>Confira:</b> deixe <b>Verificar após gravar</b> marcado (vem ligado por padrão). Quando a gravação termina, o programa lê o cartucho de volta e compara com o arquivo; o registro mostra <code>Verificado</code> ou o primeiro deslocamento que difere. Você também pode clicar em <b>Ler ROM...</b> com o mesmo tamanho e usar <b>Comparar arquivos...</b> com o original.</li>
@@ -92,7 +92,7 @@
 <tr><td><code>Os dados do dispositivo estão incompletos ou fora de sincronia...</code></td><td>A leitura foi danificada no caminho. <b>O arquivo não foi salvo.</b> Tente outro cabo ou porta USB e leia de novo.</td></tr>
 <tr><td><code>O dispositivo parou de responder após X de Y bytes.</code></td><td>O dispositivo ou o cabo parou no meio da leitura. Reconecte e tente de novo.</td></tr>
 <tr><td><code>O dispositivo não confirmou o bloco N de M.</code></td><td>Um bloco de gravação não foi confirmado. Verifique o cabo e os contatos do cartucho, apague e grave de novo.</td></tr>
-<tr><td><code>O tamanho do arquivo (N bytes) não é suportado...</code></td><td>A ROM não tem tamanho par entre 512 bytes e 4 MiB, ou o save não tem 8 KiB nem 32 KiB. Nada foi enviado ao dispositivo.</td></tr>
+<tr><td><code>O tamanho do arquivo (N bytes) não é suportado...</code></td><td>A ROM não tem tamanho par entre 512 bytes e 8 MiB, ou o save não tem 8 KiB nem 32 KiB. Nada foi enviado ao dispositivo.</td></tr>
 <tr><td><code>... não terminou de apagar a tempo...</code></td><td>O cartucho pode estar com defeito ou não ser flash. (Só aparece com o firmware atualizado.)</td></tr>
 <tr><td><code>Cancelado após N de M blocos. O cartucho agora contém uma imagem parcial.</code></td><td>Você cancelou uma gravação. Apague e grave de novo antes de usar o cartucho.</td></tr>
 <tr><td><code>O dispositivo não enviou a confirmação final, mas todos os dados foram recebidos.</code></td><td>Os dados estão completos. O aviso é inofensivo.</td></tr>
@@ -168,7 +168,7 @@
 <h2 id="technical">Notas técnicas</h2>
 <ul>
 <li>Enlace: porta serial virtual USB, 1.000.000 de baud, 8 bits de dados, sem paridade, 1 stop bit, sem controle de fluxo.</li>
-<li>Tamanhos de leitura de ROM: 512 KiB, 1 MiB, 2 MiB, 4 MiB (8 MiB com a firmware 1.1 ou posterior, que se anuncia como <code>FWVER:</code> depois de conectar; a opção <b>8 MiB</b> de <b>Apagar por tamanho</b> é um apagamento do chip inteiro em qualquer firmware). Tamanhos de gravação: qualquer tamanho par de 512 bytes até 4 MiB. Tamanhos de save: 8 KiB, 32 KiB. A gravação é limitada a 4 MiB.</li>
+<li>Tamanhos de leitura de ROM: 512 KiB, 1 MiB, 2 MiB, 4 MiB (8 MiB com a firmware 1.1 ou posterior, que se anuncia como <code>FWVER:</code> depois de conectar; a opção <b>8 MiB</b> de <b>Apagar por tamanho</b> é um apagamento do chip inteiro em qualquer firmware). Tamanhos de gravação: qualquer tamanho par de 512 bytes até 8 MiB (acima de 4 MiB exige a firmware 1.1 e um cartucho cujo chip único de 64 Mbit esteja ligado aos 8 MiB inteiros). Tamanhos de save: 8 KiB, 32 KiB.</li>
 <li>Os dados são gravados em blocos de 1 KiB, cada um confirmado pelo dispositivo antes do próximo. O último bloco de um arquivo é completado com <code>0xFF</code> (que significa "não programar" na flash).</li>
 <li>As leituras são salvas de forma atômica: o programa escreve um arquivo temporário e só o renomeia quando a leitura termina.</li>
 <li>O programa funciona com o firmware 1.0 e posteriores. Algumas mensagens (tempo esgotado ao apagar) só aparecem com o firmware atualizado.</li>

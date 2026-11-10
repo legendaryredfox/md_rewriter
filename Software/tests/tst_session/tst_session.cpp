@@ -326,6 +326,35 @@ private slots:
         QVERIFY(h.fw.rom.mid(image.size()) == QByteArray(0x100000 - image.size(), '\xFF'));   // the rest stays blank
     }
 
+    void writeRomAbove4MiBNeedsFirmware11()
+    {
+        Harness h;
+        QByteArray image = randomBytes(0x500000, 51);
+        QBuffer in(&image); in.open(QIODevice::ReadOnly);
+        QVERIFY(!h.s.writeRom(&in));                       // firmware 1.0 (no FWVER): refused before anything is sent
+        QVERIFY(h.hasMessage(Sev::Error, "firmware 1.1"));
+        QCOMPARE(h.fw.blocksWritten, 0);
+    }
+
+    void writeRom8MiBWithVerify()
+    {
+        Harness h;
+        h.fw.fwVersion = "1.1.0";
+        QVERIFY(h.s.connectDevice());
+        QVERIFY(h.waitDone());
+        h.done.clear();
+        h.fw.rom = QByteArray(0x800000, '\xFF');
+        QByteArray image = randomBytes(0x500000, 52);       // 5 MiB: read back as 8M (code 5)
+        QBuffer in(&image); in.open(QIODevice::ReadOnly);
+        QVERIFY(h.s.writeRom(&in, true));
+        QVERIFY(h.waitDone(1, 120000));
+        QVERIFY2(h.done[0].ok, "write + verify of 5 MiB");
+        QCOMPARE(h.fw.blocksWritten, 5 * 1024);
+        QVERIFY(h.hasMessage(Sev::Success, "Verified"));
+        QVERIFY(h.fw.rom.left(image.size()) == image);
+        QVERIFY2(h.fw.errors.isEmpty(), qPrintable(h.fw.errors.join("; ")));
+    }
+
     void writeRomWithVerifyOk()
     {
         Harness h;
@@ -442,7 +471,7 @@ private slots:
         QTest::newRow("empty") << 0;
         QTest::newRow("tiny") << 100;
         QTest::newRow("odd") << 0x80001;
-        QTest::newRow("overFourMiB") << 0x400002;
+        QTest::newRow("overEightMiB") << 0x800002;
     }
     void writeRomRejectsBadSize()
     {

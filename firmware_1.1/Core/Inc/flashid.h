@@ -31,6 +31,7 @@ typedef struct {
 	int write_buffer;               /* 1: takes the 16-word Write Buffer Programming command (datasheet-confirmed) */
 	flash_cmdset_t cmdset;
 	uint32_t words;                 /* chip size in 16-bit words, 0 = unknown (only TOP_BOOT needs it) */
+	uint8_t erase_cmd;              /* last cycle of the erase: 30h (sector), 50h on SST39VF320x (32 KWord block; 30h erases only 2 KWord) */
 } flash_info_t;
 
 /* id[0] = manufacturer, id[1] = device (cycle 1), id[2] = cycle 2 (word 0x0E), id[3] = cycle 3

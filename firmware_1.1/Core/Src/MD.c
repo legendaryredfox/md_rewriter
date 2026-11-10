@@ -304,6 +304,12 @@
 			return wait_programmed(page_addr + last, data[2 * last + 1], 1);
 		}
 
+	/* Last cycle of the sector erase: 30h, 50h on the SST39VF320x (chip table in flashid.c). */
+	static uint8_t erase_cmd(void)
+		{
+			return g_info_valid ? g_info.erase_cmd : 0x30U;
+		}
+
 	uint8_t erase_sector(uint32_t sector_addr) 
 		{
 			uint32_t start;
@@ -317,7 +323,7 @@
 			setByte(g_u1, 0x80);
 			setByte(g_u1, 0xaa);
 			setByte(g_u2, 0x55);
-			setByte(sector_addr, 0x30);
+			setByte(sector_addr, erase_cmd());
 			while (1) 
 				{
 					if ((HAL_GetTick() - start) > ERASE_SECTOR_TIMEOUT_MS)
@@ -354,7 +360,7 @@
 							setByte(g_u1, 0x80);
 							setByte(g_u1, 0xaa);
 							setByte(g_u2, 0x55);
-							setByte(sector_addr, 0x30);
+							setByte(sector_addr, erase_cmd());
 						}
 			}
 		}

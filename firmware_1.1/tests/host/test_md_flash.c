@@ -50,6 +50,7 @@ static void test_detects(void)
 	test_detect(&HW_S29GL064N_04, "FLASHID:017E\r\n", "S29GL064N MD FLASH CART\r\n", "detect S29GL064N model 04");
 	test_detect(&HW_S29GL064N_01, "FLASHID:017E\r\n", "S29GL064N MD FLASH CART\r\n", "detect S29GL064N uniform");
 	test_detect(&HW_SST39VF6401B, "FLASHID:BF6D\r\n", "SST39VF6401B MD FLASH CART\r\n", "detect SST39VF6401B");
+	test_detect(&HW_SST39VF3201, "FLASHID:BF5B\r\n", "SST39VF3201 MD FLASH CART\r\n", "detect SST39VF3201");
 	test_detect(&HW_M29W640DT, "FLASHID:20DE\r\n", "M29W640DT MD FLASH CART\r\n", "detect M29W640DT");
 	none.id[0] = 0x0000; none.id[1] = 0x1234;
 	test_detect(&none, "FLASHID:0034\r\n", "NO FIND NGP CARD\r\n", "unknown chip is reported, not named");
@@ -392,6 +393,18 @@ static void test_command_sets(void)
 		if(hw_word(a) != 0xFFFF) ok = 0;
 	check(ok, "M29W320ET: every word blank, including the top 64 KiB (eight 8 KiB sectors)");
 	check_clean("M29W320ET erase_range");
+	/* SST39VF3201: 30h would erase 2 KWords only; the firmware must send 50h for each 32 KWord block */
+	hw_reset(&HW_SST39VF3201);
+	idle_bus();
+	for(a = 0; a < 0x100000U; a += 0x400U)
+		hw_set_word(a, 0x0000);
+	addr = 0;
+	check(erase_range(&addr, 0x100000U) == 1, "SST39VF3201: erase_range of 2 MiB succeeds");
+	ok = 1;
+	for(a = 0; a < 0x100000U; a += 0x400U)
+		if(hw_word(a) != 0xFFFF) ok = 0;
+	check(ok, "SST39VF3201: every word blank (erase command 50h)");
+	check_clean("SST39VF3201 erase_range");
 	const char *names[] = { "M29W320EB", "MX29L3211", "PA28F400B", "PA28F400T" };
 	const char *ids[] = { "FLASHID:2057\r\n", "FLASHID:C2F9\r\n", "FLASHID:8971\r\n", "FLASHID:8970\r\n" };
 	int k;

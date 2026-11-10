@@ -103,7 +103,9 @@ private slots:
         QVERIFY(isWritableRomSize(0x180000));     // 1.5 MiB
         QVERIFY(isWritableRomSize(0x400000));
         QVERIFY(!isWritableRomSize(0x300001));    // odd
-        QVERIFY(!isWritableRomSize(0x400002));    // over 4 MiB
+        QVERIFY(isWritableRomSize(0x400002));     // above 4 MiB: allowed here, the session wants firmware 1.1
+        QVERIFY(isWritableRomSize(0x800000));
+        QVERIFY(!isWritableRomSize(0x800002));    // over 8 MiB
         QVERIFY(!isWritableRomSize(0x1FE));       // smaller than vector table + header
         QVERIFY(!isWritableRomSize(0));
         QVERIFY(isWritableSramSize(0x2000));
@@ -387,7 +389,7 @@ private slots:
         QVERIFY(!RomImage::prepare(QByteArray()).ok);
         QVERIFY(!RomImage::prepare(QByteArray(0x100, 'x')).ok);                       // too small
         QVERIFY(RomImage::prepare(QByteArray(0x80001, 'x')).error.contains("odd"));    // odd size
-        QVERIFY(RomImage::prepare(QByteArray(0x400002, 'x')).error.contains("4 MiB")); // too big
+        QVERIFY(RomImage::prepare(QByteArray(0x800002, 'x')).error.contains("8 MiB")); // too big
     }
 
     void romImageCoveringSize()
@@ -397,7 +399,9 @@ private slots:
         QCOMPARE(RomImage::coveringReadSize(0x80002), qint64(0x100000));
         QCOMPARE(RomImage::coveringReadSize(0x300000), qint64(0x400000));
         QCOMPARE(RomImage::coveringReadSize(0x400000), qint64(0x400000));
-        QCOMPARE(RomImage::coveringReadSize(0x400002), qint64(0));
+        QCOMPARE(RomImage::coveringReadSize(0x400002), qint64(0x800000));
+        QCOMPARE(RomImage::coveringReadSize(0x800000), qint64(0x800000));
+        QCOMPARE(RomImage::coveringReadSize(0x800002), qint64(0));
     }
 
     void romImageSmdIsConverted()

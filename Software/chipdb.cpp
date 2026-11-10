@@ -30,6 +30,8 @@ const Chip kChips[] = {
     { 0xC2, 0xA7, "MX29LV320T (Macronix, 32 Mbit, top boot)", false },
     { 0xC2, 0xA8, "MX29LV320B (Macronix, 32 Mbit, bottom boot)", false },
     // Other command sets (new firmware only, docs/KY_SUPPORT.md). Firmware 1.0 cannot write them.
+    { 0xBF, 0x5B, "SST39VF3201 (Microchip/SST, 32 Mbit, uniform, block erase 50h)", false, CommandSet::Amd555Block50 },
+    { 0xBF, 0x5A, "SST39VF3202 (Microchip/SST, 32 Mbit, uniform, block erase 50h)", false, CommandSet::Amd555Block50 },
     { 0xC2, 0xF9, "MX29L3211 (Macronix, 32 Mbit, unlock at 5555h)", false, CommandSet::Amd5555 },
     { 0x89, 0x70, "PA28F400T (Intel, 4 Mbit, top boot)", false, CommandSet::Intel },
     { 0x89, 0x71, "PA28F400B (Intel, 4 Mbit, bottom boot)", false, CommandSet::Intel },

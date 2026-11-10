@@ -21,7 +21,7 @@ States: **Yes** = in the code and checked on hardware. **Model** = in the code, 
 | M29W320DT/DB, M29W320ET/EB | 20 CA/CB/56/57 | 32M | AMD 555h | KY carts, MD_Dumper | Model | top boot: last 64 KiB erased as eight sectors |
 | MX29LV320T / B | C2 A7 / A8 | 32M | AMD 555h | FlashKit-MD-Plus, MD-Flash-Cart-4MB | Model | |
 | MX29L3211 | C2 F9 | 32M | AMD, unlock 5555h/2AAAh | FlashKit-MD-Plus, MD-Flash-Cart-4MB | Model | no page program (128 words): slower; layout unknown |
-| SST39VF3201 / 3202 | BF 5B / 5A | 32M | AMD 555h but `50h` for the block | MD_Dumper | Planned | needs a block erase with `50h` |
+| SST39VF3201 / 3202 | BF 5B / 5A | 32M | AMD 555h but `50h` for the block | MD_Dumper | Model | firmware sends `50h` per 32 KWord block (ported from oscr_minimal D86) |
 | SST36VF3204 | BF 53 | 32M | | MD_Dumper | Planned | |
 | SST39SF040 | BF B7 | 4M | 5 V part | MD_Dumper | Planned | 5 V chip, byte-wide: check the cart wiring |
 | Intel PA28F400 T/B | 89 70 / 71 | 4M | Intel/Sharp | FlashKit-MD-Plus (code cracker) | Model | block map and status bits from memory |

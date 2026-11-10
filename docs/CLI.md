@@ -21,7 +21,7 @@ mdrewriter-cli [options] <command> [args]
 | `verify F [--size S]` | yes | no | read the cartridge back and compare with F |
 | `write-rom F --yes [--no-verify]` | yes | **yes** | write a flash cartridge, read back by default |
 | `write-save F --yes` | yes | **yes** | overwrite save RAM |
-| `erase all\|512K\|1M\|2M\|4M --yes` | yes | **yes** | erase |
+| `erase all\|512K\|1M\|2M\|4M\|8M --yes` | yes | **yes** | erase |
 
 Options: `--port NAME` (default: the only port with the dumper USB id, or `MD_REWRITER_EXTRA_PORT`), `--json`, `--yes`, `--dry-run`, `--timeout S`, `--quiet`.
 

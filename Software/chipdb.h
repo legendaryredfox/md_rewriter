@@ -13,7 +13,9 @@
 namespace ChipDb {
 
 // Command set the chip needs for writing. Firmware 1.0 only speaks Amd555.
-enum class CommandSet { Amd555, Amd5555, Intel };
+// Amd555Block50 is the 555h sequence with 50h as the erase code (SST39VF320x): firmware 1.0 sends 30h,
+// which erases only 2 KWord there, so it cannot write these chips.
+enum class CommandSet { Amd555, Amd5555, Intel, Amd555Block50 };
 
 struct Chip {
     quint8 manufacturer;

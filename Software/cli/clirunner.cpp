@@ -127,9 +127,9 @@ QString CliRunner::usage()
         "  read-rom --size 512K|1M|2M|4M|8M --out <file>      dump the ROM (8M needs firmware 1.1+)\n"
         "  read-save --size 8K|32K --out <file>               dump the save RAM\n"
         "  verify <file> [--size S]  read the cartridge back and compare with <file> (read only)\n"
-        "  write-rom <file> --yes    erase and write a flash cartridge; reads it back unless --no-verify\n"
+        "  write-rom <file> --yes    write a flash cartridge (erase it first: erase <size> --yes); reads it back unless --no-verify\n"
         "  write-save <file> --yes   overwrite the save RAM\n"
-        "  erase all|512K|1M|2M|4M --yes\n"
+        "  erase all|512K|1M|2M|4M|8M --yes   (8M = whole chip)\n"
         "\n"
         "Options:\n"
         "  --port, -p <name>   serial port (ttyACM0, /dev/ttyACM0, COM3)\n"
@@ -203,7 +203,8 @@ int CliRunner::run(const QStringList &args, QIODevice *injected)
             j.insert(QStringLiteral("name"), QString::fromLatin1(c[i].name));
             j.insert(QStringLiteral("confirmed"), c[i].confirmed);
             const char *cs = c[i].commandSet == ChipDb::CommandSet::Amd555 ? "amd-555h"
-                             : (c[i].commandSet == ChipDb::CommandSet::Amd5555 ? "amd-5555h" : "intel");
+                             : (c[i].commandSet == ChipDb::CommandSet::Amd5555 ? "amd-5555h"
+                             : (c[i].commandSet == ChipDb::CommandSet::Amd555Block50 ? "amd-555h-block50" : "intel"));
             j.insert(QStringLiteral("commandSet"), QString::fromLatin1(cs));
             list.append(j);
             if (!o.json)
@@ -296,6 +297,7 @@ int CliRunner::run(const QStringList &args, QIODevice *injected)
             if (!romSize) {
                 const qint64 cover = RomImage::coveringReadSize(image.size());
                 for (const Protocol::RomSize &s : Protocol::romSizes()) if (s.bytes == cover) romSize = &s;
+                if (!romSize && cover == Protocol::extendedRomSize().bytes) romSize = &Protocol::extendedRomSize();
             }
         }
     }
@@ -310,11 +312,11 @@ int CliRunner::run(const QStringList &args, QIODevice *injected)
     const Protocol::RomSize *eraseSize = nullptr;
     bool eraseAll = false;
     if (o.command == QLatin1String("erase")) {
-        if (o.positional.size() != 1) return finish(Usage, QStringLiteral("erase needs all, 512K, 1M, 2M or 4M"));
+        if (o.positional.size() != 1) return finish(Usage, QStringLiteral("erase needs all, 512K, 1M, 2M, 4M or 8M"));
         if (o.positional.at(0).compare(QLatin1String("all"), Qt::CaseInsensitive) == 0) eraseAll = true;
         else {
-            eraseSize = findRomSize(o.positional.at(0), false);
-            if (!eraseSize) return finish(Usage, QStringLiteral("erase needs all, 512K, 1M, 2M or 4M"));
+            eraseSize = findRomSize(o.positional.at(0), true);
+            if (!eraseSize) return finish(Usage, QStringLiteral("erase needs all, 512K, 1M, 2M, 4M or 8M"));
         }
     }
     if (o.dryRun) {
@@ -430,7 +432,7 @@ int CliRunner::run(const QStringList &args, QIODevice *injected)
             result.insert(QStringLiteral("bytes"), static_cast<double>(rom ? romSize->bytes : sramSize->bytes));
         }
     } else if (o.command == QLatin1String("verify")) {
-        if (!romSize) { code = Usage; err = QStringLiteral("file larger than 4 MiB"); }
+        if (!romSize) { code = Usage; err = QStringLiteral("file larger than 8 MiB"); }
         else {
             QByteArray back;
             QBuffer buf(&back);

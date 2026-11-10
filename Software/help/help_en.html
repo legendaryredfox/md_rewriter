@@ -46,7 +46,7 @@
 <h3 id="recipe-flash">Write a game to a flash cartridge</h3>
 <ol>
 <li><b>Erase first</b> unless the cartridge is blank (see <a href="#recipe-erase">Erase</a>). Flash memory can only change bits from 1 to 0; writing over old data without erasing gives a corrupted game.</li>
-<li>Press <b>Write ROM...</b> and choose the file. Any ROM from 512 bytes to <b>4 MiB</b> with an even size is accepted, including 256 KiB, 768 KiB or 1.5 MiB games: it is written as it is and the rest of the chip stays blank. <code>.bin</code>, <code>.md</code> and <code>.gen</code> files are written as they are; <code>.smd</code> (Super Magic Drive) files are converted to a plain ROM automatically. If the ROM header looks wrong (no <code>SEGA</code>, bad checksum, truncated file) the program warns you before writing, but never blocks the write.</li>
+<li>Press <b>Write ROM...</b> and choose the file. Any ROM from 512 bytes to <b>8 MiB</b> with an even size is accepted (more than 4 MiB needs firmware 1.1), including 256 KiB, 768 KiB or 1.5 MiB games: it is written as it is and the rest of the chip stays blank. <code>.bin</code>, <code>.md</code> and <code>.gen</code> files are written as they are; <code>.smd</code> (Super Magic Drive) files are converted to a plain ROM automatically. If the ROM header looks wrong (no <code>SEGA</code>, bad checksum, truncated file) the program warns you before writing, but never blocks the write.</li>
 <li>Confirm the warning. The progress bar fills as blocks are written.</li>
 <li>Wait for <code>Game written</code>.</li>
 <li><b>Verify:</b> leave <b>Verify after writing</b> ticked (it is on by default). When the write ends the program reads the cartridge back and compares it with the file; the log says <code>Verified</code> or gives the first offset that differs. You can also press <b>Read ROM...</b> with the same size and use <b>Compare files...</b> against the original.</li>
@@ -92,7 +92,7 @@
 <tr><td><code>The data from the device is incomplete or out of sync...</code></td><td>The dump was damaged in transit. <b>The file was not saved.</b> Try another cable or USB port and read again.</td></tr>
 <tr><td><code>The device stopped answering after X of Y bytes.</code></td><td>The device or the cable stopped in the middle of a read. Replug and retry.</td></tr>
 <tr><td><code>The device did not confirm block N of M.</code></td><td>A write block was not acknowledged. Check the cable and the cartridge contacts, erase and write again.</td></tr>
-<tr><td><code>The file size (N bytes) is not supported...</code></td><td>The ROM is not an even size between 512 bytes and 4 MiB, or the save is not 8 KiB or 32 KiB. Nothing was sent to the device.</td></tr>
+<tr><td><code>The file size (N bytes) is not supported...</code></td><td>The ROM is not an even size between 512 bytes and 8 MiB, or the save is not 8 KiB or 32 KiB. Nothing was sent to the device.</td></tr>
 <tr><td><code>... did not finish erasing in time...</code></td><td>The cartridge may be faulty or not a flash cartridge. (Only shown with the updated firmware.)</td></tr>
 <tr><td><code>Cancelled after N of M blocks. The cartridge now holds a partial image.</code></td><td>You cancelled a write. Erase and write again before using the cartridge.</td></tr>
 <tr><td><code>The device did not send the final confirmation, but all data was received.</code></td><td>The data is complete. The warning is harmless.</td></tr>
@@ -168,7 +168,7 @@
 <h2 id="technical">Technical notes</h2>
 <ul>
 <li>Link: USB virtual serial port, 1,000,000 baud, 8 data bits, no parity, 1 stop bit, no flow control.</li>
-<li>ROM dump sizes: 512 KiB, 1 MiB, 2 MiB, 4 MiB (8 MiB with firmware 1.1 or later, which announces itself as <code>FWVER:</code> after connecting; the <b>8 MiB</b> choice of <b>Erase by size</b> is a full chip erase on any firmware). Write sizes: any even size from 512 bytes to 4 MiB. Save sizes: 8 KiB, 32 KiB. Writing is limited to 4 MiB.</li>
+<li>ROM dump sizes: 512 KiB, 1 MiB, 2 MiB, 4 MiB (8 MiB with firmware 1.1 or later, which announces itself as <code>FWVER:</code> after connecting; the <b>8 MiB</b> choice of <b>Erase by size</b> is a full chip erase on any firmware). Write sizes: any even size from 512 bytes to 8 MiB (above 4 MiB needs firmware 1.1 and a cartridge whose single 64 Mbit chip is wired to the whole 8 MiB). Save sizes: 8 KiB, 32 KiB.</li>
 <li>Data is written in 1 KiB blocks, each one acknowledged by the device before the next is sent. The last block of a file is padded with <code>0xFF</code> (which means "do not program" for flash).</li>
 <li>Reads are saved atomically: the program writes a temporary file and renames it only when the read is complete.</li>
 <li>The program works with firmware 1.0 and newer. Some messages (erase timeouts) only appear with the updated firmware.</li>

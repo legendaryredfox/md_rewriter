@@ -12,7 +12,7 @@
 // stays blank (0xFF).
 namespace RomImage {
 
-constexpr qint64 kMaxRomBytes = 4 * 1024 * 1024;   // largest ROM the firmware can read back
+constexpr qint64 kMaxRomBytes = 8 * 1024 * 1024;   // largest ROM the firmware can read back (above 4 MiB: firmware 1.1)
 constexpr qint64 kSmdHeaderBytes = 512;
 constexpr qint64 kSmdBlockBytes = 16 * 1024;
 constexpr qint64 kMinRomBytes = 0x200;             // vector table + header
@@ -40,8 +40,8 @@ QStringList headerWarnings(const QByteArray &image);
 // Checksum the header stores at 0x18E: sum of the 16-bit words from 0x200 to the ROM end.
 quint16 computeChecksum(const QByteArray &image, qint64 endExclusive);
 
-// Smallest size the firmware can read back (512 KiB, 1 MiB, 2 MiB, 4 MiB) that holds `bytes`.
-// Returns 0 when `bytes` is larger than 4 MiB.
+// Smallest size the firmware can read back (512 KiB, 1 MiB, 2 MiB, 4 MiB, 8 MiB) that holds `bytes`.
+// Returns 0 when `bytes` is larger than 8 MiB.
 qint64 coveringReadSize(qint64 bytes);
 
 } // namespace RomImage

@@ -14,18 +14,19 @@
 #define CHIP_WORDS (cfg.words ? cfg.words : WORDS)
 #define NS_PER_NOP 55ULL         /* one Delay_nop iteration, about 4 cycles at 72 MHz (assumed) */
 
-const hw_chip_config_t HW_MX29LV640EB    = { HW_BOTTOM_BOOT, { 0x00C2, 0x22CB, 0x0000, 0x0000 }, 9000, 500000000ULL, 40000000000ULL, 0, HW_FAMILY_AMD, 0 };
-const hw_chip_config_t HW_S29GL064N_03   = { HW_TOP_BOOT,    { 0x0001, 0x227E, 0x220C, 0x2201 }, 15000, 500000000ULL, 40000000000ULL, 1, HW_FAMILY_AMD, 0 };
-const hw_chip_config_t HW_S29GL064N_04   = { HW_BOTTOM_BOOT, { 0x0001, 0x227E, 0x220C, 0x2200 }, 15000, 500000000ULL, 40000000000ULL, 1, HW_FAMILY_AMD, 0 };
-const hw_chip_config_t HW_S29GL064N_01   = { HW_UNIFORM,     { 0x0001, 0x227E, 0x2210, 0x2201 }, 15000, 500000000ULL, 40000000000ULL, 1, HW_FAMILY_AMD, 0 };
-const hw_chip_config_t HW_SST39VF6401B  = { HW_UNIFORM,     { 0x00BF, 0x236D, 0x0000, 0x0000 }, 10000, 18000000ULL, 40000000ULL, 0, HW_FAMILY_AMD, 0 };
-const hw_chip_config_t HW_M29W640DT      = { HW_TOP_BOOT,    { 0x0020, 0x22DE, 0x0000, 0x0000 }, 10000, 800000000ULL, 40000000000ULL, 0, HW_FAMILY_AMD, 0 };
+const hw_chip_config_t HW_MX29LV640EB    = { HW_BOTTOM_BOOT, { 0x00C2, 0x22CB, 0x0000, 0x0000 }, 9000, 500000000ULL, 40000000000ULL, 0, HW_FAMILY_AMD, 0, 0 };
+const hw_chip_config_t HW_S29GL064N_03   = { HW_TOP_BOOT,    { 0x0001, 0x227E, 0x220C, 0x2201 }, 15000, 500000000ULL, 40000000000ULL, 1, HW_FAMILY_AMD, 0, 0 };
+const hw_chip_config_t HW_S29GL064N_04   = { HW_BOTTOM_BOOT, { 0x0001, 0x227E, 0x220C, 0x2200 }, 15000, 500000000ULL, 40000000000ULL, 1, HW_FAMILY_AMD, 0, 0 };
+const hw_chip_config_t HW_S29GL064N_01   = { HW_UNIFORM,     { 0x0001, 0x227E, 0x2210, 0x2201 }, 15000, 500000000ULL, 40000000000ULL, 1, HW_FAMILY_AMD, 0, 0 };
+const hw_chip_config_t HW_SST39VF6401B  = { HW_UNIFORM,     { 0x00BF, 0x236D, 0x0000, 0x0000 }, 10000, 18000000ULL, 40000000ULL, 0, HW_FAMILY_AMD, 0, 0 };
+const hw_chip_config_t HW_M29W640DT      = { HW_TOP_BOOT,    { 0x0020, 0x22DE, 0x0000, 0x0000 }, 10000, 800000000ULL, 40000000000ULL, 0, HW_FAMILY_AMD, 0, 0 };
 
-const hw_chip_config_t HW_M29W320EB      = { HW_BOTTOM_BOOT, { 0x0020, 0x2257, 0x0000, 0x0000 }, 10000, 800000000ULL, 40000000000ULL, 0, HW_FAMILY_AMD, 0 };
-const hw_chip_config_t HW_M29W320ET      = { HW_TOP_BOOT,    { 0x0020, 0x2256, 0x0000, 0x0000 }, 10000, 800000000ULL, 40000000000ULL, 0, HW_FAMILY_AMD, 0x200000U };
-const hw_chip_config_t HW_MX29L3211      = { HW_UNIFORM,     { 0x00C2, 0x00F9, 0x0000, 0x0000 }, 11000, 700000000ULL, 40000000000ULL, 0, HW_FAMILY_AMD_5555, 0 };
-const hw_chip_config_t HW_PA28F400B      = { HW_BOTTOM_BOOT, { 0x0089, 0x4471, 0x0000, 0x0000 }, 8000, 300000000ULL, 4000000000ULL, 0, HW_FAMILY_INTEL, 0 };
-const hw_chip_config_t HW_PA28F400T      = { HW_TOP_BOOT,    { 0x0089, 0x4470, 0x0000, 0x0000 }, 8000, 300000000ULL, 4000000000ULL, 0, HW_FAMILY_INTEL, 0 };
+const hw_chip_config_t HW_M29W320EB      = { HW_BOTTOM_BOOT, { 0x0020, 0x2257, 0x0000, 0x0000 }, 10000, 800000000ULL, 40000000000ULL, 0, HW_FAMILY_AMD, 0, 0 };
+const hw_chip_config_t HW_M29W320ET      = { HW_TOP_BOOT,    { 0x0020, 0x2256, 0x0000, 0x0000 }, 10000, 800000000ULL, 40000000000ULL, 0, HW_FAMILY_AMD, 0x200000U, 0 };
+const hw_chip_config_t HW_MX29L3211      = { HW_UNIFORM,     { 0x00C2, 0x00F9, 0x0000, 0x0000 }, 11000, 700000000ULL, 40000000000ULL, 0, HW_FAMILY_AMD_5555, 0, 0 };
+const hw_chip_config_t HW_SST39VF3201   = { HW_UNIFORM,     { 0x00BF, 0x235B, 0x0000, 0x0000 }, 10000, 18000000ULL, 40000000ULL, 0, HW_FAMILY_AMD, 0x200000U, 0x50 };
+const hw_chip_config_t HW_PA28F400B      = { HW_BOTTOM_BOOT, { 0x0089, 0x4471, 0x0000, 0x0000 }, 8000, 300000000ULL, 4000000000ULL, 0, HW_FAMILY_INTEL, 0, 0 };
+const hw_chip_config_t HW_PA28F400T      = { HW_TOP_BOOT,    { 0x0089, 0x4470, 0x0000, 0x0000 }, 8000, 300000000ULL, 4000000000ULL, 0, HW_FAMILY_INTEL, 0, 0 };
 
 typedef enum { S_READ, S_C1, S_C2, S_AUTO, S_PROG_DATA, S_E1, S_E2, S_E3, S_PROG_BUSY, S_ERASE_BUSY, S_FAIL,
                S_WB_COUNT, S_WB_DATA, S_WB_CONFIRM, S_WB_ABORT } state_t;
@@ -303,10 +304,15 @@ static void chip_write(uint32_t addr, uint16_t data)
 			state = (is_u2(addr) && cmd == 0x55U) ? S_E3 : S_READ;
 			break;
 		case S_E3:
-			if(cmd == 0x30U)
+			if(cmd == 0x30U || (cfg.erase_cmd != 0 && cmd == cfg.erase_cmd))
 				{
 					uint32_t start, size;
 					sector_of(addr, &start, &size);
+					if(cfg.erase_cmd != 0 && cmd == 0x30U)
+						{
+							size = 0x800U;               /* SST39VF320x: 30h is the 2 KWord sector erase */
+							start = addr & ~(size - 1U);
+						}
 					erase_words(start, size);
 					hw_sector_erases++;
 					busy_until = hw_now_ns + cfg.sector_erase_ns;
