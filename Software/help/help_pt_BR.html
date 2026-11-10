@@ -1,6 +1,6 @@
 <h1 id="top">MD Rewriter - Guia do usuário</h1>
 <p>O MD Rewriter lê e grava <b>cartuchos de Sega Mega Drive / Genesis</b> por meio do dispositivo USB MD Rewriter. Com ele você faz backup de jogos e saves no computador, grava jogos em cartuchos flash regraváveis e compara arquivos.</p>
-<p>Ir para: <a href="#quick-start">Início rápido</a> &middot; <a href="#recipes">Receitas</a> &middot; <a href="#messages">O que o registro diz</a> &middot; <a href="#troubleshooting">Solução de problemas</a> &middot; <a href="#safety">Segurança</a></p>
+<p>Ir para: <a href="#quick-start">Início rápido</a> &middot; <a href="#recipes">Receitas</a> &middot; <a href="#messages">O que o registro diz</a> &middot; <a href="#troubleshooting">Solução de problemas</a> &middot; <a href="#cli">Linha de comando</a> &middot; <a href="#safety">Segurança</a></p>
 
 <h2 id="quick-start">Início rápido</h2>
 <ol>
@@ -73,6 +73,7 @@
 
 <h3 id="recipe-identify">Identificar um cartucho</h3>
 <p><b>Detectar cartucho</b> mostra o ID do chip. Um cartucho flash reconhecido mostra <code>FLASHID:C2CB</code> e <code>MX29LV640EB MD FLASH CART</code>. Para um cartucho de jogo comum (não flash) a mensagem é <code>NO FIND NGP CARD</code>: é esperado, e você ainda pode lê-lo. O programa também diz em palavras simples o que encontrou: um chip que ele conhece, ou "Chip fora da lista" com o ID. <code>NO FIND NGP CARD</code> só significa que o firmware não reconheceu o chip; nunca bloqueia nada.</p>
+<p>Chips de cartuchos no estilo KY / FlashKit (por exemplo SST39VF3201/3202, MX29L3211, PA28F400) são nomeados da mesma forma. Eles exigem outra sequência de comandos para gravar, que só a <b>firmware 1.1 ou posterior</b> envia; com a firmware 1.0, <b>Detectar cartucho</b> avisa que o chip exige a firmware nova.</p>
 
 <h3 id="recipe-compare">Comparar dois arquivos quaisquer (sem dispositivo)</h3>
 <p><b>Comparar arquivos...</b> funciona sem conexão. Usos típicos: conferir uma leitura contra uma referência, ver exatamente quais bytes um patch ou ROM hack altera (original contra modificada), ou confirmar que uma gravação deu certo.</p>
@@ -142,6 +143,15 @@
 
 <h3 id="problem-closed">Fechei o programa ou faltou energia durante uma operação</h3>
 <p>Leitura: nada foi salvo, é só ler de novo. Gravação ou apagamento: o cartucho está em estado desconhecido. Apague e grave de novo. Saves: restaure o arquivo de save do seu backup.</p>
+
+<h2 id="cli">Linha de comando</h2>
+<p>O projeto também compila o <code>mdrewriter-cli</code> (<code>tools/build.sh app</code>), que faz o mesmo trabalho sem janela e foi feito para scripts e agentes de IA. Ele usa a mesma sessão com o dispositivo que a janela, então os bytes enviados são idênticos.</p>
+<ul>
+<li>Somente leitura: <code>ports</code>, <code>chips</code>, <code>rominfo</code>, <code>compare</code>, <code>info</code>, <code>detect</code>, <code>read-rom</code> e <code>read-save</code> (com <code>--size</code> e <code>--out</code>), <code>verify</code>.</li>
+<li>Altera o cartucho: <code>erase</code>, <code>write-rom</code>, <code>write-save</code>. Recusam executar sem <code>--yes</code>; <code>--dry-run</code> confere argumentos e arquivos e nunca abre a porta.</li>
+<li><code>--json</code> imprime um objeto JSON na saída padrão; mensagens e progresso vão para a saída de erro. Códigos de saída: 0 ok, 1 operação falhou, 2 uso incorreto, 3 sem dispositivo, 4 exige <code>--yes</code>, 5 erro de arquivo.</li>
+<li>Rode o <code>mdrewriter-cli</code> com o comando <code>help</code> para ver todos os comandos e opções.</li>
+</ul>
 
 <h2 id="safety">Segurança e boas práticas</h2>
 <ul>

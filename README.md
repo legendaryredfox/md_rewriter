@@ -28,9 +28,11 @@ Gostou do projeto? Apoie: [Buy Me a Coffee](https://buymeacoffee.com/legendaryre
 - Faz backup de jogos de cartuchos de Mega Drive para o computador e grava jogos em cartuchos flash regraváveis de terceiros.
 - Lê e grava os dados de save (SRAM) do cartucho.
 - Compara dois arquivos byte a byte (por exemplo, uma leitura e a ROM original), sem precisar do dispositivo.
-- Grava ROMs de qualquer tamanho par até 4 MiB, converte arquivos `.smd` e verifica a gravação lendo o cartucho de volta.
+- Grava ROMs de qualquer tamanho par até 8 MiB (acima de 4 MiB exige a firmware 1.1), converte arquivos `.smd` e verifica a gravação lendo o cartucho de volta.
 - Interface que segue o tema do sistema (claro ou escuro), com confirmação antes de qualquer operação destrutiva e botão Cancelar para leituras e gravações.
 - Guia do usuário embutido (menu **Ajuda → Guia do usuário** ou **F1**): receitas de uso, o que cada mensagem do registro significa e solução de problemas, com busca. Disponível em português e inglês.
+- Linha de comando (`mdrewriter-cli`) com a mesma sessão do aplicativo, saída `--json` e códigos de saída fixos, pensada para scripts e agentes de IA: veja `docs/CLI.md`.
+- Firmware nova (`firmware_1.1/`) com suporte a chips de cartuchos KY/FlashKit (SST39VF3201/3202, MX29L3211, Intel PA28F400 e outros): lista em `docs/CART_SUPPORT.md`, ainda não testada em hardware.
 - Código aberto.
 
 ![Janela principal](docs/images/ui-main.png)
@@ -161,11 +163,14 @@ cd ../.. && tools/check-firmware.sh                      # verificação estáti
 - `tst_protocol`: unitários (comandos, tabelas de tamanhos, analisador de fluxo, comparador).
 - `tst_session`: integração (sessão do dispositivo contra um firmware simulado, com respostas fragmentadas, falhas e cancelamento).
 - `tst_help`: guia embutido (estrutura, idiomas, links) e verificação de que as mensagens e teclas citadas no guia existem no programa.
+- `tst_cli`: linha de comando (`mdrewriter-cli` contra um firmware simulado).
 - `tst_e2e`: ponta a ponta (janela real + porta serial real em um pseudo-terminal + firmware simulado; apenas Linux). Defina `QT_QPA_PLATFORM=offscreen` para rodar sem tela.
 
 O firmware não pôde ser testado em hardware real nestas alterações: veja `docs/SPEC.md` e `docs/PLAN.md`.
 
 Firmware novo (`firmware_1.1/`): `cd firmware_1.1 && make test && ./check.sh` roda os testes no PC (o `MD.c` real contra um modelo de chip flash) e a verificação estática. Nada do `firmware_1.1/` foi executado em hardware; estado, pendências e plano estão em `docs/NEW_FIRMWARE_PLAN.md` (tabela "Progress log") e `docs/NEW_FIRMWARE_SPEC.md`.
+
+Quando o hardware chegar: `tools/hwtest/hwtest.py` (`nocart`, `cart`) roda testes de bancada **somente de leitura** pela CLI, sem nunca gravar nem apagar o cartucho; veja `docs/HWTEST.md`.
 
 ## Licença
 
@@ -197,9 +202,11 @@ Licença [MIT](LICENSE). O código de terceiros em `legacy_firmware/Drivers` e `
 - Резервное копирование игр с картриджей Mega Drive на компьютер и запись игр на сторонние перезаписываемые картриджи.
 - Чтение и запись сохранений (SRAM) картриджа.
 - Побайтовое сравнение двух файлов (например, дампа и оригинальной ROM) — устройство не нужно.
-- Записывает ROM любого чётного размера до 4 MiB, преобразует файлы `.smd` и проверяет запись обратным чтением картриджа.
+- Записывает ROM любого чётного размера до 8 MiB (больше 4 MiB требует прошивку 1.1), преобразует файлы `.smd` и проверяет запись обратным чтением картриджа.
 - Интерфейс использует системную тему (светлую или тёмную), запрашивает подтверждение перед любой разрушающей операцией, а чтение и запись можно отменить кнопкой «Cancel».
 - Встроенное руководство (меню **Help → User guide** или **F1**): сценарии использования, значение сообщений журнала и устранение неполадок, с поиском. Доступно на португальском и английском.
+- Командная строка (`mdrewriter-cli`) с той же сессией, что и в программе, вывод `--json` и фиксированные коды возврата — для скриптов и ИИ-агентов: см. `docs/CLI.md`.
+- Новая прошивка (`firmware_1.1/`) поддерживает микросхемы картриджей KY/FlashKit (SST39VF3201/3202, MX29L3211, Intel PA28F400 и другие): список в `docs/CART_SUPPORT.md`, на оборудовании ещё не проверена.
 - Открытый исходный код.
 
 ![Главное окно](docs/images/ui-main.png)
@@ -328,11 +335,14 @@ cd ../.. && tools/check-firmware.sh                      # статическа�
 - `tst_protocol` — модульные тесты (команды, таблицы размеров, разбор потока, сравнение файлов).
 - `tst_session` — интеграционные тесты (сессия устройства с имитацией прошивки: фрагментация ответов, сбои, отмена).
 - `tst_help` — встроенное руководство (структура, языки, ссылки) и проверка того, что сообщения и клавиши из руководства есть в программе.
+- `tst_cli` — командная строка (`mdrewriter-cli` с имитацией прошивки).
 - `tst_e2e` — сквозные тесты (настоящее окно + настоящий последовательный порт на псевдотерминале + имитация прошивки; только Linux). Для запуска без экрана задайте `QT_QPA_PLATFORM=offscreen`.
 
 Изменения прошивки не проверялись на реальном оборудовании: см. `docs/SPEC.md` и `docs/PLAN.md`.
 
 Новая прошивка (`firmware_1.1/`): `cd firmware_1.1 && make test && ./check.sh` запускает тесты на ПК (настоящий `MD.c` против модели flash-микросхемы) и статическую проверку. Ничего из `firmware_1.1/` не запускалось на реальном оборудовании; состояние, незавершённое и план — в `docs/NEW_FIRMWARE_PLAN.md` (таблица "Progress log") и `docs/NEW_FIRMWARE_SPEC.md`.
+
+Когда оборудование будет под рукой: `tools/hwtest/hwtest.py` (`nocart`, `cart`) запускает стендовые тесты **только на чтение** через CLI и никогда не пишет и не стирает картридж; см. `docs/HWTEST.md`.
 
 ## Лицензия
 
@@ -364,9 +374,11 @@ Epicjoy 官方速卖通店铺：[购买](https://s.click.aliexpress.com/e/_c314U
 - 将 MD 卡带中的游戏备份到电脑，或写入第三方可重复擦写的卡带。
 - 读取并备份卡带存档（SRAM），方便管理。
 - 逐字节比较两个文件（例如读出的文件与原始 ROM），无需连接设备。
-- 可写入最大 4 MiB 的任意偶数大小 ROM，自动转换 `.smd` 文件，并在写入后把卡带读回进行校验。
+- 可写入最大 8 MiB 的任意偶数大小 ROM（超过 4 MiB 需要固件 1.1），自动转换 `.smd` 文件，并在写入后把卡带读回进行校验。
 - 界面跟随系统主题（浅色或深色）；任何破坏性操作前都会确认，读写过程可点击“Cancel”取消。
 - 内置用户指南（菜单 **Help → User guide** 或按 **F1**）：使用场景、日志信息含义和故障排除，支持搜索。提供葡萄牙语和英语版本。
+- 命令行 `mdrewriter-cli`：与图形界面使用同一会话，支持 `--json` 输出和固定的退出码，适合脚本和 AI 代理，详见 `docs/CLI.md`。
+- 新固件（`firmware_1.1/`）支持 KY/FlashKit 卡带芯片（SST39VF3201/3202、MX29L3211、Intel PA28F400 等）：清单见 `docs/CART_SUPPORT.md`，尚未在硬件上测试。
 - 开源。
 
 ![主窗口](docs/images/ui-main.png)
@@ -495,11 +507,14 @@ cd ../.. && tools/check-firmware.sh                      # 固件静态检查（
 - `tst_protocol`：单元测试（命令、容量表、数据流解析器、文件比较）。
 - `tst_session`：集成测试（设备会话对接模拟固件，含分片应答、故障和取消）。
 - `tst_help`：内置指南（结构、语言、链接），并检查指南中引用的信息和快捷键确实存在于程序中。
+- `tst_cli`：命令行（`mdrewriter-cli` 对接模拟固件）。
 - `tst_e2e`：端到端测试（真实窗口 + 伪终端上的真实串口 + 模拟固件；仅限 Linux）。设置 `QT_QPA_PLATFORM=offscreen` 可无显示运行。
 
 固件的改动尚未在真实硬件上测试，详见 `docs/SPEC.md` 和 `docs/PLAN.md`。
 
 新固件（`firmware_1.1/`）：`cd firmware_1.1 && make test && ./check.sh` 在电脑上运行测试（真实的 `MD.c` 对照 Flash 芯片模型）和静态检查。`firmware_1.1/` 的内容尚未在真实硬件上运行；状态、待办和计划见 `docs/NEW_FIRMWARE_PLAN.md`（"Progress log" 表）和 `docs/NEW_FIRMWARE_SPEC.md`。
+
+拿到硬件后：`tools/hwtest/hwtest.py`（`nocart`、`cart`）通过 CLI 运行**只读**的台架测试，绝不写入或擦除卡带，详见 `docs/HWTEST.md`。
 
 ## 许可证
 
@@ -531,9 +546,11 @@ Like the project? Support it: [Buy Me a Coffee](https://buymeacoffee.com/legenda
 - Back up MD cartridge games to your PC, or write games to third-party rewritable cartridges.
 - Read and back up the cartridge save data (SRAM).
 - Compare two files byte by byte (for example a dump and the original ROM), no device needed.
-- Writes ROMs of any even size up to 4 MiB, converts `.smd` files and verifies the write by reading the cartridge back.
+- Writes ROMs of any even size up to 8 MiB (above 4 MiB needs firmware 1.1), converts `.smd` files and verifies the write by reading the cartridge back.
 - Follows the system theme (light or dark), asks for confirmation before any destructive operation, and has a Cancel button for reads and writes.
 - Built-in user guide (menu **Help → User guide** or **F1**): usage recipes, what each log message means and troubleshooting, with search. Available in Portuguese and English.
+- Command line (`mdrewriter-cli`) on the same session as the app, with `--json` output and fixed exit codes, made for scripts and AI agents: see `docs/CLI.md`.
+- New firmware (`firmware_1.1/`) supports KY/FlashKit cartridge chips (SST39VF3201/3202, MX29L3211, Intel PA28F400 and others): list in `docs/CART_SUPPORT.md`, not yet tested on hardware.
 - Open source.
 
 ![Main window](docs/images/ui-main.png)
@@ -662,11 +679,14 @@ cd ../.. && tools/check-firmware.sh                      # static firmware check
 - `tst_protocol`: unit tests (commands, size tables, stream parser, file comparer).
 - `tst_session`: integration tests (device session against a simulated firmware, with fragmented replies, faults and cancellation).
 - `tst_help`: built-in guide (structure, languages, links) and a check that the messages and keys quoted in the guide exist in the program.
+- `tst_cli`: command line (`mdrewriter-cli` against a simulated firmware).
 - `tst_e2e`: end-to-end tests (real window + real serial port on a pseudo-terminal + simulated firmware; Linux only). Set `QT_QPA_PLATFORM=offscreen` to run without a display.
 
 The firmware changes could not be tested on real hardware: see `docs/SPEC.md` and `docs/PLAN.md`.
 
 New firmware (`firmware_1.1/`): `cd firmware_1.1 && make test && ./check.sh` runs the PC tests (the real `MD.c` against a flash chip model) and the static checks. Nothing in `firmware_1.1/` has run on hardware; status, open items and plan are in `docs/NEW_FIRMWARE_PLAN.md` (the "Progress log" table) and `docs/NEW_FIRMWARE_SPEC.md`.
+
+When the hardware is at hand: `tools/hwtest/hwtest.py` (`nocart`, `cart`) runs **read-only** bench tests through the CLI and never writes or erases the cartridge; see `docs/HWTEST.md`.
 
 ## License
 

@@ -1,6 +1,6 @@
 <h1 id="top">MD Rewriter - User guide</h1>
 <p>MD Rewriter reads and writes <b>Sega Mega Drive / Genesis cartridges</b> through the MD Rewriter USB device. With it you can back up games and saves to your computer, write games to rewritable flash cartridges, and compare files.</p>
-<p>Jump to: <a href="#quick-start">Quick start</a> &middot; <a href="#recipes">Recipes</a> &middot; <a href="#messages">What the log says</a> &middot; <a href="#troubleshooting">Troubleshooting</a> &middot; <a href="#safety">Safety</a></p>
+<p>Jump to: <a href="#quick-start">Quick start</a> &middot; <a href="#recipes">Recipes</a> &middot; <a href="#messages">What the log says</a> &middot; <a href="#troubleshooting">Troubleshooting</a> &middot; <a href="#cli">Command line</a> &middot; <a href="#safety">Safety</a></p>
 
 <h2 id="quick-start">Quick start</h2>
 <ol>
@@ -73,6 +73,7 @@
 
 <h3 id="recipe-identify">Identify a cartridge</h3>
 <p><b>Detect cartridge</b> prints the chip ID. A recognised flash cartridge shows <code>FLASHID:C2CB</code> and <code>MX29LV640EB MD FLASH CART</code>. For a normal (non-flash) game cartridge the message is <code>NO FIND NGP CARD</code>: that is expected, you can still read it. The program also says in plain words what it found: a chip it knows, or "Chip not in the list" with the ID. <code>NO FIND NGP CARD</code> only means the firmware did not recognise the chip; it never blocks anything.</p>
+<p>Chips from KY / FlashKit style cartridges (for example SST39VF3201/3202, MX29L3211, PA28F400) are named in the same way. They need a different command sequence to write, which only <b>firmware 1.1 or later</b> sends; with firmware 1.0 <b>Detect cartridge</b> warns that the chip needs the new firmware.</p>
 
 <h3 id="recipe-compare">Compare any two files (no device needed)</h3>
 <p><b>Compare files...</b> works without a connection. Typical uses: check a dump against a reference, see exactly which bytes a patch or ROM hack changes (original versus patched), or confirm that a write was successful.</p>
@@ -142,6 +143,15 @@
 
 <h3 id="problem-closed">I closed the program or lost power during an operation</h3>
 <p>Reading: nothing was saved, just read again. Writing or erasing: the cartridge is in an unknown state. Erase it and write again. Saves: restore the save file you backed up.</p>
+
+<h2 id="cli">Command line</h2>
+<p>The project also builds <code>mdrewriter-cli</code> (<code>tools/build.sh app</code>), which does the same work without a window and is meant for scripts and AI agents. It uses the same device session as the window, so the bytes sent to the device are identical.</p>
+<ul>
+<li>Read only: <code>ports</code>, <code>chips</code>, <code>rominfo</code>, <code>compare</code>, <code>info</code>, <code>detect</code>, <code>read-rom</code> and <code>read-save</code> (with <code>--size</code> and <code>--out</code>), <code>verify</code>.</li>
+<li>Changes the cartridge: <code>erase</code>, <code>write-rom</code>, <code>write-save</code>. They refuse to run without <code>--yes</code>; <code>--dry-run</code> checks the arguments and files and never opens the port.</li>
+<li><code>--json</code> prints one JSON object on stdout; messages and progress go to stderr. Exit codes: 0 ok, 1 operation failed, 2 usage, 3 no device, 4 needs <code>--yes</code>, 5 file error.</li>
+<li>Run <code>mdrewriter-cli</code> with the command <code>help</code> for the full list of commands and options.</li>
+</ul>
 
 <h2 id="safety">Safety and good practice</h2>
 <ul>
