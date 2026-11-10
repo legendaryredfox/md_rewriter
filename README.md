@@ -152,6 +152,39 @@ Os dois pedem confirmação, pois **destroem os dados do cartucho**.
 | "The cartridge did not finish erasing in time" | O cartucho pode estar com defeito ou não ser flash (requer firmware que envie esse aviso; o firmware novo envia). |
 | Usar uma porta que o sistema não lista | Defina `MD_REWRITER_EXTRA_PORT=/caminho/da/porta` antes de abrir o programa. |
 
+## Ligar o ST-Link V2 (gravar o firmware)
+
+O firmware só pode ser gravado por SWD. A PCB V1.0 tem 4 pads furados soltos, sem serigrafia, em uma fileira vertical logo abaixo do capacitor C10: à direita do microcontrolador (U1) e acima do conector USB-C. Vista de cima (USB-C embaixo):
+
+```
+   ●  3V3
+   ●  SWCLK   (PA14, U1 pin 76)
+   ●  SWDIO   (PA13, U1 pin 72)
+   ●  GND
+ [USB-C]
+```
+
+| Pad (de cima para baixo) | Rede | Fio do ST-Link V2 |
+|--------------------------|------|-------------------|
+| 1 | 3V3 | 3.3V (só se o USB estiver desligado) |
+| 2 | SWCLK (PA14) | SWCLK |
+| 3 | SWDIO (PA13) | SWDIO |
+| 4 | GND | GND |
+
+- Pelo verso da placa a ordem vertical é a mesma (3V3 em cima, GND embaixo); a fileira só aparece espelhada.
+- Não há pad de NRST: deixe o RST do ST-Link solto. Não ligue o 5V do ST-Link.
+- Alimente a placa por **uma** fonte só: ou USB-C com o fio 3V3 do ST-Link desconectado (ligue só GND, SWCLK e SWDIO), ou o 3V3 do ST-Link sem USB.
+- A ordem dos pads foi tirada do arquivo do projeto (`Hardware/PCB`). Confirme com o multímetro antes de ligar: GND tem continuidade com a carcaça do USB-C, e 3V3 mostra 3,3 V com o USB ligado.
+
+Teste a conexão e faça o backup do firmware original **antes** de gravar qualquer coisa:
+
+```bash
+st-info --probe                                          # STM32F1xx medium-density, 128 KiB (0x20000)
+st-flash read backup_fw_1.0.bin 0x08000000 0x20000
+```
+
+Se a leitura vier vazia, a proteção de leitura está ligada: não apague nada. Detalhes e passos seguintes em `docs/NEW_FIRMWARE_PLAN.md` (passo 2) e `firmware_1.1/README.md`.
+
 ## Desenvolvimento e testes
 
 ```bash
@@ -323,6 +356,39 @@ make -j"$(sysctl -n hw.ncpu)"
 | «the device did not answer» | Выбран не тот порт, или в устройство не записана прошивка. |
 | Чтение «incomplete or out of sync» | Попробуйте другой кабель/USB-порт ещё раз; файл в этом случае не сохраняется. |
 | Порт, которого нет в списке системы | Задайте `MD_REWRITER_EXTRA_PORT=/путь/к/порту` перед запуском. |
+
+## Подключение ST-Link V2 (прошивка)
+
+Прошить устройство можно только по SWD. На плате V1.0 есть 4 отдельные сквозные контактные площадки без маркировки, расположенные вертикальным рядом сразу под конденсатором C10: справа от микроконтроллера (U1) и над разъёмом USB-C. Вид сверху (USB-C внизу):
+
+```
+   ●  3V3
+   ●  SWCLK   (PA14, U1 pin 76)
+   ●  SWDIO   (PA13, U1 pin 72)
+   ●  GND
+ [USB-C]
+```
+
+| Площадка (сверху вниз) | Цепь | Провод ST-Link V2 |
+|------------------------|------|-------------------|
+| 1 | 3V3 | 3.3V (только если USB отключён) |
+| 2 | SWCLK (PA14) | SWCLK |
+| 3 | SWDIO (PA13) | SWDIO |
+| 4 | GND | GND |
+
+- С обратной стороны платы порядок по вертикали тот же (3V3 сверху, GND снизу); ряд виден зеркально.
+- Площадки NRST нет: вывод RST ST-Link оставьте свободным. 5V ST-Link не подключайте.
+- Питайте плату только от **одного** источника: либо USB-C при отключённом проводе 3V3 ST-Link (подключите только GND, SWCLK и SWDIO), либо 3V3 от ST-Link без USB.
+- Порядок площадок взят из файла проекта (`Hardware/PCB`). Перед подключением проверьте мультиметром: GND звонится с корпусом USB-C, а на 3V3 при включённом USB есть 3,3 В.
+
+Проверьте соединение и сделайте резервную копию оригинальной прошивки **до** любой записи:
+
+```bash
+st-info --probe                                          # STM32F1xx medium-density, 128 KiB (0x20000)
+st-flash read backup_fw_1.0.bin 0x08000000 0x20000
+```
+
+Если чтение вернуло пустой результат, включена защита от чтения: ничего не стирайте. Подробности и следующие шаги: `docs/NEW_FIRMWARE_PLAN.md` (шаг 2) и `firmware_1.1/README.md`.
 
 ## Разработка и тесты
 
@@ -496,6 +562,39 @@ make -j"$(sysctl -n hw.ncpu)"
 | 读取提示 “incomplete or out of sync” | 换一根线或 USB 口后重试；此时文件不会被保存。 |
 | 系统未列出的端口 | 启动前设置 `MD_REWRITER_EXTRA_PORT=/端口/路径`。 |
 
+## 连接 ST-Link V2（烧录固件）
+
+固件只能通过 SWD 烧录。V1.0 PCB 上有 4 个独立的通孔焊盘，没有丝印，排成竖直一列，位于电容 C10 正下方：在微控制器（U1）右侧、USB-C 接口上方。俯视图（USB-C 在下）：
+
+```
+   ●  3V3
+   ●  SWCLK   (PA14, U1 pin 76)
+   ●  SWDIO   (PA13, U1 pin 72)
+   ●  GND
+ [USB-C]
+```
+
+| 焊盘（从上到下） | 网络 | ST-Link V2 接线 |
+|------------------|------|-----------------|
+| 1 | 3V3 | 3.3V（仅在 USB 断开时） |
+| 2 | SWCLK (PA14) | SWCLK |
+| 3 | SWDIO (PA13) | SWDIO |
+| 4 | GND | GND |
+
+- 从板子背面看，竖直顺序相同（3V3 在上，GND 在下），只是这一列左右镜像。
+- 没有 NRST 焊盘：ST-Link 的 RST 悬空。不要接 ST-Link 的 5V。
+- 板子只能由**一路**电源供电：要么接 USB-C 并断开 ST-Link 的 3V3 线（只接 GND、SWCLK、SWDIO），要么由 ST-Link 的 3V3 供电且不接 USB。
+- 焊盘顺序来自工程文件（`Hardware/PCB`）。接线前请用万用表确认：GND 与 USB-C 外壳导通，USB 接通时 3V3 为 3.3 V。
+
+在写入任何内容**之前**，先测试连接并备份原始固件：
+
+```bash
+st-info --probe                                          # STM32F1xx medium-density, 128 KiB (0x20000)
+st-flash read backup_fw_1.0.bin 0x08000000 0x20000
+```
+
+如果读出的内容为空，说明开启了读保护：不要擦除。详情和后续步骤见 `docs/NEW_FIRMWARE_PLAN.md`（第 2 步）和 `firmware_1.1/README.md`。
+
 ## 开发与测试
 
 ```bash
@@ -667,6 +766,39 @@ Both ask for confirmation because they **destroy the data on the cartridge**.
 | "the device did not answer" | Wrong port, or the firmware is not flashed on the device. |
 | Read reports "incomplete or out of sync" | Try another cable/USB port and read again; the file is not saved in that case. |
 | A port the system does not list | Set `MD_REWRITER_EXTRA_PORT=/path/to/port` before starting the program. |
+
+## Connecting the ST-Link V2 (flashing the firmware)
+
+The firmware can only be flashed over SWD. The V1.0 PCB has 4 loose through-hole pads with no silkscreen, in a vertical row right below capacitor C10: to the right of the microcontroller (U1) and above the USB-C connector. Top view (USB-C at the bottom):
+
+```
+   ●  3V3
+   ●  SWCLK   (PA14, U1 pin 76)
+   ●  SWDIO   (PA13, U1 pin 72)
+   ●  GND
+ [USB-C]
+```
+
+| Pad (top to bottom) | Net | ST-Link V2 wire |
+|---------------------|-----|-----------------|
+| 1 | 3V3 | 3.3V (only if USB is unplugged) |
+| 2 | SWCLK (PA14) | SWCLK |
+| 3 | SWDIO (PA13) | SWDIO |
+| 4 | GND | GND |
+
+- From the back of the board the vertical order is the same (3V3 on top, GND at the bottom); the row just appears mirrored.
+- There is no NRST pad: leave the ST-Link RST wire unconnected. Do not connect the ST-Link 5V.
+- Power the board from **one** source only: either USB-C with the ST-Link 3V3 wire disconnected (connect only GND, SWCLK and SWDIO), or the ST-Link 3V3 with no USB.
+- The pad order was taken from the project file (`Hardware/PCB`). Check it with a multimeter before connecting: GND has continuity with the USB-C shell, and 3V3 reads 3.3 V with USB plugged in.
+
+Test the connection and back up the original firmware **before** writing anything:
+
+```bash
+st-info --probe                                          # STM32F1xx medium-density, 128 KiB (0x20000)
+st-flash read backup_fw_1.0.bin 0x08000000 0x20000
+```
+
+If the read comes back empty, read protection is on: do not erase anything. Details and next steps are in `docs/NEW_FIRMWARE_PLAN.md` (step 2) and `firmware_1.1/README.md`.
 
 ## Development and tests
 
