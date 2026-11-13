@@ -220,3 +220,14 @@ Dumper side, from the EasyEDA project in `Hardware/PCB` (a SQLite file; decoded 
 What the software can do about it: when the detected chip is a flash cartridge, a write larger than 2 MiB should say that the cartridges of this family cannot hold more, instead of failing with `ERASE TIMEOUT!` after 23 s. The KY/FlashKit cartridge is recognisable by the SRAM window (the 4 MiB read shows the SRAM pattern above 2 MiB). Not done yet.
 
 **Written cartridges on a real console.** The owner reported on 2026-11-13 that the cartridges written during these sessions were tested on a real Mega Drive. The details (which of the two cartridges, and what was seen) were not recorded; this line only records the report. The Metal Gear image on both flash cartridges is the file whose SHA-256 is `0c52b1e2…c646`, verified byte for byte against the dump.
+
+### Release firmware 1.1.0 (2026-11-13, 17:28)
+
+The release build (`FW_VERSION=1.1.0`, 30 112 bytes, SHA-256 `9149da46ebe86c119e4bf3fdcedb9dd25def95111f44da201f8007201a641004`, `md-rewriter-firmware-1.1.0.bin`) is not the binary that was tested before (`1.1.0-test`, 30 116 bytes): the version string is shorter and the rest of the image moves. It was flashed over SWD (written and read back identical; backup of the experimental image it replaced, SHA-256 `db88a984…85ba`, in `test-results/swd-baseline-3b-build/` and `~/md_rewriter_backups/`) and the regression was run on both flash cartridges with the owner's go-ahead.
+
+| Cartridge | `info` | `detect` | `hwtest.py cart --rom-size 2M --expect-fw 1.1` | erase 2M | `write-rom` Metal Gear + verify | `verify` |
+|-----------|--------|----------|------------------------------------------------|----------|-------------------------------|----------|
+| KY (`017E1000`) | `firmware 1.1.0` | `S29GL064N`, `Chip codes 017E1000 …` | all PASS before the erase, dump SHA-256 `0c52b1e2…c646` | 7.9 s | `Verified`, 1:46 in total | identical, exit 0 |
+| first S29GL064N (`017E1001`) | `firmware 1.1.0` | `S29GL064N`, `Chip codes 017E1001 …` | all PASS before the erase, same SHA-256 | 9.0 s | `Verified`, 1:43 in total | identical, exit 0 |
+
+The write takes a little longer than the 90 s of the earlier runs; no other difference. App 1.3.0 and firmware 1.1.0 are released together (GitHub release 1.3.0).
