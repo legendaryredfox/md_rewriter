@@ -39,4 +39,4 @@ H2 and H4 are data fixes in the design files, not physical. A new GPIO for the A
 
 ## Suggestion
 
-Fix H1 with the two resistors or the dongle, solder the SWD header, and build **one interposer** (M3, M6, L2 via `/UWR=/LWR`, optional L3). That covers the V1.0 findings that matter for firmware 1.1 without waiting for the V1.1 PCB. The V1.1 PCB (KiCad, `hardware_new/`) stays planned for the findings in the list above that only a respin fixes.
+Fix H1 with the two resistors or the dongle, solder the SWD header, and build **one interposer** (M3, M6, L2 via `/UWR=/LWR`, optional L3). That covers the V1.0 findings that matter for firmware 1.1 without waiting for the V1.1 PCB. The V1.1 PCB was dropped (see the note at the top); the findings in the list above that only a respin fixes stay open.

@@ -25,7 +25,7 @@ Goal: every cartridge handled by the reference repositories. The list of what ex
 
 Folders: `firmware_1.1/` is the firmware for the current PCB (version string 1.1.0 always in the code); `firmware_1.2/` is reserved for the revised PCB. A hardware-independent fix goes in 1.1 and is copied to 1.2 when 1.2 exists.
 
-## Phase D: hardware V1.1 (deferred by the owner to another session)
+## Phase D: hardware V1.1 (cancelled 2026-11-04, kept as a record)
 
 Before a respin, `docs/HARDWARE_ADDON.md` lists what an interposer, small rework and an inline USB dongle can fix on V1.0.
 
@@ -46,6 +46,10 @@ Publish app and firmware only after phase B passes (GLOBAL_SPEC section 6).
 
 | Date | What |
 |------|------|
+| 2026-11-13 (bench, flash cartridge) | First write on hardware, S29GL064N cartridge, firmware 1.0: Metal Gear 2 MiB written and read back identical (SHA-256, `compare`, `verify`). Two findings fixed: the firmware drops bytes sent right after `detect` (app holds 250 ms; NFW-19 written, not applied) and firmware 1.0 programs only every other word on this chip (`tools/repair-write-fw10.py`, 8 passes). Firmware 1.1 still not flashed. Details in `docs/HWTEST.md`. |
+| 2026-11-13 (bench, cartridge) | Original Rolling Thunder 2, read only (no writes on this cartridge, owner's rule): 1M and 2M reads identical, mirror confirmed, header checksum mismatch left open pending a reference dump. `hwtest.py` gained `analyze_rom` (mirror, checksum, uniform blocks), `host` phase 9/9. Details in `docs/HWTEST.md`. |
+| 2026-11-13 (bench) | First unit on the bench, factory firmware 1.0, USB only, slot empty: `hwtest.py host` 7/7, `nocart` 11/11. Finding: a connect right after `detect` is ignored by firmware 1.0 (CLI now retries once; `hwtest.py` pauses 0.3 s). Finding: no USB firmware update possible (CDC only, F103 ROM bootloader is UART only), so firmware 1.1 needs SWD. Details in `docs/HWTEST.md`, "Bench results". Firmware 1.1 still not flashed. |
+| 2026-11-13 | Full review of code and docs. Fixed: chip capacity moved into the chip table, GUI pre-flash message showed the raw `FLASHID:` line, `--timeout` error text, `1E` erase code above 5 (NFW-18), pt_BR strings of the pre-flash check, README 4 MiB text and the missing ru/zh sentence, stale lines in GLOBAL_SPEC and HARDWARE_ADDON. |
 | 2026-11-10 (later still) | `CART_SUPPORT.md` section 4 item 4: SSF2 and Extended SSF2 read through `3A` (NFW-17), CLI only. Sharp LH28F320BJE and Toshiba TC58FVT160F looked up and **not** implemented (owner decision). Lock-on and SVP check still open. |
 | 2026-11-10 (later) | Phase C, `CART_SUPPORT.md` section 4 item 2: CFI query for unknown chips in `firmware_1.1` (NFW-16), host checks 190/195, app message, `tst_session` 62. Information only. |
 | 2026-11-10 | A7 done: README and in-app help describe the CLI, KY/FlashKit chips, 8 MiB writes and the read-only bench suite. Phase B and C still wait for hardware; phase D cancelled. |

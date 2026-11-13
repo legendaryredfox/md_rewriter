@@ -64,6 +64,7 @@ Pass: dumps identical, write verifies, no `WRITE TIMEOUT` on a healthy cartridge
 | 2 | New app with firmware 1.0 (reflash the backup) | works; no `WRITE TIMEOUT` line ever; verify still works |
 | 3 | Detect with the Macronix cartridge | `FLASHID:C2CB`, `MX29LV640EB MD FLASH CART` |
 | 3a | Detect with the Spansion cartridge (S29GL064N90TFI03, PCB Ver1.4) | `FLASHID:017E`, `S29GL064N MD FLASH CART` (needs ID cycle 2 = `0C`; if it prints `NO FIND NGP CARD`, record the real cycle 2/3 values and fix `flashid.c`) |
+| 3a result | 2026-11-13, firmware 1.0 on the unit, not 1.1 | Firmware 1.0 printed `FLASHID:17E` (no padding) and `NO FIND NGP CARD`; the app named the chip. Erase 2M took 8 s. The first write pass programmed only every other word (see `docs/HWTEST.md`); 1.1 with polling is still to be tested on this cartridge |
 | 3b | Write buffer on the Spansion cartridge: build with `make OPT="-O1 -DFLASH_FAST=1"` | erase, write a 256 KiB ROM with Verify on, read back equal to the file; time it against the build without `FLASH_FAST` (the model predicts about a third of the bus cycles). On any chip that is not the S29GL064N the build must behave like the normal one. A `WRITE TIMEOUT` here means: stop, record the chip answer, go back to the normal build |
 | 3c | Detect with an SST39VF6401B/6402B cartridge, if one turns up | `FLASHID:BF6D` (or `BF6C`), `SST39VF640xB MD FLASH CART`; erase and write like the others |
 | 3d | Detect with a KY / FlashKit MD cartridge (ST logo chip, 32 Mbit) | note `FLASHID:` and the printed name; if it prints `NO FIND NGP CARD`, add the real ID to the tables (`docs/KY_SUPPORT.md` section 6); erase 4M, write a 256 KiB ROM with Verify on |
@@ -113,6 +114,7 @@ Next: everything in "Order of work" that needs the dumper. Then Intel J3 if a ca
 - A small bootloader (CDC or DFU; `dapboot`-class, about 4 to 8 KiB) at `0x08000000`; the application moves to `0x08002000` (linker script `ORIGIN`, `SCB->VTOR` in `SystemInit`, `FLASH LENGTH` reduced).
 - Entry: the application writes a magic word to a backup register and resets; the bootloader sees it and waits for a new image. A `BOOT` pad (the PCB needs one, M5) as the recovery path.
 - The app needs a new opcode for "enter bootloader", which is allowed **only** in a firmware that also has the bootloader, because firmware 1.0 cannot be updated this way: those units still need one SWD session.
+- Measured on the first unit (2026-11-13, `docs/HWTEST.md`): the factory firmware 1.0 exposes CDC only, no DFU interface, and the F103 ROM bootloader is UART only. A USB update does not exist yet on any unit; the first flash of this firmware, with or without a bootloader, is an SWD session.
 - Risk: a failed bootloader flash bricks the unit without SWD. Needs a hardware test plan of its own.
 
 ## Order of work

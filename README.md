@@ -121,7 +121,7 @@ make -j"$(sysctl -n hw.ncpu)"
 ### Gravar um jogo em um cartucho flash
 
 1. **Apague o cartucho antes** se ele não estiver vazio (veja abaixo).
-2. Clique em **Gravar ROM…** e escolha o arquivo (`.bin`, `.md`, `.gen` ou `.smd`). Qualquer ROM de tamanho par entre 512 bytes e 4 MiB é aceita (256 KiB, 768 KiB, 1,5 MiB etc.): ela é gravada como está e o resto do chip fica em branco. Arquivos `.smd` são convertidos para ROM simples. O programa avisa, sem bloquear, se o cabeçalho parecer errado (sem `SEGA`, checksum ruim, arquivo truncado).
+2. Clique em **Gravar ROM…** e escolha o arquivo (`.bin`, `.md`, `.gen` ou `.smd`). Antes de gravar, o programa detecta o chip flash e compara sua capacidade e os comandos conhecidos com a ROM. Ele bloqueia incompatibilidades conhecidas e pede confirmação quando não consegue ter certeza. Qualquer ROM de tamanho par entre 512 bytes e 8 MiB é aceita (mais de 4 MiB exige o firmware 1.1) (256 KiB, 768 KiB, 1,5 MiB etc.): ela é gravada como está e o resto do chip fica em branco. Arquivos `.smd` são convertidos para ROM simples. O programa avisa, sem bloquear, se o cabeçalho parecer errado (sem `SEGA`, checksum ruim, arquivo truncado).
 3. Confirme o aviso. A barra mostra o progresso; **Cancelar** interrompe, mas deixa o cartucho com uma imagem parcial.
 4. Com **Verificar após gravar** marcado (padrão), o programa lê o cartucho de volta e compara com o arquivo; o registro mostra "Verified" ou o primeiro deslocamento que difere.
 
@@ -340,7 +340,7 @@ make -j"$(sysctl -n hw.ncpu)"
 ### Запись игры на flash-картридж
 
 1. Если картридж не пуст, **сначала сотрите его** (см. ниже).
-2. Нажмите **Write ROM…** и выберите файл (`.bin`, `.md`, `.gen` или `.smd`). Принимается любой ROM чётного размера от 512 байт до 4 MiB (256 KiB, 768 KiB, 1,5 MiB и т. д.): он записывается как есть, остальная часть микросхемы остаётся чистой. Файлы `.smd` автоматически преобразуются в обычный ROM. Если заголовок выглядит неверно (нет `SEGA`, неверная контрольная сумма, файл обрезан), программа предупреждает, но запись не блокирует. С включённой опцией **Verify after writing** (по умолчанию) программа после записи читает картридж обратно и сравнивает с файлом.
+2. Нажмите **Write ROM…** и выберите файл (`.bin`, `.md`, `.gen` или `.smd`). Перед записью программа определяет флеш-микросхему и сверяет её ёмкость и известные команды с ROM. Известные несовместимости она блокирует, а если не уверена, просит подтверждения. Принимается любой ROM чётного размера от 512 байт до 8 MiB (больше 4 MiB требует прошивку 1.1) (256 KiB, 768 KiB, 1,5 MiB и т. д.): он записывается как есть, остальная часть микросхемы остаётся чистой. Файлы `.smd` автоматически преобразуются в обычный ROM. Если заголовок выглядит неверно (нет `SEGA`, неверная контрольная сумма, файл обрезан), программа предупреждает, но запись не блокирует. С включённой опцией **Verify after writing** (по умолчанию) программа после записи читает картридж обратно и сравнивает с файлом.
 3. Подтвердите предупреждение. **Cancel** прервёт запись, но на картридже останется неполный образ.
 
 ### Стирание картриджа
@@ -557,7 +557,7 @@ make -j"$(sysctl -n hw.ncpu)"
 ### 向 Flash 卡带写入游戏
 
 1. 如果卡带不是空白的，请**先擦除**（见下文）。
-2. 点击 **Write ROM…** 并选择文件（`.bin`、`.md`、`.gen` 或 `.smd`）。支持 512 字节到 4 MiB 之间任何偶数大小的 ROM（256 KiB、768 KiB、1.5 MiB 等）：按原样写入，芯片其余部分保持空白。`.smd` 文件会自动转换为普通 ROM。如果文件头看起来不对（没有 `SEGA`、校验和错误、文件被截断），程序会提醒但不会阻止写入。勾选 **Verify after writing**（默认开启）后，写入结束时程序会把卡带读回并与文件比较。
+2. 点击 **Write ROM…** 并选择文件（`.bin`、`.md`、`.gen` 或 `.smd`）。写入前，程序会检测闪存芯片，并把它已知的容量和命令支持与 ROM 对照：已知不兼容时会阻止写入，无法确定时会请你确认。支持 512 字节到 8 MiB 之间任何偶数大小的 ROM（超过 4 MiB 需要固件 1.1）（256 KiB、768 KiB、1.5 MiB 等）：按原样写入，芯片其余部分保持空白。`.smd` 文件会自动转换为普通 ROM。如果文件头看起来不对（没有 `SEGA`、校验和错误、文件被截断），程序会提醒但不会阻止写入。勾选 **Verify after writing**（默认开启）后，写入结束时程序会把卡带读回并与文件比较。
 3. 确认提示。写入时可点 **Cancel** 中断，但卡带上会留下不完整的镜像。
 
 ### 擦除卡带
@@ -774,7 +774,7 @@ make -j"$(sysctl -n hw.ncpu)"
 ### Write a game to a flash cartridge
 
 1. **Erase the cartridge first** if it is not blank (see below).
-2. Click **Write ROM…** and choose the file (`.bin`, `.md`, `.gen` or `.smd`). Any ROM of even size between 512 bytes and 4 MiB is accepted (256 KiB, 768 KiB, 1.5 MiB, ...): it is written as it is and the rest of the chip stays blank. `.smd` files are converted to a plain ROM. The program warns, without blocking, if the header looks wrong (no `SEGA`, bad checksum, truncated file). With **Verify after writing** ticked (the default) it reads the cartridge back and compares it with the file when the write ends.
+2. Click **Write ROM…** and choose the file (`.bin`, `.md`, `.gen` or `.smd`). Before writing, the program detects the flash chip and checks its known capacity and command support against the ROM. It blocks known incompatibilities and asks for confirmation when compatibility is uncertain. Any ROM of even size between 512 bytes and 8 MiB is accepted (more than 4 MiB needs firmware 1.1) (256 KiB, 768 KiB, 1.5 MiB, ...): it is written as it is and the rest of the chip stays blank. `.smd` files are converted to a plain ROM. The program warns, without blocking, if the header looks wrong (no `SEGA`, bad checksum, truncated file). With **Verify after writing** ticked (the default) it reads the cartridge back and compares it with the file when the write ends.
 3. Confirm the warning. **Cancel** stops the write but leaves the cartridge holding a partial image.
 
 ### Erase the cartridge

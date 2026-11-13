@@ -14,7 +14,7 @@ One dumper that reads and rewrites as many Mega Drive / Genesis cartridge types 
 | Firmware 1.1 (current PCB) | `firmware_1.1/` | builds, host-tested against chip models, **never run on hardware** | `docs/NEW_FIRMWARE_SPEC.md`, `_PLAN.md` |
 | Desktop app | `Software/` | GUI done; CLI `mdrewriter-cli` added | `docs/SPEC.md`, `docs/CLI.md` |
 | Bench tests | `tools/hwtest/` | read-only suite written | `docs/HWTEST.md` |
-| KY / FlashKit support | firmware + app tables | analysis done, 12 chips and 2 new command sets in the model | `docs/KY_SUPPORT.md` |
+| KY / FlashKit support | firmware + app tables | analysis done, 19 chips and 4 command sets in the table (`Software/chipdb.cpp`, `firmware_1.1/Core/Src/flashid.c`) | `docs/KY_SUPPORT.md` |
 | Hardware PCB V1.0 | `Hardware/` | reviewed, 4 high, 6 medium, 8 low findings, nothing changed | `docs/HARDWARE_REVIEW.md` |
 | Firmware 1.2 (revised PCB) | `firmware_1.2/` | empty placeholder | `docs/GLOBAL_PLAN.md` phase D |
 | Hardware PCB V1.1 | none (`hardware_new/` was deleted on 2026-11-04) | **cancelled**: the owner moved the hardware work to `oscr_minimal` (Arduino Mega shield, board `16_bits` v. 1.2) | this file, section 5 |
@@ -44,7 +44,7 @@ One dumper that reads and rewrites as many Mega Drive / Genesis cartridge types 
 | F2 | USB update (bootloader) | deferred, needs BOOT0 on the PCB (D1) |
 | F3 | EEPROM saves (I2C) | deferred, needs `/UWR` and `/CAS2` (D3, D5) |
 | A1 | CLI | done |
-| A2 | App text: README (4 languages) and help mention the CLI and the new chips | open |
+| A2 | App text: README (4 languages) and help mention the CLI and the new chips | done 2026-11-10 (GLOBAL_PLAN A7) |
 
 ## 5. Hardware V1.1 scope (decided 2026-11-04, work deferred to another session)
 
