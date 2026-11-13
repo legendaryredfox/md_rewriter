@@ -67,5 +67,5 @@ No hardware change is inevitable for the matrix above.
 ## 7. Open questions that need a real cart
 
 1. Which chip is under the KY cart (photo shows an ST logo: likely M29W320 or M29W160).
-2. Whether KY carts use the stock mapper (`A13000h` RAM enable) or a variant.
+2. Whether KY carts use the stock mapper (`A13000h` RAM enable) or a variant. **Answered by the bench and the reference design (2026-11-13):** no register at all. The original FlashKit cartridge has only a 74HC139 that selects the flash for the lower 2 MiB and the SRAM for the upper 2 MiB; writes to `$A13000` and `$A130F1` changed nothing on the KY cartridge (`docs/HWTEST.md`, "Why nothing works above 2 MiB"). A KY/FlashKit cartridge holds 2 MiB of ROM.
 3. Boot-sector layout of the chip: decides the erase loop.
