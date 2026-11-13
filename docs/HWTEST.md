@@ -10,6 +10,8 @@ Build the CLI first: `tools/build.sh app`.
 | `nocart` | dumper plugged in, slot empty | `tools/hwtest/hwtest.py nocart` |
 | `cart` | dumper plugged in, any cartridge | `tools/hwtest/hwtest.py cart --rom-size 4M [--save-size 8K\|32K] [--label "name"]` |
 
+`--expect-fw 1.1` (any phase with a device) fails unless the banner version starts with it; `--rom-size 8M` is skipped with a reason on firmware 1.0. The SWD session that installs 1.1 is in `docs/SWD_SESSION.md`.
+
 Checks, `nocart`: dumper enumerates as `0483:5740`; connect and banner; 10 reconnects; detect answers and does not name a chip; two 512K reads of the empty slot are identical; fraction of `0xFF` (pull-ups).
 
 Checks, `cart`: the same link checks; detect (ID, chip name, whether the firmware knows it); two ROM reads identical, size, `SEGA` header, header name; header ROM size, mirror (a read larger than the cartridge repeats it) and header checksum (information, not a failure); 512K read equals the prefix of the big read; `verify` against the dump just taken; number of distinct 32 KiB blocks of the real image (a stuck address line gives repeats); two save reads identical; read speed.

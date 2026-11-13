@@ -18,6 +18,8 @@ Verify without hardware: `make`, `make clean && make OPT=-O3` (the Makefile does
 
 ## Step 2: Back up the original firmware (hardware, before anything else)
 
+The session is scripted and written out in `docs/SWD_SESSION.md` (`tools/swd/swd.sh probe|backup|flash|restore`, tested with stubs in `tools/swd/test-swd.sh`). The manual commands below are what the script does.
+
 Tools installed: `st-flash`, `openocd`, `gdb-multiarch`, `dfu-util`.
 
 1. Wire the ST-Link V2 to the four SWD pads of the dumper PCB (`3V3`, `SWCLK` = PA14, `SWDIO` = PA13, `GND`; no NRST pad). Identify each pad with a multimeter first (silkscreen has no labels, `docs/HARDWARE_REVIEW.md` M4). Power the board from **one** source only: either USB, with the ST-Link `3V3` wire disconnected, or the ST-Link `3V3` with no USB.

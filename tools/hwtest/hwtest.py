@@ -13,7 +13,7 @@ Phases
 Usage
   tools/hwtest/hwtest.py host
   tools/hwtest/hwtest.py nocart [--port ttyACM0]
-  tools/hwtest/hwtest.py cart   [--port ttyACM0] [--save-size 8K|32K] [--rom-size 4M] [--label "my cart"]
+  tools/hwtest/hwtest.py cart   [--port ttyACM0] [--save-size 8K|32K] [--rom-size 8M] [--expect-fw 1.1] [--label "my cart"]
 
 Output: a table on stdout (use a new --out folder each run: the CLI will not overwrite dumps), and a report in test-results/<timestamp>-<phase>/ (report.json, report.md,
 the dumps). Exit code 0 only if no check failed. SKIP is not a failure; INFO records a value.
@@ -194,6 +194,9 @@ def common_link(rep, a, port):
     ok = rep.check(r.get("ok"), "connect + banner", r.get("firmware", r.get("error", "")))
     if ok:
         rep.info("firmware version", r.get("firmware"))
+        if a.expect_fw:
+            rep.check(str(r.get("firmware", "")).startswith(a.expect_fw), "firmware version is %s*" % a.expect_fw,
+                      "device says %s" % r.get("firmware"))
     times = []
     fails = 0
     for _ in range(10):
@@ -231,8 +234,11 @@ def phase_cart(rep, a):
     d = run_cli(["detect"] + pa)
     rep.check(d.get("ok"), "detect", "flashId=%s chip=%s firmwareKnows=%s" % (d.get("flashId"), d.get("chip"), d.get("firmwareKnowsChip")))
     rep.outdir.mkdir(parents=True, exist_ok=True)
-    sizes = {"512K": 0x80000, "1M": 0x100000, "2M": 0x200000, "4M": 0x400000}
+    sizes = {"512K": 0x80000, "1M": 0x100000, "2M": 0x200000, "4M": 0x400000, "8M": 0x800000}
     sz = a.rom_size
+    if sz == "8M" and (fw or "1.0").startswith("1.0"):
+        rep.skip("ROM read 8M", "needs firmware 1.1 or later, the device says %s: pick --rom-size 4M or smaller" % fw)
+        return
     hashes = []
     for i in (1, 2):
         out = rep.outdir / ("rom_%s_%d.bin" % (sz, i))
@@ -299,7 +305,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("phase", choices=["host", "nocart", "cart"])
     ap.add_argument("--port")
-    ap.add_argument("--rom-size", default="4M", choices=["512K", "1M", "2M", "4M"])
+    ap.add_argument("--rom-size", default="4M", choices=["512K", "1M", "2M", "4M", "8M"])
+    ap.add_argument("--expect-fw", default=None, help="fail unless the firmware version starts with this (for example 1.1)")
     ap.add_argument("--save-size", choices=["8K", "32K"])
     ap.add_argument("--label", default="")
     ap.add_argument("--out", help="result folder (default test-results/<time>-<phase>)")
