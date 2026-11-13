@@ -23,11 +23,11 @@ Follow `docs/NEW_FIRMWARE_PLAN.md` steps 2 to 7 in order. Between steps run `too
 
 Goal: every cartridge handled by the reference repositories. The list of what exists and what is missing is `docs/CART_SUPPORT.md`; its section 4 is the order. One feature per commit, each with a host test first.
 
-Folders: `firmware_1.1/` is the firmware for the current PCB (version string 1.1.0 always in the code); `firmware_1.2/` is reserved for the revised PCB. A hardware-independent fix goes in 1.1 and is copied to 1.2 when 1.2 exists.
+Folders: `firmware_1.1/` is the firmware for the current PCB (version string 1.1.0 always in the code); there is no `firmware_1.2/` (no revised PCB; the empty placeholder was removed on 2026-11-13).
 
 ## Phase D: hardware V1.1 (cancelled 2026-11-04, kept as a record)
 
-Before a respin, `docs/HARDWARE_ADDON.md` lists what an interposer, small rework and an inline USB dongle can fix on V1.0.
+The V1.0 findings are in `docs/HARDWARE_REVIEW.md`; the add-on board analysis that used to sit in `HARDWARE_ADDON.md` was dropped by the owner on 2026-11-04 and removed on 2026-11-13 (it stays in the git history).
 
 1. ~~Create `hardware_new/` with a README that points to this plan.~~ **Cancelled 2026-11-04**: the owner dropped the PCB rework of this project; the scaffold (`hardware_new/`, empty KiCad project and the V1.0 netlist extraction) was deleted. Hardware ideas for Mega Drive carts moved to the sibling project `oscr_minimal` (`docs/melhorias-megadrive.md`, `docs/melhorias-megadrive-hardware.md`, board `16_bits` v. 1.2).
 2. Spec for V1.1: one table per finding (H1 to H4, M2 to M6, L2, L3) with the exact part, value, net and footprint; pin map changes for L2/L3 listed against `MD.h`/`gpio.c`. File: `docs/HARDWARE_SPEC_V1.1.md`.

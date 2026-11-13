@@ -36,6 +36,7 @@ struct Options {
     bool json = false;
     bool yes = false;
     bool verify = true;     // write-rom reads the cartridge back unless --no-verify
+    bool ignoreCartLimit = false;   // --ignore-cart-limit: write or erase above the known board limit anyway
     bool quiet = false;
     bool dryRun = false;
     int timeoutMs = -1;
@@ -71,6 +72,7 @@ Options parse(const QStringList &args)
         else if (a == QLatin1String("--json")) o.json = true;
         else if (a == QLatin1String("--yes") || a == QLatin1String("-y")) o.yes = true;
         else if (a == QLatin1String("--no-verify")) o.verify = false;
+        else if (a == QLatin1String("--ignore-cart-limit")) o.ignoreCartLimit = true;
         else if (a == QLatin1String("--verify")) o.verify = true;
         else if (a == QLatin1String("--quiet") || a == QLatin1String("-q")) o.quiet = true;
         else if (a == QLatin1String("--dry-run")) o.dryRun = true;
@@ -141,6 +143,7 @@ QString CliRunner::usage()
         "  --port, -p <name>   serial port (ttyACM0, /dev/ttyACM0, COM3)\n"
         "  --json              one JSON object on stdout; messages stay on stderr\n"
         "  --yes, -y           allow commands that erase or overwrite\n"
+        "  --ignore-cart-limit write or erase above the 2 MiB of KY / FlashKit flash cartridges anyway\n"
         "  --dry-run           check files and arguments, do not touch the device\n"
         "  --timeout <s>       give up when the device is silent for this long\n"
         "  --quiet, -q         no progress on stderr\n"
@@ -499,6 +502,13 @@ int CliRunner::run(const QStringList &args, QIODevice *injected)
                    && session.firmwareVersion().isEmpty()) {
             code = Failed;
             err = QStringLiteral("the detected flash chip needs newer firmware commands");
+        } else if (code == Ok && !o.ignoreCartLimit && ChipDb::boardLimitBytes(match)
+                   && static_cast<quint64>(image.size()) > ChipDb::boardLimitBytes(match)) {
+            code = Failed;
+            err = QStringLiteral("ROM is larger than %1 bytes, the most the cartridge boards known with this chip (%2) can use: "
+                                 "the board selects the flash only below that size. Nothing was written. "
+                                 "Use --ignore-cart-limit if your cartridge is different")
+                      .arg(ChipDb::boardLimitBytes(match)).arg(QString::fromLatin1(match.chip->name).section(QLatin1Char(' '), 0, 0));
         }
         if (code == Ok) {
             result.insert(QStringLiteral("preflight"), match.chip && capacity && firmwareRecognized
@@ -513,7 +523,23 @@ int CliRunner::run(const QStringList &args, QIODevice *injected)
         buf.open(QIODevice::ReadOnly);
         check(runOp([&] { return session.writeSave(&buf); }), QStringLiteral("save write failed"));
     } else if (o.command == QLatin1String("erase")) {
-        check(runOp([&] { return eraseAll ? session.eraseAll() : session.eraseBySize(*eraseSize); }), QStringLiteral("erase failed"));
+        // A sector erase above the board limit of a KY / FlashKit cartridge fails after ~23 s: look at the chip first.
+        if (!eraseAll && eraseSize->eraseSectors > 0 && eraseSize->bytes > 0x200000 && !o.ignoreCartLimit) {
+            check(runOp([&] { return session.detect(); }), QStringLiteral("cartridge detection failed"));
+            QString idLine;
+            for (const QString &l : deviceText.split('\n'))
+                if (l.startsWith(QLatin1String("FLASHID:"))) idLine = l.trimmed();
+            const ChipDb::Match match = ChipDb::identify(idLine);
+            if (code == Ok && ChipDb::boardLimitBytes(match) && eraseSize->bytes > ChipDb::boardLimitBytes(match)) {
+                code = Failed;
+                err = QStringLiteral("erasing %1 bytes is above the %2 bytes the cartridge boards known with this chip (%3) can use: "
+                                     "the erase would fail after about 23 seconds. Nothing was erased. Use erase 2M, or --ignore-cart-limit")
+                          .arg(eraseSize->bytes).arg(ChipDb::boardLimitBytes(match))
+                          .arg(QString::fromLatin1(match.chip->name).section(QLatin1Char(' '), 0, 0));
+            }
+        }
+        if (code == Ok)
+            check(runOp([&] { return eraseAll ? session.eraseAll() : session.eraseBySize(*eraseSize); }), QStringLiteral("erase failed"));
     }
     if (opCancelled) { code = Failed; err = QStringLiteral("cancelled"); }
 

@@ -20,6 +20,8 @@ Ferramenta portátil para cartuchos de Sega Mega Drive: faz backup e restauraç�
 
 Loja oficial da Epicjoy no AliExpress: [comprar](https://s.click.aliexpress.com/e/_c314U0QB)
 
+Projeto irmão: [oscr_minimal](https://github.com/legendaryredfox/oscr_minimal) é um leitor e gravador de cartuchos de SNES, NES, Famicom, Mega Drive e GBA em um shield para Arduino Mega, baseado no Open Source Cartridge Reader. As descobertas de bancada deste projeto sobre cartuchos de Mega Drive estão documentadas lá (`docs/referencia/megadrive-bancada-md-rewriter.md`), e o suporte a cartuchos de até 8 MiB é planejado nele.
+
 Gostou do projeto? Apoie: [Buy Me a Coffee](https://buymeacoffee.com/legendaryredfox)
 
 ## Recursos
@@ -212,7 +214,7 @@ cd ../.. && tools/check-firmware.sh                      # verificação estáti
 - `tst_cli`: linha de comando (`mdrewriter-cli` contra um firmware simulado).
 - `tst_e2e`: ponta a ponta (janela real + porta serial real em um pseudo-terminal + firmware simulado; apenas Linux). Defina `QT_QPA_PLATFORM=offscreen` para rodar sem tela.
 
-O firmware não pôde ser testado em hardware real nestas alterações: veja `docs/SPEC.md` e `docs/PLAN.md`.
+O firmware 1.1 foi testado na primeira unidade: resultados em `docs/HWTEST.md`; protocolo em `docs/PROTOCOL.md`.
 
 Firmware novo (`firmware_1.1/`): `cd firmware_1.1 && make test && ./check.sh` roda os testes no PC (o `MD.c` real contra um modelo de chip flash) e a verificação estática. O firmware foi executado na primeira unidade (2026-11-13): resultados em `docs/HWTEST.md`; pendências e plano em `docs/NEW_FIRMWARE_PLAN.md` e `docs/NEW_FIRMWARE_SPEC.md`.
 
@@ -239,6 +241,8 @@ Licença [MIT](LICENSE). O código de terceiros em `legacy_firmware/Drivers` e `
 | `docs/` | Спецификация и план исправлений, технические заметки. |
 
 Официальный магазин Epicjoy на AliExpress: [купить](https://s.click.aliexpress.com/e/_c314U0QB)
+
+Проект-побратим: [oscr_minimal](https://github.com/legendaryredfox/oscr_minimal) — считыватель и программатор картриджей SNES, NES, Famicom, Mega Drive и GBA на плате-шилде для Arduino Mega, основанный на Open Source Cartridge Reader. Стендовые находки этого проекта о картриджах Mega Drive описаны там (`docs/referencia/megadrive-bancada-md-rewriter.md`), а поддержка картриджей до 8 МиБ запланирована в нём.
 
 Нравится проект? Поддержите: [Buy Me a Coffee](https://buymeacoffee.com/legendaryredfox)
 
@@ -430,7 +434,7 @@ cd ../.. && tools/check-firmware.sh                      # статическа�
 - `tst_cli` — командная строка (`mdrewriter-cli` с имитацией прошивки).
 - `tst_e2e` — сквозные тесты (настоящее окно + настоящий последовательный порт на псевдотерминале + имитация прошивки; только Linux). Для запуска без экрана задайте `QT_QPA_PLATFORM=offscreen`.
 
-Изменения прошивки не проверялись на реальном оборудовании: см. `docs/SPEC.md` и `docs/PLAN.md`.
+Прошивка 1.1 проверена на первом устройстве: результаты в `docs/HWTEST.md`; протокол в `docs/PROTOCOL.md`.
 
 Новая прошивка (`firmware_1.1/`): `cd firmware_1.1 && make test && ./check.sh` запускает тесты на ПК (настоящий `MD.c` против модели flash-микросхемы) и статическую проверку. Прошивка запускалась на первом устройстве (13.11.2026): результаты в `docs/HWTEST.md`; незавершённое и план — в `docs/NEW_FIRMWARE_PLAN.md` и `docs/NEW_FIRMWARE_SPEC.md`.
 
@@ -457,6 +461,8 @@ cd ../.. && tools/check-firmware.sh                      # статическа�
 | `docs/` | 修复规格说明与计划、技术说明。 |
 
 Epicjoy 官方速卖通店铺：[购买](https://s.click.aliexpress.com/e/_c314U0QB)
+
+姊妹项目：[oscr_minimal](https://github.com/legendaryredfox/oscr_minimal) 是基于 Open Source Cartridge Reader、做成 Arduino Mega 扩展板的 SNES、NES、Famicom、Mega Drive 和 GBA 卡带读写器。本项目关于 Mega Drive 卡带的测试台发现记录在那边（`docs/referencia/megadrive-bancada-md-rewriter.md`），并且计划在那里支持最大 8 MiB 的卡带。
 
 喜欢这个项目？欢迎支持：[Buy Me a Coffee](https://buymeacoffee.com/legendaryredfox)
 
@@ -648,7 +654,7 @@ cd ../.. && tools/check-firmware.sh                      # 固件静态检查（
 - `tst_cli`：命令行（`mdrewriter-cli` 对接模拟固件）。
 - `tst_e2e`：端到端测试（真实窗口 + 伪终端上的真实串口 + 模拟固件；仅限 Linux）。设置 `QT_QPA_PLATFORM=offscreen` 可无显示运行。
 
-固件的改动尚未在真实硬件上测试，详见 `docs/SPEC.md` 和 `docs/PLAN.md`。
+固件 1.1 已在第一台设备上测试：结果见 `docs/HWTEST.md`；通信协议见 `docs/PROTOCOL.md`。
 
 新固件（`firmware_1.1/`）：`cd firmware_1.1 && make test && ./check.sh` 在电脑上运行测试（真实的 `MD.c` 对照 Flash 芯片模型）和静态检查。该固件已在第一台设备上运行（2026-11-13）：结果见 `docs/HWTEST.md`；待办和计划见 `docs/NEW_FIRMWARE_PLAN.md` 和 `docs/NEW_FIRMWARE_SPEC.md`。
 
@@ -675,6 +681,8 @@ A portable Sega Mega Drive cartridge tool: back up and restore game ROMs and sav
 | `docs/` | Specification and plan of the fixes, technical notes. |
 
 Epicjoy official AliExpress store: [Buy now](https://s.click.aliexpress.com/e/_c314U0QB)
+
+Sister project: [oscr_minimal](https://github.com/legendaryredfox/oscr_minimal) is a reader and writer for SNES, NES, Famicom, Mega Drive and GBA cartridges on an Arduino Mega shield, based on the Open Source Cartridge Reader. The bench findings of this project about Mega Drive cartridges are documented there (`docs/referencia/megadrive-bancada-md-rewriter.md`), and support for cartridges of up to 8 MiB is planned in it.
 
 Like the project? Support it: [Buy Me a Coffee](https://buymeacoffee.com/legendaryredfox)
 
@@ -866,7 +874,7 @@ cd ../.. && tools/check-firmware.sh                      # static firmware check
 - `tst_cli`: command line (`mdrewriter-cli` against a simulated firmware).
 - `tst_e2e`: end-to-end tests (real window + real serial port on a pseudo-terminal + simulated firmware; Linux only). Set `QT_QPA_PLATFORM=offscreen` to run without a display.
 
-The firmware changes could not be tested on real hardware: see `docs/SPEC.md` and `docs/PLAN.md`.
+Firmware 1.1 was tested on the first unit: results in `docs/HWTEST.md`; protocol in `docs/PROTOCOL.md`.
 
 New firmware (`firmware_1.1/`): `cd firmware_1.1 && make test && ./check.sh` runs the PC tests (the real `MD.c` against a flash chip model) and the static checks. The firmware was run on the first unit (2026-11-13): results in `docs/HWTEST.md`; open items and plan in `docs/NEW_FIRMWARE_PLAN.md` and `docs/NEW_FIRMWARE_SPEC.md`.
 

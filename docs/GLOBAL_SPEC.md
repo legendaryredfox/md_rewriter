@@ -10,13 +10,13 @@ One dumper that reads and rewrites as many Mega Drive / Genesis cartridge types 
 
 | Part | Folder | State | Detail document |
 |------|--------|-------|-----------------|
-| Legacy firmware | `legacy_firmware/` | frozen | `docs/SPEC.md` |
-| Firmware 1.1 (current PCB) | `firmware_1.1/` | builds, host-tested against chip models, **never run on hardware** | `docs/NEW_FIRMWARE_SPEC.md`, `_PLAN.md` |
-| Desktop app | `Software/` | GUI done; CLI `mdrewriter-cli` added | `docs/SPEC.md`, `docs/CLI.md` |
+| Legacy firmware | `legacy_firmware/` | frozen | `docs/PROTOCOL.md` |
+| Firmware 1.1 (current PCB) | `firmware_1.1/` | released as 1.1.0, host-tested against chip models and run on the first unit with two flash cartridges (2026-11-13) | `docs/NEW_FIRMWARE_SPEC.md`, `_PLAN.md` |
+| Desktop app | `Software/` | GUI and CLI `mdrewriter-cli` done, release 1.3.0 | `docs/CLI.md`, `docs/guide/` |
 | Bench tests | `tools/hwtest/` | read-only suite written | `docs/HWTEST.md` |
 | KY / FlashKit support | firmware + app tables | analysis done, 19 chips and 4 command sets in the table (`Software/chipdb.cpp`, `firmware_1.1/Core/Src/flashid.c`) | `docs/KY_SUPPORT.md` |
 | Hardware PCB V1.0 | `Hardware/` | reviewed, 4 high, 6 medium, 8 low findings, nothing changed | `docs/HARDWARE_REVIEW.md` |
-| Firmware 1.2 (revised PCB) | `firmware_1.2/` | empty placeholder | `docs/GLOBAL_PLAN.md` phase D |
+| Firmware 1.2 (revised PCB) | none (the empty `firmware_1.2/` placeholder was removed on 2026-11-13) | **not needed**: there is no revised PCB | `docs/GLOBAL_PLAN.md` phase D |
 | Hardware PCB V1.1 | none (`hardware_new/` was deleted on 2026-11-04) | **cancelled**: the owner moved the hardware work to `oscr_minimal` (Arduino Mega shield, board `16_bits` v. 1.2) | this file, section 5 |
 | References | `references/` (git-ignored) | KY research, FlashKit source, cloned open-source programmers | `references/ky_technology/*.md` |
 

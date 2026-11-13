@@ -518,6 +518,11 @@ private slots:
         QCOMPARE(ChipDb::capacityBytes(ChipDb::identify("FLASHID:8970")), 512u * 1024u);         // 4 Mbit Intel
         QCOMPARE(ChipDb::capacityBytes(ChipDb::identify("FLASHID:17E")), 8u * 1024u * 1024u);    // unpadded 01/7E
         QCOMPARE(ChipDb::capacityBytes(ChipDb::identify("FLASHID:FFFF")), 0u);                   // not in the table
+        // board limit: only the S29GL064N cartridges seen so far (KY / FlashKit boards) stop at 2 MiB
+        QCOMPARE(ChipDb::boardLimitBytes(ChipDb::identify("FLASHID:017E")), 2u * 1024u * 1024u);
+        QCOMPARE(ChipDb::boardLimitBytes(ChipDb::identify("FLASHID:17E")), 2u * 1024u * 1024u);
+        QCOMPARE(ChipDb::boardLimitBytes(ChipDb::identify("FLASHID:C2CB")), 0u);
+        QCOMPARE(ChipDb::boardLimitBytes(ChipDb::identify("FLASHID:FFFF")), 0u);
         QCOMPARE(ChipDb::capacityBytes(ChipDb::Match()), 0u);
     }
 

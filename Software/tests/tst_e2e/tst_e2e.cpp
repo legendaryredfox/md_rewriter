@@ -305,6 +305,36 @@ private slots:
         QVERIFY(enabled("readRomButton"));
     }
 
+    void writeRomAbove2MiBOnAKyStyleCartridgeWarnsBeforeConfirmation()
+    {
+        m_fw->flashId = "017E";
+        m_fw->chipLine = "S29GL064N MD FLASH CART";
+        connectDevice();
+        const QString f = m_dir.filePath("large.bin");
+        QVERIFY(writeFile(f, randomBytes(0x300000, 41)));   // 3 MiB
+        m_nextOpen = f;
+        m_confirmAnswer = false;
+        QTest::mouseClick(w<QPushButton>("writeRomButton"), Qt::LeftButton);
+        QTRY_COMPARE_WITH_TIMEOUT(m_confirms.size(), 1, 5000);
+        QVERIFY(m_confirms[0].second.contains("holds at most 2 MiB"));
+        QVERIFY(m_confirms[0].second.contains("save RAM"));
+        QVERIFY(enabled("readRomButton"));
+    }
+
+    void writeRomAtTheBoardLimitDoesNotWarn()
+    {
+        m_fw->flashId = "017E";
+        m_fw->chipLine = "S29GL064N MD FLASH CART";
+        connectDevice();
+        const QString f = m_dir.filePath("limit.bin");
+        QVERIFY(writeFile(f, randomBytes(0x200000, 42)));   // exactly 2 MiB
+        m_nextOpen = f;
+        m_confirmAnswer = false;
+        QTest::mouseClick(w<QPushButton>("writeRomButton"), Qt::LeftButton);
+        QTRY_COMPARE_WITH_TIMEOUT(m_confirms.size(), 1, 5000);
+        QVERIFY(!m_confirms[0].second.contains("holds at most"));
+    }
+
     void writeRomEndToEnd()
     {
         m_fw->rom = QByteArray(0x80000, '\xFF');

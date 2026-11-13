@@ -649,6 +649,16 @@
         <translation>O ID %1 do chip flash não está na lista de chips suportados. A compatibilidade é incerta.</translation>
     </message>
     <message>
+        <location filename="../mainwindow.cpp" line="560"/>
+        <source>Warning: this cartridge type (%1) is a flash cartridge that holds at most %2 of game. Its board selects the flash only for the first %2 and the save RAM above it, so erasing or writing above %2 fails, and this ROM (%3) will not fit. Use a cartridge without that limit for larger games.</source>
+        <translation>Atenção: este tipo de cartucho (%1) é um cartucho flash que guarda no máximo %2 de jogo. A placa dele seleciona a flash só para os primeiros %2 e a RAM de save acima disso; por isso apagar ou gravar acima de %2 falha, e esta ROM (%3) não vai caber. Use um cartucho sem esse limite para jogos maiores.</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="640"/>
+        <source>Warning: the cartridge detected earlier holds at most %1 of flash for games; erasing above that fails after about 23 seconds and leaves the first %1 erased. Choose %1 instead.</source>
+        <translation>Atenção: o cartucho detectado antes guarda no máximo %1 de flash para jogos; apagar acima disso falha depois de uns 23 segundos e deixa os primeiros %1 apagados. Escolha %1.</translation>
+    </message>
+    <message>
         <location filename="../mainwindow.cpp" line="548"/>
         <source>Pre-flash check: %1
 

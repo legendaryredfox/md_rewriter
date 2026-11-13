@@ -550,6 +550,14 @@ void MainWindow::continuePendingRomWrite()
                        .arg(compatibility, QFileInfo(m_pendingRomPath).fileName(), humanSize(m_romData.size()));
     if (!m_pendingRomWarnings.isEmpty())
         text += QStringLiteral("\n\n") + tr("ROM warning:") + QLatin1Char(' ') + m_pendingRomWarnings.join(QStringLiteral("\n"));
+    const quint32 boardLimit = ChipDb::boardLimitBytes(match);
+    if (boardLimit && static_cast<quint64>(m_romData.size()) > boardLimit) {
+        text += QStringLiteral("\n\n")
+                + tr("Warning: this cartridge type (%1) is a flash cartridge that holds at most %2 of game. Its board selects the "
+                     "flash only for the first %2 and the save RAM above it, so erasing or writing above %2 fails, and this ROM "
+                     "(%3) will not fit. Use a cartridge without that limit for larger games.")
+                      .arg(QString::fromLatin1(match.chip->name).section(QLatin1Char(' '), 0, 0), humanSize(boardLimit), humanSize(m_romData.size()));
+    }
     if (m_session.unlistedChipOnOldFirmware()) {
         text += QStringLiteral("\n\n")
                 + tr("Firmware 1.0 does not wait for this chip to finish programming each word. Keep \"Verify after writing\" on "
@@ -598,10 +606,16 @@ void MainWindow::writeSave()
 void MainWindow::eraseBySize()
 {
     const auto &size = selectedRomSize();
-    if (!confirm(tr("Erase by size"),
-                 tr("Erase the first %1 of the cartridge flash?\n\nAll game data in that area will be lost.")
-                     .arg(humanSize(size.bytes)),
-                 tr("Erase")))
+    QString eraseText = tr("Erase the first %1 of the cartridge flash?\n\nAll game data in that area will be lost.")
+                            .arg(humanSize(size.bytes));
+    // A full chip erase (8M, eraseSectors == 0) is not limited; sector erases above the board limit fail.
+    const quint32 boardLimit = ChipDb::boardLimitBytes(m_session.lastDetectedChip());
+    if (boardLimit && size.eraseSectors > 0 && size.bytes > boardLimit)
+        eraseText += QStringLiteral("\n\n")
+                     + tr("Warning: the cartridge detected earlier holds at most %1 of flash for games; erasing above that fails "
+                          "after about 23 seconds and leaves the first %1 erased. Choose %1 instead.")
+                           .arg(humanSize(boardLimit));
+    if (!confirm(tr("Erase by size"), eraseText, tr("Erase")))
         return;
     m_session.eraseBySize(size);
 }

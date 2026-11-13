@@ -7,7 +7,7 @@
 
 // Wire protocol between the desktop app and the md_rewriter firmware.
 // Pure functions and tables, no GUI and no I/O, so everything here is unit-testable.
-// Must stay byte-compatible with firmware 1.0 (see docs/SPEC.md, section 3).
+// Must stay byte-compatible with firmware 1.0 (see docs/PROTOCOL.md).
 namespace Protocol {
 
 constexpr int kBlockSize = 1024;       // payload of one write block

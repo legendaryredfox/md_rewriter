@@ -6,7 +6,7 @@ Status: draft, implemented and compiled, **not tested on hardware**. Written 202
 
 | Folder | Role |
 |--------|------|
-| `legacy_firmware/` | The firmware as it was after the 2026-10 review fixes (FW-1 to FW-10 of `docs/SPEC.md`). Frozen: no more edits. Keil project kept. |
+| `legacy_firmware/` | The firmware as it was after the 2026-10 review fixes (FW-1 to FW-10 of the 2026-10 fix spec, removed on 2026-11-13 and kept in the git history as `docs/SPEC.md`). Frozen: no more edits. Keil project kept. |
 | `firmware_1.1/` | Copy of the legacy application code plus the compatibility changes below. Builds with `make` and `arm-none-eabi-gcc`, no Keil. Vendor code is a trimmed copy (HAL, CMSIS headers, USB device library; no CMSIS-DSP/NN/RTOS), 18 MB instead of 69 MB. |
 | `Software/` | Desktop app. Already improved to work with both firmwares (see 3.3). |
 

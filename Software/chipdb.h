@@ -24,6 +24,7 @@ struct Chip {
     bool confirmed;   // false: ID taken from memory, not checked against a datasheet
     CommandSet commandSet = CommandSet::Amd555;
     quint32 capacity = 0;   // bytes the chip holds; used to refuse a ROM that does not fit
+    quint32 boardLimit = 0; // bytes of ROM the cartridges seen with this ID can use (the board selects the flash only below it); 0 = no limit known
 };
 
 struct Match {
@@ -38,6 +39,9 @@ struct Match {
 Match identify(const QString &line);
 // Known byte capacity of a flash chip; zero when this ID is not listed.
 quint32 capacityBytes(const Match &match);
+// Bytes of ROM that the cartridge boards known with this ID can use, which can be less than the chip holds:
+// the KY / FlashKit boards with an S29GL064N select the flash only below 2 MiB (docs/HWTEST.md). Zero when no limit is known.
+quint32 boardLimitBytes(const Match &match);
 
 // The whole table, for tests and for the guide.
 const Chip *chips(int *count);

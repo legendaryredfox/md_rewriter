@@ -2,7 +2,7 @@
 
 Goal (owner, 2026-11-04): in the future the project supports **every cartridge type handled by the reference repositories** in `references/repos/` (MD_Dumper, FlashKit-MD-Plus, flashkit-md-py, fkmd, MD-Flash-Cart-4MB, open-ed) and by the KY FlashKit family (`docs/KY_SUPPORT.md`). This file lists what exists and what is missing. Update it whenever a row changes.
 
-Firmware lines: **1.1** runs on the current PCB (V1.0), folder `firmware_1.1/`. **1.2** is for the revised PCB, folder `firmware_1.2/` (empty until the revision exists).
+Firmware lines: **1.1** runs on the current PCB (V1.0), folder `firmware_1.1/`. There is no 1.2: no revised PCB exists (the placeholder folder was removed on 2026-11-13).
 
 States: **Yes** = in the code and checked on hardware. **Model** = in the code, passes the host tests against a chip model, **never run on a chip** (today this is everything except the 1.0 chip). **Planned** = not in the code. **HW** = needs a hardware change first.
 

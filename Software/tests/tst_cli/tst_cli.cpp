@@ -231,6 +231,54 @@ private slots:
         QCOMPARE(static_cast<quint8>(fw.commands.at(2).at(0)), quint8(0x0B));
     }
 
+    void cartridgeBoardLimitStopsLargeWritesAndErases()
+    {
+        // S29GL064N cartridges of the KY / FlashKit family hold 2 MiB: the board selects the flash only below it.
+        QTemporaryDir d;
+        const QString big = d.filePath("big.bin");
+        FakeFirmware fw;
+        fw.flashId = "017E";
+        fw.chipLine = "S29GL064N MD FLASH CART";
+        fw.rom = QByteArray(0x300000, char(0xFF));
+        writeFile(big, randomBytes(0x300000, 31));
+
+        Run r = cli({"write-rom", big, "--yes", "--json", "-q"}, &fw);
+        QCOMPARE(r.code, int(CliRunner::Failed));
+        QVERIFY(r.err.contains("2097152"));
+        QVERIFY(r.err.contains("Nothing was written"));
+        QCOMPARE(fw.commands.size(), 2);       // connect + detect, no write
+        QCOMPARE(static_cast<quint8>(fw.commands.last().at(0)), quint8(0x0D));
+
+        fw.commands.clear();
+        r = cli({"erase", "4M", "--yes", "--json", "-q"}, &fw);
+        QCOMPARE(r.code, int(CliRunner::Failed));
+        QVERIFY(r.err.contains("Nothing was erased"));
+        QCOMPARE(fw.commands.size(), 2);       // connect + detect, no erase command
+        QCOMPARE(static_cast<quint8>(fw.commands.last().at(0)), quint8(0x0D));
+
+        fw.commands.clear();
+        r = cli({"erase", "2M", "--yes", "--json", "-q"}, &fw);
+        QVERIFY2(r.code == 0, qPrintable(r.err + r.out));    // exactly the limit: no detection, straight to the erase
+        QCOMPARE(static_cast<quint8>(fw.commands.last().at(0)), quint8(0x1E));
+
+        fw.commands.clear();
+        r = cli({"erase", "4M", "--yes", "--ignore-cart-limit", "--json", "-q"}, &fw);
+        QVERIFY2(r.code == 0, qPrintable(r.err + r.out));
+        QCOMPARE(static_cast<quint8>(fw.commands.last().at(0)), quint8(0x1E));
+
+        fw.commands.clear();
+        r = cli({"write-rom", big, "--yes", "--ignore-cart-limit", "--json", "-q"}, &fw);
+        QVERIFY2(r.code == 0, qPrintable(r.err + r.out));
+        QVERIFY(fw.commands.size() > 2);
+
+        // another chip with a larger ROM is not stopped
+        fw.commands.clear();
+        fw.flashId = "C2CB";
+        fw.chipLine = "MX29LV640EB MD FLASH CART";
+        r = cli({"write-rom", big, "--yes", "--json", "-q"}, &fw);
+        QVERIFY2(r.code == 0, qPrintable(r.err + r.out));
+    }
+
     void badWriteIsReported()
     {
         QTemporaryDir d;

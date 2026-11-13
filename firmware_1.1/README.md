@@ -1,6 +1,6 @@
 # firmware_1.1
 
-Firmware for the md_rewriter STM32F103VB with the compatibility changes described in `../docs/NEW_FIRMWARE_SPEC.md`. **Not tested on hardware.** Do not flash it before reading `../docs/NEW_FIRMWARE_PLAN.md`, steps 2 and 3 (back up the original firmware first).
+Firmware for the md_rewriter STM32F103VB with the compatibility changes described in `../docs/NEW_FIRMWARE_SPEC.md`. Released as 1.1.0 and tested on the first unit (2026-11-13): results in `../docs/HWTEST.md`. **Back up the original firmware first** (`../tools/swd/swd.sh backup`); the step-by-step procedure is `../docs/guide/` and `../docs/SWD_SESSION.md`.
 
 ## Build
 
@@ -20,7 +20,7 @@ make clean
 
 ```bash
 st-info --probe
-st-flash read backup_fw_1.0.bin 0x08000000 0x20000          # first, always
+st-flash read backup_fw_1.0.bin 0x08000000 0x80000          # first, always (512 KiB on the first unit; 0x20000 if st-info says 128 KiB)
 st-flash --format ihex write build/md-rewriter-new.hex
 # or
 openocd -f interface/stlink.cfg -f target/stm32f1x.cfg \

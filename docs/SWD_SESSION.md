@@ -1,6 +1,6 @@
 # SWD session: back up firmware 1.0, flash firmware 1.1, test it
 
-Written before the ST-Link is installed. Everything marked "done" was run on the PC without hardware; the rest is the order to follow on the bench. Background: `docs/NEW_FIRMWARE_PLAN.md` steps 2 to 5, `docs/HWTEST.md` (what the unit did with firmware 1.0), `README.md` ("Ligar o ST-Link V2", the pad and pin map).
+The runbook for backing up the firmware of the board and flashing firmware 1.1 over SWD, with the checks to run afterwards. First run on 2026-11-13 (results in `docs/HWTEST.md`); the step-by-step version for users is `docs/guide/`. The "Done before the session" table below is the state before that run. Background: `docs/NEW_FIRMWARE_PLAN.md` steps 2 to 5, `docs/HWTEST.md` (what the unit did with firmware 1.0), `README.md` ("Ligar o ST-Link V2", the pad and pin map).
 
 Nothing in this file runs by itself. `tools/swd/swd.sh flash` and `restore` write to the microcontroller and need `--yes`; every cartridge write or erase in step 6 needs the owner's go-ahead at that moment.
 
@@ -113,7 +113,7 @@ Rows 1 and 2 of the checklist (old app with 1.1, new app with 1.0) need the old 
 tools/swd/swd.sh restore --backup test-results/swd-<time>/fw-factory.bin --yes
 ```
 
-Writes the factory image back, reads it back, compares, resets. If the board no longer answers on USB but SWD still sees it, restore works the same way. With no NRST pad the ST-Link cannot connect under reset. If the board ever stops answering on SWD, the way back is the ROM bootloader with BOOT0 held high (`docs/HARDWARE_ADDON.md` M5), which speaks UART only.
+Writes the factory image back, reads it back, compares, resets. If the board no longer answers on USB but SWD still sees it, restore works the same way. With no NRST pad the ST-Link cannot connect under reset. If the board ever stops answering on SWD, the way back is the ROM bootloader with BOOT0 held high (strap the BOOT0 side of `R3`, a 10 k resistor to GND, to 3V3), which speaks UART only; PA9 and PA10 have no pads (LQFP100 pins 68 and 69), so it takes fine-pitch wires (finding M5 of `docs/HARDWARE_REVIEW.md`).
 
 ## Record afterwards
 

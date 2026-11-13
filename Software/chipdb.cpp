@@ -12,6 +12,8 @@ namespace {
 //  - 01/7E: S29GL064N, confirmed in the Cypress datasheet 001-98525. The low byte 7E is shared with
 //    other GL parts, so the second ID cycle (not read by the firmware) would be needed to be sure.
 //    Seen on the bench (2026-11-13, firmware 1.0, PCB Ver1.4 cartridge S29GL064N90TFI03): FLASHID:17E.
+//    The two cartridges tried (KY and a second S29GL064N one) are 2 MiB + save RAM boards: the flash is selected only
+//    below 2 MiB, so erasing or writing above that fails (docs/HWTEST.md). That is the board limit, 2 MiB.
 //  - BF/6D and BF/6C: SST39VF6401B and 6402B, confirmed in the Microchip datasheet DS20005008B (same
 //    555h/2AAh unlock as AMD, so the commands of the firmware apply).
 //  - the others come from memory and are marked as not confirmed.
@@ -36,7 +38,7 @@ const Chip kChips[] = {
     { 0xC2, 0xF9, "MX29L3211 (Macronix, 32 Mbit, unlock at 5555h)", false, CommandSet::Amd5555, 4 * 1024 * 1024 },
     { 0x89, 0x70, "PA28F400T (Intel, 4 Mbit, top boot)", false, CommandSet::Intel, 512 * 1024 },
     { 0x89, 0x71, "PA28F400B (Intel, 4 Mbit, bottom boot)", false, CommandSet::Intel, 512 * 1024 },
-    { 0x01, 0x7E, "S29GL064N (Spansion/Cypress, 64 Mbit; other GL-N chips share this ID)", true, CommandSet::Amd555, 8 * 1024 * 1024 },
+    { 0x01, 0x7E, "S29GL064N (Spansion/Cypress, 64 Mbit; other GL-N chips share this ID)", true, CommandSet::Amd555, 8 * 1024 * 1024, 2 * 1024 * 1024 },
 };
 
 bool hex(const QString &s, int from, int len, quint8 *out)
@@ -113,6 +115,11 @@ Match identify(const QString &line)
 quint32 capacityBytes(const Match &match)
 {
     return match.chip ? match.chip->capacity : 0;
+}
+
+quint32 boardLimitBytes(const Match &match)
+{
+    return match.chip ? match.chip->boardLimit : 0;
 }
 
 } // namespace ChipDb
