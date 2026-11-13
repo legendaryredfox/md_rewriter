@@ -15,9 +15,14 @@
 #define NS_PER_NOP 55ULL         /* one Delay_nop iteration, about 4 cycles at 72 MHz (assumed) */
 
 const hw_chip_config_t HW_MX29LV640EB    = { HW_BOTTOM_BOOT, { 0x00C2, 0x22CB, 0x0000, 0x0000 }, 9000, 500000000ULL, 40000000000ULL, 0, HW_FAMILY_AMD, 0, 0, 0, 0 };
-const hw_chip_config_t HW_S29GL064N_03   = { HW_TOP_BOOT,    { 0x0001, 0x227E, 0x220C, 0x2201 }, 15000, 500000000ULL, 40000000000ULL, 1, HW_FAMILY_AMD, 0, 0, 0, 0 };
-const hw_chip_config_t HW_S29GL064N_04   = { HW_BOTTOM_BOOT, { 0x0001, 0x227E, 0x220C, 0x2200 }, 15000, 500000000ULL, 40000000000ULL, 1, HW_FAMILY_AMD, 0, 0, 0, 0 };
-const hw_chip_config_t HW_S29GL064N_01   = { HW_UNIFORM,     { 0x0001, 0x227E, 0x2210, 0x2201 }, 15000, 500000000ULL, 40000000000ULL, 1, HW_FAMILY_AMD, 0, 0, 0, 0 };
+const hw_chip_config_t HW_S29GL064N_03   = { HW_TOP_BOOT,    { 0x0001, 0x227E, 0x220C, 0x2201 }, 15000, 500000000ULL, 40000000000ULL, 1, HW_FAMILY_AMD, 0, 0, 23, 2 };
+const hw_chip_config_t HW_S29GL064N_04   = { HW_BOTTOM_BOOT, { 0x0001, 0x227E, 0x220C, 0x2200 }, 15000, 500000000ULL, 40000000000ULL, 1, HW_FAMILY_AMD, 0, 0, 23, 2 };
+const hw_chip_config_t HW_S29GL064N_01   = { HW_UNIFORM,     { 0x0001, 0x227E, 0x2210, 0x2201 }, 15000, 500000000ULL, 40000000000ULL, 1, HW_FAMILY_AMD, 0, 0, 23, 2 };
+/* Bench 2026-11-13: cartridges that answer 01/7E with the uniform or the top boot code but really have the eight 8 KiB boot sectors at the bottom (NFW-20). */
+const hw_chip_config_t HW_S29GL064N_LIAR_U  = { HW_BOTTOM_BOOT,     { 0x0001, 0x227E, 0x2210, 0x2201 }, 15000, 500000000ULL, 40000000000ULL, 1, HW_FAMILY_AMD, 0, 0, 23, 2 };
+const hw_chip_config_t HW_S29GL064N_LIAR_T  = { HW_BOTTOM_BOOT,     { 0x0001, 0x227E, 0x220C, 0x2201 }, 15000, 500000000ULL, 40000000000ULL, 1, HW_FAMILY_AMD, 0, 0, 23, 2 };
+/* A cartridge of the same family that does not answer the CFI query: the layout can only stay unknown. */
+const hw_chip_config_t HW_S29GL064N_NOCFI   = { HW_BOTTOM_BOOT,     { 0x0001, 0x227E, 0x2210, 0x2201 }, 15000, 500000000ULL, 40000000000ULL, 1, HW_FAMILY_AMD, 0, 0, 0, 0 };
 const hw_chip_config_t HW_SST39VF6401B  = { HW_UNIFORM,     { 0x00BF, 0x236D, 0x0000, 0x0000 }, 10000, 18000000ULL, 40000000ULL, 0, HW_FAMILY_AMD, 0, 0, 0, 0 };
 const hw_chip_config_t HW_M29W640DT      = { HW_TOP_BOOT,    { 0x0020, 0x22DE, 0x0000, 0x0000 }, 10000, 800000000ULL, 40000000000ULL, 0, HW_FAMILY_AMD, 0, 0, 0, 0 };
 
@@ -397,8 +402,18 @@ static uint16_t chip_read(uint32_t addr)
 				case 0x12: return 'Y';
 				case 0x13: return cfg.cfi_cmdset;
 				case 0x27: return cfg.cfi_exp;
-				default:   return 0;
+				default:   break;
 				}
+			/* Erase block regions (words 2Ch..34h): the real layout of the emulated chip, whatever its autoselect codes say. */
+			{
+				static const uint8_t bottom[9]  = { 2, 7, 0, 0x20, 0, 0x7F, 0, 0x00, 0x01 };
+				static const uint8_t top[9]     = { 2, 0x7F, 0, 0x00, 0x01, 7, 0, 0x20, 0 };
+				static const uint8_t uniform[9] = { 1, 0x7F, 0, 0x00, 0x01, 0, 0, 0, 0 };
+				const uint32_t k = (addr & 0xFFU) - 0x2CU;
+				if(k < 9U)
+					return (cfg.layout == HW_BOTTOM_BOOT) ? bottom[k] : (cfg.layout == HW_TOP_BOOT) ? top[k] : uniform[k];
+			}
+			return 0;
 		case S_PROG_BUSY:
 			if(hw_now_ns >= busy_until)
 				{

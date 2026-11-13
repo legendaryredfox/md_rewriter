@@ -498,6 +498,10 @@ private slots:
         QTest::newRow("unknown chip with CFI, AMD") << "AB34" << "CFI:SIZE=8192KB CMDSET=2\r\nNO FIND NGP CARD" << int(Sev::Info) << "8 MiB, AMD/Fujitsu";
         QTest::newRow("unknown chip with CFI, Intel, 512 KiB") << "AB34" << "CFI:SIZE=512KB CMDSET=1\r\nNO FIND NGP CARD" << int(Sev::Info) << "512 KiB, Intel/Sharp";
         QTest::newRow("unknown chip with CFI is still not in the list") << "AB34" << "CFI:SIZE=8192KB CMDSET=2\r\nNO FIND NGP CARD" << int(Sev::Warning) << "Chip not in the list";
+        QTest::newRow("chip info with CFI words") << "017E" << "CHIPINFO:ID=017E1000 CFIREG=02070020007F000001\r\nS29GL064N MD FLASH CART" << int(Sev::Info) << "Chip codes 017E1000, CFI sector words 02070020007F000001";
+        QTest::newRow("chip info without CFI") << "017E" << "CHIPINFO:ID=017E1001 CFIREG=NONE\r\nS29GL064N MD FLASH CART" << int(Sev::Info) << "CFI sector words no answer";
+        QTest::newRow("chip info says erase uses 8 KiB steps") << "017E" << "CHIPINFO:ID=017E1001 CFIREG=NONE\r\nS29GL064N MD FLASH CART" << int(Sev::Info) << "8 KiB steps";
+        QTest::newRow("a malformed chip info line is ignored, the chip is still named") << "017E" << "CHIPINFO:ID=zz CFIREG=???\r\nS29GL064N MD FLASH CART" << int(Sev::Success) << "Supported";
     }
     void detectNamesChips()
     {

@@ -95,3 +95,95 @@ Findings:
 3. The first CLI error text blames the cartridge ("may not have been erased first, may not be a flash cartridge, or the chip may be too slow for the firmware"). For this chip the last reason was the right one. The text was left as it is.
 4. The chip ID `17E` is now seen on hardware (table comment in `Software/chipdb.cpp`). The second ID cycle is still not read by the firmware, so the other GL-N chips with the same low byte are not excluded.
 5. Not covered: write of the save RAM, 4M and 8M writes, the rest of the chip beyond 2 MiB, erase by the `all` command, firmware 1.1.
+
+### SWD session 1 (2026-11-13, ST-Link V2 clone, board powered from the ST-Link 3V3, slot empty)
+
+| Step | Result |
+|------|--------|
+| wiring | pad order from the README confirmed by the owner for 3V3 (top, 3.3 V with USB) and GND (bottom, continuity with the USB-C shell); SWCLK and SWDIO connected as documented and the ST-Link found the chip |
+| `swd.sh probe` | `chipid 0x414`, `F1xx_HD`, 512 KiB flash, 64 KiB SRAM. Flash size register (`0x1FFFF7E0`) = `0x0200` (512 KB), DBGMCU_IDCODE `0x10036414`. **The chip on this unit is an STM32F103xE (high density), not the F103VB of the design files.** Firmware 1.1 is linked for 128 KiB flash and 20 KiB RAM and fits in the larger part. `swd.sh` now accepts both (0x410 with 128 KiB, 0x414 with 512 KiB) and backs up the whole flash |
+| `swd.sh backup` | two reads identical, not blank (no read protection), 524 288 bytes, about 18 177 non-0xFF bytes, initial SP `0x20003C30`, reset vector `0x08000105`, SHA-256 `7202283475c58c85b0cc85da1ce40f37bfeca97057207c72595e9b9e7dbc42a1`. Copy kept outside the repository |
+| `swd.sh flash build-poll` (1.1.0-test, 29 572 bytes, SHA-256 `7f7f6606…bd42`) | written, read back identical, reset via AIRCR (no NRST pad) |
+| USB, `hwtest.py nocart --expect-fw 1.1` (slot empty) | 8 PASS, 0 FAIL: enumerates `0483:5740`, banner `1.1.0-test`, 10 reconnects (max 0.11 s), `detect` `flashId=FFFF` (no chip), two 512K reads of the empty slot identical in 3.5 s, all `0xFF`, same SHA-256 `043e238a…589f` as with 1.0. **Firmware 1.1 runs on the F103xE and talks to the app** |
+
+The factory image is 18 KiB, so the first unit's 1.0 firmware was built for this part or a small subset of it; the size of the `legacy_firmware` build was not compared.
+
+Firmware 1.1.0-test, Rolling Thunder 2 (mask ROM, read only; never written, per the owner's rule), same session:
+
+| Step | Result |
+|------|--------|
+| `hwtest.py cart --rom-size 2M --save-size 32K --expect-fw 1.1` | all PASS. `detect` `flashId=0000` (not a flash chip; 1.0 printed `00`). 2M read twice, 12.4 s and 12.3 s (166 KiB/s), identical, SHA-256 `c7f0929b…8df5`: **the same dump as firmware 1.0 gave**. Mirror of the 1 MiB image, header checksum mismatch as before (0xBEB6 vs 0x11B1, still needs a reference dump), 512K read equals the first 512K, two 32K save reads identical (`663179ea…`) |
+| `hwtest.py cart --rom-size 8M --save-size 8K --expect-fw 1.1` (checklist 8) | all PASS. 8 388 608 bytes twice, 48.3 s and 48.2 s (170 KiB/s), identical, SHA-256 `a0d62447…9adf`. It is the 1 MiB image repeated eight times; the first MiB has SHA-256 `f1f35b18…debbb`, equal to the 1M dump taken with 1.0. So the 8 MiB path of 1.1 works and the app's 8 MiB option is justified |
+| `mdrewriter-cli detect` | `flash id: 0000  chip: unknown` and the warning that this may be an original cartridge |
+
+Not run on this cartridge on purpose: any write or erase (owner's rule), and the SSF2 mapper read (it writes bank registers to the cartridge bus; the owner said not to write to this cartridge).
+
+Firmware 1.1.0-test (polling build), S29GL064N cartridge with Metal Gear, same session. The owner gave the go-ahead for erase and write on this cartridge; the detect said `FLASHID:017E` before every destructive step. Files in `test-results/fw11-write/` (git-ignored).
+
+| Step | Result |
+|------|--------|
+| 2M read before | SHA-256 `0c52b1e2…c646`, the Metal Gear image left by the 1.0 session |
+| `erase 2M --yes` | 6.3 s (1.0: 8 s). 2M read after: all `0xFF` |
+| `write-rom` Metal Gear, verify on (checklist 3a, test d) | **one pass**: `Game written: 2048 blocks`, `Verified: the 2097152 bytes read back match the file`. 90.5 s with the verify read (12 s). No repair tool. With 1.0 the same write left 545 135 words blank and needed 8 repair passes |
+| two independent 2M dumps, `cmp` with the file | both SHA-256 `0c52b1e2…c646`, `cmp` identical |
+| `write-rom` of the same file again without erasing (`--no-verify`) | completes in the same way: identical data needs no 0 to 1 change, so there is nothing to time out on. Not a test of checklist 5 |
+| `write-rom` of the first 512K inverted bitwise, no erase, `--no-verify` (checklist 5) | `The cartridge did not finish programming a word ("ADD:0x3 WRITE TIMEOUT")` after 0.4 s, exit 1. The device answered `info` right after: no hang |
+| erase 2M and write Metal Gear again, no verify | 78.9 s for the write alone (1.0: 57 s, but it skipped every other word; the 1.0 control build with the 1.0 sequence was not run on the cartridge, so the "under 2x the control" criterion of plan step 4 is met against 1.0's 57 s: 1.4x). `verify` against the file: identical; 2M dump SHA-256 `0c52b1e2…c646` again |
+| `hwtest.py cart --rom-size 8M --save-size 32K --expect-fw 1.1` | all PASS except one check that was too strict (see below). `detect` names `S29GL064N` itself (`firmwareKnows=True`). 8M read twice 48.6 s each, identical; first 2 MiB SHA-256 `0c52b1e2…c646`; header checksum 0xEE3C matches; two 32K save reads identical |
+
+Findings:
+
+1. **Firmware 1.1 with polling programs the S29GL064N correctly in one pass.** This was the main open question of the plan. 78.9 s for 2 MiB, 6.3 s to erase 2M.
+2. **Checklist 5 is proven with different data, not with the same data.** Writing identical data over written flash is not an error and does not time out.
+3. **The 8 MiB read of this cartridge repeats a 4 MiB image** (second half equals the first). Either the cartridge does not decode the top address line (`A22`) or something on the path does not. The chip is 64 Mbit (8 MiB); the mask-ROM cartridge cannot tell the two apart. Open: check with a logic analyzer or a second S29GL064N cartridge. It does not affect games up to 4 MiB; the SSF2 mapper and 8 MiB images are not covered.
+4. **`hwtest.py` check "mirror matches the header ROM size" failed on this cartridge and was wrong.** A flash cartridge holds more than the game (here 4 MiB of image, the game is 1 825 280 bytes: old data beyond what was erased). The check now fails only when the mirror period is shorter than the game's header size, and reports a longer one as INFO.
+5. Not run in this session: build `-DFLASH_POLL=0` (control) and `-DFLASH_FAST=1` on the cartridge (both need a new SWD flash with the ST-Link 3V3 wire back on and USB off), `write-save` on the flash cartridge (it has no battery RAM, and on an 8 MiB flash the save window may overlap flash space: a write there would be bus cycles into the chip; not worth the risk), unplug during a write (checklist 10, needs a hand on the cable), checklists 1, 2 and 6, NFW-19, 4M and 8M writes.
+
+Firmware 1.1.0-test, third cartridge: the owner's "KY technology" cartridge, same session. Files in `test-results/ky/` and `test-results/20261113-153524-cart/` (git-ignored); the 8M dump of the original content is also in `~/md_rewriter_backups/ky-cart-ragnacenty-8M-20261113.bin` (SHA-256 `f27ad242…43a9`). The owner asked for the Metal Gear to be written to it.
+
+| Step | Result |
+|------|--------|
+| `detect` | `FLASHID:017E`, `S29GL064N MD FLASH CART`, the **same answer as the first S29GL064N cartridge**. No KY / FlashKit ID (`20xx`, `C2xx`) appeared, so the KY-specific rows of the plan (3d, 4) are not covered by this cartridge |
+| `hwtest.py cart --rom-size 8M --save-size 32K` before the write | all PASS (after the check fix below). Game `RAGNACENTY`, header ROM size 2 097 152 bytes, header checksum 0x123E matches. 8M read twice, identical, 48.6 s, SHA-256 `f27ad242…43a9`; again a 4 MiB image repeated twice; 32K save reads identical |
+| `erase 2M --yes` | 7.5 s, "Erase complete", **but 56 544 bytes were still programmed**: sectors of 8 KiB at bytes `0x2000` to `0xFFFF` (the first 8 KiB were blank) |
+| `write-rom` Metal Gear | `WRITE TIMEOUT` (`ADD:0x1003`) after 0.8 s, exit 1: the first 8 KiB had been programmed, then the first word needing 0 to 1 in an unerased sector. Correct behaviour of 1.1; the cause was the erase |
+| diagnosis | the erase left exactly the 7 small sectors behind the first one: the chip has eight 8 KiB boot sectors at the bottom, the firmware believed it had none (NFW-20). The first S29GL064N cartridge does not have them |
+| workaround, no new firmware | raw serial `0x2E` (erase sector, word address): sectors `0x1000` to `0x7000` (words), then sector `0x0` again (it had been programmed by the failed write). Each `SECTORADD:0x… ERASE OK!`. 2M read: all `0xFF` |
+| `write-rom` Metal Gear, verify on | `Game written: 2048 blocks`, `Verified`, 93.2 s with the verify read. **One pass again** |
+| `hwtest.py cart --rom-size 2M` after | all PASS: two 2M reads identical, SHA-256 `0c52b1e2…c646` (the file), header checksum 0xEE3C matches, `verify` identical |
+
+Findings:
+
+1. **Two cartridges with the same autoselect answer (`01 7E`, name `S29GL064N`) have different erase layouts.** The codes in the datasheet table cannot be trusted to choose the erase steps. Fix NFW-20: layout unknown for this chip, which gives the 1.0 behaviour (8 KiB steps). The host model now has chips that lie about their layout and the 4 MiB erase test fails without the fix. Cycles 3 and 4 of the autoselect are not visible to the app, so the real codes of this cartridge are still unknown; showing them in `detect` would settle which rule was wrong.
+2. **The fix is only in the source.** The unit still runs the build without it (`FWVER:1.1.0-test`). Rebuilt images: polling `79d9369a…cb6aa` (29 520 B), control `facc44d3…30fc5` (29 508 B). Flashing needs the ST-Link wire again and the owner's go-ahead; the rows to repeat afterwards are listed in `docs/SWD_SESSION.md`. The cost on uniform chips is extra time on every erase (the first 64 KiB sector is erased up to eight times; on 1.0 an erase of 2M took 8 s).
+3. **The 8M read repeats a 4 MiB image on both flash cartridges** (this one and the first one): the second half equals the first. With two different flash cartridges doing it, a cartridge fault is less likely than before and a dumper or firmware limit on the top address line more likely (`A22`, `PA5`?). Still open; it needs a logic analyzer or a look at the address pins of `U1` and the cartridge slot.
+4. The pre-write dump shows this cartridge held a complete game (`RAGNACENTY`, checksum good) in its first 2 MiB; it was overwritten by the owner's request. The dump above can restore it: erase 4M with the sector workaround and `write-rom` the first 2 MiB (`head -c 2097152`).
+
+### Final firmware 1.1.0-test (2026-11-13, evening): uniform cartridge, CFI, 2 MiB erase limit, flash of the final build
+
+Cartridge "previous Metal Gear" (the first S29GL064N one, codes `017E1001`) and the KY cartridge (`017E1000`), firmware polling build before the last change (30 172 B, layout taken from the CFI words).
+
+| Step | Result |
+|------|--------|
+| one raw `0x2E` at word `0x1000` on the `017E1001` cartridge | the whole first 64 KiB went blank: **a truly uniform first sector** (the KY one needs eight erases for the same range) |
+| CFI sector words (`2C..34h`) on both | `02070020007F000001` on both cartridges, although the layouts differ. The CFI table does not tell them apart. The four autoselect codes differ on these two cartridges (`017E1001` and `017E1000`), but the firmware's NFW-10 rule read the KY codes as a uniform chip and was wrong, and one sample of each is too little to trust a rule: neither source is safe |
+| firmware that trusted the CFI layout | erase 2M 8.5 s, all `0xFF`, write and verify 90.8 s, Metal Gear verified. Functionally the same as always stepping by 8 KiB, so the final build does that (NFW-20) and shows the codes (NFW-21) |
+| `erase 4M --yes`, both cartridges | `A sector did not finish erasing in time` after about 23 s. Raw `0x2E` at word `0xF8000` is fine; at `0x100000`, `0x108000`, `0x180000`, `0x1F8000` (byte 2 MiB and up) it gives `ERASE TIMEOUT!`. Reads above 2 MiB work. Cause unknown: the cartridge decoding of the write cycle, or the dumper (`A21`/`A22`, `PA4`..`PA6`?). Same limit as the 8M read repeating 4 MiB: the upper address lines may not reach the chip on this path. Needs a logic analyzer or the schematic |
+| 4M write after the failed erase | one bit read wrong once (byte `0xAAB`, `0x04` read as `0x00`); the verify caught it and two clean 1 MiB repeats followed. Not reproduced |
+
+Final build flashed over SWD (`swd.sh flash build-poll`, 30 116 B, SHA-256 `12be6c8f968516c10d8134227f4c50add2d853c8f6641d0f5f1efee67a1347d6`, `FWVER:1.1.0-test`, always 8 KiB steps below 64 KiB plus `CHIPINFO`). Backup of the image it replaced: SHA-256 `38399e3f822866338741fc71c9ecf0deff7285541b85393308a829a1ae666a1e` (`test-results/swd-baseline-cfi-layout/`, copy in `~/md_rewriter_backups/`). Written and read back identical, reset by AIRCR.
+
+The SWD link problem of this session: the link dropped every few minutes (`chipid 0x000`, `Failed to connect`), also with the board powered by USB and only SWCLK, SWDIO and GND on the ST-Link. The cause was **the GND pin loose in the header**. Until then the link worked for a short time after reseating. `swd.sh` now retries the probe, the read and the write when the link drops (`SWD_TRIES`, `SWD_RETRY_SLEEP`); the read back stays mandatory.
+
+With the final build, owner's go-ahead for each cartridge, files in `test-results/20261113-164*-cart/` (git-ignored):
+
+| Cartridge | `detect` | erase 2M | `write-rom` Metal Gear + verify | dump |
+|-----------|----------|----------|---------------------------------|------|
+| previous Metal Gear (`017E1001`) | `S29GL064N`, info line `Chip codes 017E1001, CFI sector words 02070020007E000001 …` | ok (cartridge was blank before) | `Game written: 2048 blocks`, `Verified`, 91.2 s total, one pass | verified equal to the file |
+| KY (`017E1000`) | same name, `Chip codes 017E1000, CFI sector words 02070020007E000001 …` | 7.7 s | `Verified`, 93.3 s total, one pass | `hwtest.py cart --rom-size 2M` before the erase: all PASS, SHA-256 `0c52b1e2…c646`; after the write `verify` equal to the file |
+
+So **both cartridge types are detected and written with the same firmware and no choice by the user**, which was the requirement. The CFI words changed from `…7F…` to `…7E…` between two sessions on both cartridges (power state or temperature of the chip?): one more reason not to read anything into them.
+
+`hwtest.py` fix found here: a blank (all `0xFF`) 2M read was reported as "repeats a 512 KiB image"; an erased image now never counts as a mirror.
+
+Still open after this session: erase and write above 2 MiB on the flash cartridges, the 8M read repeating 4 MiB, header checksum of Rolling Thunder 2 (needs a reference dump), checklist 1, 2, 3b (write buffer build), 6 (mask ROM write, sacrificial cartridge), 10 (unplug during a write), NFW-19 (not applied), `write-save` and `read-save` on the flash cartridges, `FLASH_POLL=0` control build.

@@ -7,14 +7,19 @@ SWD="$HERE/swd.sh"
 T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
 FAILS=0; N=0
 
-# --- stubs. FAKE_FLASH is the "chip"; FAKE_PROBE=none|wrongchip|smallflash; FAKE_RDP=1 reads zeros;
+# --- stubs. FAKE_FLASH is the "chip"; FAKE_PROBE=none|wrongchip|smallflash|hd; FAKE_SIZE=bytes of the fake chip (default 131072); FAKE_RDP=1 reads zeros;
 #     FAKE_CORRUPT=1 flips a byte on write; FAKE_READFAIL=1 makes read fail.
 mkdir -p "$T/bin"
 cat > "$T/bin/st-info" <<'STUB'
 #!/usr/bin/env bash
+if [ "${FAKE_FLAKY:-0}" -gt 0 ]; then   # first FAKE_FLAKY calls: the link is down (chip id 0x0, no flash)
+  n=$(cat "$FAKE_FLASH.cnt" 2>/dev/null || echo 0); echo $((n+1)) > "$FAKE_FLASH.cnt"
+  if [ "$n" -lt "$FAKE_FLAKY" ]; then printf 'Found 1 stlink programmers\n  flash: 0 (pagesize: 0)\n  chipid: 0x000\n'; exit 0; fi
+fi
 case "${FAKE_PROBE:-ok}" in
   none) echo "Found 0 stlink programmers" ;;
   wrongchip) printf 'Found 1 stlink programmers\n  flash: 131072 (pagesize: 1024)\n  chipid: 0x0414\n' ;;
+  hd) printf 'Found 1 stlink programmers\n  flash: 524288 (pagesize: 2048)\n  sram: 65536\n  chipid: 0x0414\n  dev-type: F1xx_HD\n' ;;
   smallflash) printf 'Found 1 stlink programmers\n  flash: 65536 (pagesize: 1024)\n  chipid: 0x0410\n' ;;
   *) printf 'Found 1 stlink programmers\n  version: V2J37S7\n  flash: 131072 (pagesize: 1024)\n  sram: 20480\n  chipid: 0x0410\n  descr: F1 medium-density device\n' ;;
 esac
@@ -28,13 +33,18 @@ case "${args[0]}" in
     if [ "${FAKE_RDP:-0}" = 1 ]; then head -c "${args[3]}" /dev/zero > "${args[1]}"
     else head -c "${args[3]}" "$FAKE_FLASH" > "${args[1]}"; fi ;;
   write)
-    { cat "${args[1]}"; head -c 131072 /dev/zero | tr '\0' '\377'; } | head -c 131072 > "$FAKE_FLASH.new"
+    if [ "${FAKE_WRITEFLAKY:-0}" -gt 0 ]; then
+      n=$(cat "$FAKE_FLASH.wcnt" 2>/dev/null || echo 0); echo $((n+1)) > "$FAKE_FLASH.wcnt"
+      if [ "$n" -lt "$FAKE_WRITEFLAKY" ]; then echo "Failed to enter SWD mode"; echo "Failed to connect to target"; exit 1; fi
+    fi
+    sz="${FAKE_SIZE:-131072}"
+    { cat "${args[1]}"; head -c "$sz" /dev/zero | tr '\0' '\377'; } | head -c "$sz" > "$FAKE_FLASH.new"
     if [ "${FAKE_CORRUPT:-0}" = 1 ]; then printf '\125' | dd of="$FAKE_FLASH.new" bs=1 seek=5000 conv=notrunc 2>/dev/null; fi
     mv "$FAKE_FLASH.new" "$FAKE_FLASH" ;;
 esac
 STUB
 chmod +x "$T/bin/"*
-export ST_FLASH="$T/bin/st-flash" ST_INFO="$T/bin/st-info" FAKE_FLASH="$T/chip.bin"
+export SWD_RETRY_SLEEP=0 ST_FLASH="$T/bin/st-flash" ST_INFO="$T/bin/st-info" FAKE_FLASH="$T/chip.bin"
 
 mkimg() {  # file size seed: sane vector table (SP 0x20005000, reset 0x08000101) then pseudo-random bytes
     { printf '\000\120\000\040\001\001\000\010'; head -c $(( $2 - 8 )) < <(openssl enc -aes-128-ctr -pass "pass:$3" -nosalt </dev/zero 2>/dev/null); } > "$1"
@@ -89,6 +99,28 @@ t "flash again with the same image is a no-op" 0 "$SWD" flash "$T/new.bin" --bac
 t "restore refuses without --yes" 1 "$SWD" restore --backup "$B"
 t "restore ok" 0 "$SWD" restore --backup "$B" --yes
 cmp -s "$FAKE_FLASH" "$T/factory128.bin" && { N=$((N+1)); echo "PASS  restore brought back the factory image"; } || { N=$((N+1)); echo "FAIL  restore brought back the factory image"; FAILS=$((FAILS+1)); }
+
+# --- high density chip (0x414, 512 KiB): the unit on the bench
+export FAKE_SIZE=524288 FAKE_PROBE=hd
+{ cat "$T/factory.bin"; head -c $((524288-29000)) /dev/zero | tr '\0' '\377'; } > "$T/factory512.bin"
+cp "$T/factory512.bin" "$FAKE_FLASH"
+t "hd: probe ok" 0 "$SWD" probe; has "  says 0x414 and 524288" "0x414, 524288"
+t "hd: backup ok" 0 "$SWD" backup --out "$T/h1"
+cmp -s "$T/h1/fw-factory.bin" "$T/factory512.bin" && { N=$((N+1)); echo "PASS  hd: backup is the whole 512 KiB"; } || { N=$((N+1)); echo "FAIL  hd: backup is the whole 512 KiB"; FAILS=$((FAILS+1)); }
+t "hd: flash refuses a 128 KiB backup" 1 "$SWD" flash "$T/new.bin" --backup "$B" --yes
+t "hd: flash ok" 0 "$SWD" flash "$T/new.bin" --backup "$T/h1/fw-factory.bin" --yes; has "  hd says verified" "written and verified"
+cmp -s -n 29500 "$FAKE_FLASH" "$T/new.bin" && { N=$((N+1)); echo "PASS  hd: chip holds the new image"; } || { N=$((N+1)); echo "FAIL  hd: chip holds the new image"; FAILS=$((FAILS+1)); }
+t "hd: restore ok" 0 "$SWD" restore --backup "$T/h1/fw-factory.bin" --yes
+cmp -s "$FAKE_FLASH" "$T/factory512.bin" && { N=$((N+1)); echo "PASS  hd: restore brought back the factory image"; } || { N=$((N+1)); echo "FAIL  hd: restore brought back the factory image"; FAILS=$((FAILS+1)); }
+
+# --- a link that drops now and then (seen on the bench unit)
+cp "$T/factory512.bin" "$FAKE_FLASH"; rm -f "$FAKE_FLASH.cnt" "$FAKE_FLASH.wcnt"
+FAKE_FLAKY=3 t "flaky link: probe retries until the chip answers" 0 "$SWD" probe; has "  ends ok" "probe ok"
+rm -f "$FAKE_FLASH.cnt"
+FAKE_FLAKY=99 t "dead link: probe gives up" 1 "$SWD" probe
+rm -f "$FAKE_FLASH.cnt" "$FAKE_FLASH.wcnt"
+FAKE_WRITEFLAKY=2 t "flaky link: write retried, then verified" 0 "$SWD" flash "$T/new.bin" --backup "$T/h1/fw-factory.bin" --yes; has "  says link dropped" "link dropped"; has "  still verified" "written and verified"
+cmp -s -n 29500 "$FAKE_FLASH" "$T/new.bin" && { N=$((N+1)); echo "PASS  flaky link: chip holds the new image"; } || { N=$((N+1)); echo "FAIL  flaky link: chip holds the new image"; FAILS=$((FAILS+1)); }
 
 echo; echo "$N checks, $FAILS failed"
 exit $(( FAILS > 0 ))

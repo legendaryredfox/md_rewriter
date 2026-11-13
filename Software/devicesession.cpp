@@ -69,6 +69,7 @@ bool DeviceSession::begin(Op op, int idleMs)
     m_verifier.reset();
     m_flashIdLine.clear();
     m_cfiLine.clear();
+    m_chipInfoLine.clear();
     m_cancelled = false;
     m_finishing = false;
     m_lastPercent = -2;
@@ -417,8 +418,11 @@ void DeviceSession::onLine(const QString &line)
             m_flashIdLine = line.trimmed();
         else if (line.trimmed().startsWith(QLatin1String("CFI:")))
             m_cfiLine = line.trimmed();
+        else if (line.trimmed().startsWith(QLatin1String("CHIPINFO:")))
+            m_chipInfoLine = line.trimmed();
         if (kind == LineKind::DetectDone) {
             reportChip(line);
+            reportChipInfo();
             finish(true);
         }
         break;
@@ -673,6 +677,22 @@ void DeviceSession::reportCfi()
     emit message(Severity::Info,
                  tr("The chip describes itself (CFI): %1, %2 command set. This is information only; writing still uses the standard AMD commands.")
                      .arg(size, family));
+}
+
+// Firmware 1.1 prints "CHIPINFO:ID=<4 bytes> CFIREG=<9 bytes or NONE>" for a chip whose table row gives no sector layout
+// (the S29GL064N: the ID bytes and the CFI table disagreed with the real chip on two cartridges, so erase always starts
+// with 8 KiB steps). Information for the user and for bug reports only.
+void DeviceSession::reportChipInfo()
+{
+    static const QRegularExpression re(QStringLiteral("^CHIPINFO:ID=([0-9A-Fa-f]{8}) CFIREG=([0-9A-Fa-f]{18}|NONE)$"));
+    const QRegularExpressionMatch m = re.match(m_chipInfoLine);
+    if (!m.hasMatch())
+        return;
+    const QString cfi = m.captured(2) == QLatin1String("NONE") ? tr("no answer") : m.captured(2).toUpper();
+    emit message(Severity::Info,
+                 tr("Chip codes %1, CFI sector words %2. The sector layout of this chip family cannot be told from them, so erase "
+                    "always starts with 8 KiB steps: same result, a little slower on some cartridges.")
+                     .arg(m.captured(1).toUpper(), cfi));
 }
 
 void DeviceSession::setProgress(int percent)

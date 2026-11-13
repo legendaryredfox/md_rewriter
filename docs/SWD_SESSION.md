@@ -15,7 +15,7 @@ Nothing in this file runs by itself. `tools/swd/swd.sh flash` and `restore` writ
 
 | What | Result |
 |------|--------|
-| `tools/swd/test-swd.sh` | 37 checks, 0 failed. Stubs for `st-info` and `st-flash`: probe (no ST-Link, wrong chip id, wrong flash size), backup (equal to the chip, `.sha256`, refuses to overwrite, blank read = read protection, failed read), flash refuses without `--yes`, without a backup, with a missing, unsigned or modified backup, with a tiny image, an image without vector table, a wrong chip, a chip that is not the backed-up unit; detects a read back mismatch; flash, flash again (no-op), restore |
+| `tools/swd/test-swd.sh` | 54 checks, 0 failed (includes the 512 KiB chip and the dropping link). Stubs for `st-info` and `st-flash`: probe (no ST-Link, wrong chip id, wrong flash size), backup (equal to the chip, `.sha256`, refuses to overwrite, blank read = read protection, failed read), flash refuses without `--yes`, without a backup, with a missing, unsigned or modified backup, with a tiny image, an image without vector table, a wrong chip, a chip that is not the backed-up unit; detects a read back mismatch; flash, flash again (no-op), restore |
 | `tools/swd/swd.sh probe` with no ST-Link plugged | `Found 0 stlink programmers`, exit 1, message names the likely causes. `st-flash` and `st-info` are 1.8.0 |
 | `tools/swd/swd.sh build` | two images in `firmware_1.1/build-poll` (`FWVER:1.1.0-test`, 29 572 bytes) and `firmware_1.1/build-nopoll` (`FWVER:1.1.0-nopoll`, `-DFLASH_POLL=0`, the 1.0 write sequence, 29 560 bytes). Initial SP `0x20005000`, reset vector `0x08006A29`. Both fit in the 128 KiB |
 | `firmware_1.1/check.sh` | 0 gcc warnings, 0 cppcheck findings, host model 207 and 212 checks, 0 failed |
@@ -40,9 +40,9 @@ Pads and pin map: `README.md`, "Ligar o ST-Link V2" (one vertical row of four pa
 | 3 | SWDIO (PA13) | SWDIO |
 | 4 (bottom) | GND | GND |
 
-Power from the ST-Link, no USB: wire all four, leave `RST` and `5V` of the ST-Link loose (no NRST pad). The ST-Link 3V3 then feeds the board's 3V3 net backwards through the AMS1117 output (`U11`, input unpowered); this is fine for a few seconds of flashing, but the clone's 3V3 pin is weak, so: **cartridge slot empty**, no USB cable plugged while the ST-Link 3V3 wire is on. Only one power source at a time. Pads 2 and 3 are inferred from the project file; if `probe` finds nothing, swap them first.
+Two ways to power the board. **Preferred: USB**, with only SWCLK, SWDIO and GND on the ST-Link (3V3 and RST loose): the board has its own supply, the ST-Link only carries signals, and the dumper stays visible on USB. The ST-Link 3V3 wire may be used instead when the board cannot be plugged to USB: then **cartridge slot empty**, no USB cable while that wire is on, because the clone's 3V3 pin is weak. Only one power source at a time. Pads 2 and 3 are inferred from the project file; if `probe` finds nothing, swap them first.
 
-For the USB tests afterwards (`hwtest.py`), remove the ST-Link 3V3 wire (or the whole ST-Link) before plugging USB.
+If the link drops now and then (`chipid 0x000`, `Failed to connect`): check **GND at the header first**. On the first unit a loose GND pin caused hours of intermittent links on 2026-11-13; reseating the other wires only helped for minutes. `swd.sh` retries dropped links (`SWD_TRIES`, default 6, `SWD_RETRY_SLEEP`, default 1 s) and still demands the read back to match.
 
 ### 2. Probe
 

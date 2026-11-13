@@ -16,6 +16,8 @@
 	static uint8_t g_probed = 0;                           /* 1: the variables above and g_info describe the cartridge */
 	static flash_info_t g_info;
 	static flash_cfi_t g_cfi;
+	static uint8_t g_regs[9];                              /* CFI erase block region words 2Ch..34h, information only (NFW-21) */
+	static uint8_t g_regs_valid = 0;
 	static uint8_t g_cfi_valid = 0;                        /* 1: an unknown chip answered the CFI query */
 	static uint8_t g_info_valid = 0;                       /* 1: the chip is in the table */
 	static void ensure_probed(void);
@@ -645,6 +647,7 @@
 				g_probed = 0;
 				g_info_valid = 0;
 				g_cfi_valid = 0;
+				g_regs_valid = 0;
 			}
 
 	uint8_t flash_cfi_info(flash_cfi_t *out)
@@ -694,6 +697,50 @@
 				return (uint8_t)flash_cfi_decode(q, cs, ex, out);
 			}
 
+	/* Reads the erase block regions words (2Ch..34h) of the CFI table of a chip the table names but gives no
+	 * layout for (the S29GL064N), for the PC and the bench logs only (NFW-21): nothing in the firmware
+	 * decides anything from them, because on the two cartridges tried they do not match what the chip does.
+	 * Same bus sequence as cfi_query(); it only reads, and the chip is reset to the read array state at the
+	 * end. Returns 1 and fills reg when the answer is a CFI table of the AMD command set. */
+	static uint8_t cfi_read_regs(uint8_t reg[9])
+			{
+				uint8_t q[3], cs, ex, i;
+				flash_cfi_t cfi;
+				write_mode();
+				HAL_Delay(10);
+				MD_RD= 1;
+				MD_CS= 1;
+				MD_WR= 1;
+				HAL_Delay(1);
+				setByte(0x555, 0xf0);
+				HAL_Delay(2);
+				setByte(0x555, 0xf0);
+				HAL_Delay(2);
+				setByte(0x55, 0x98);
+				MD_RD= 1;
+				MD_CS= 1;
+				MD_WR= 1;
+				read_mode();
+				q[0] = getByte(0x10);
+				q[1] = getByte(0x11);
+				q[2] = getByte(0x12);
+				cs = getByte(0x13);
+				ex = getByte(0x27);
+				for(i = 0; i < 9U; i++)
+					reg[i] = getByte(0x2C + i);
+				write_mode();
+				HAL_Delay(10);
+				MD_RD= 1;
+				MD_CS= 1;
+				MD_WR= 1;
+				HAL_Delay(1);
+				setByte(0x555, 0xf0);
+				MD_RD= 1;
+				MD_CS= 1;
+				MD_WR= 1;
+				return (uint8_t)(flash_cfi_decode(q, cs, ex, &cfi) && ((cfi.cmdset == 2U) || (cfi.cmdset == 4U)));
+			}
+
 	static void flash_adopt(const flash_info_t *info)
 			{
 				g_info = *info;
@@ -720,6 +767,7 @@
 				g_probed = 0;
 				g_info_valid = 0;
 				g_cfi_valid = 0;
+				g_regs_valid = 0;
 				g_cmdset = FLASH_CMDSET_AMD_555;
 				g_u1 = 0x555U;
 				g_u2 = 0x2AAU;
@@ -728,6 +776,8 @@
 					{
 						memcpy(id, first, 4);
 						flash_adopt(&info);
+						if(info.layout == FLASH_LAYOUT_UNKNOWN)
+							g_regs_valid = cfi_read_regs(g_regs);   /* information only, see cfi_read_regs() */
 						return;
 					}
 				autoselect_amd(0x5555U, 0x2AAAU, alt);
@@ -747,6 +797,15 @@
 				memcpy(id, first, 4);
 				g_cfi_valid = cfi_query(&g_cfi);
 				g_probed = 1;
+			}
+
+	uint8_t flash_cfi_regs(uint8_t reg[9])
+			{
+				ensure_probed();
+				if(!g_regs_valid)
+					return 0;
+				memcpy(reg, g_regs, 9);
+				return 1;
 			}
 
 	/* 1 when erase-by-size must step through eight 8 KiB sectors at the start of the chip (what
@@ -863,7 +922,7 @@
 			{
 				CDC_Transmit("-- MD CART ID --\r\n");		
 				
-				char disbuff[50];
+				char disbuff[64];
 				uint8_t s1,s2;
 				uint8_t id[4];
 				/* flash_probe() does the autoselect session (AMD 555h first: the same bus sequence as 1.0's
@@ -879,6 +938,21 @@
 					flash_info_t chip;
 					if(flash_identify(id, &chip))
 						{
+							/* Information for the PC and the bench logs, only for a chip whose layout the table does not give: the
+							 * four autoselect bytes and where the chip says its 8 KiB sectors are. Old apps ignore the line (it is neither the name line nor an error). */
+							if((chip.layout == FLASH_LAYOUT_UNKNOWN) && (chip.cmdset == FLASH_CMDSET_AMD_555))
+							{
+								/* Information for the PC and the bench logs, only for a chip whose table row gives no layout: the
+								 * four autoselect bytes and the CFI erase block region words, as the chip answers them (NFW-21).
+								 * Old apps ignore the line: it is neither the name line nor an error. */
+								uint8_t r[9];
+								if(flash_cfi_regs(r))
+									sprintf(disbuff,"CHIPINFO:ID=%02X%02X%02X%02X CFIREG=%02X%02X%02X%02X%02X%02X%02X%02X%02X\r\n",id[0],id[1],id[2],id[3],
+											r[0],r[1],r[2],r[3],r[4],r[5],r[6],r[7],r[8]);
+								else
+									sprintf(disbuff,"CHIPINFO:ID=%02X%02X%02X%02X CFIREG=NONE\r\n",id[0],id[1],id[2],id[3]);
+								CDC_Transmit(disbuff);
+							}
 							/* Same line layout as 1.0 ("<name> MD FLASH CART"), so old apps still see a detected cart. */
 							sprintf(disbuff,"%s MD FLASH CART\r\n",chip.name);
 							CDC_Transmit(disbuff);

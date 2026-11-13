@@ -233,6 +233,16 @@
         <translation>Ler pelo mapper SSF2 exige o firmware 1.1 ou posterior; este dispositivo tem o firmware 1.0.</translation>
     </message>
     <message>
+        <location filename="../devicesession.cpp" line="680"/>
+        <source>Chip codes %1, CFI sector words %2. The sector layout of this chip family cannot be told from them, so erase always starts with 8 KiB steps: same result, a little slower on some cartridges.</source>
+        <translation>Códigos do chip %1, palavras de setores da CFI %2. O layout de setores desta família de chips não pode ser deduzido delas, então o apagamento sempre começa com passos de 8 KiB: mesmo resultado, um pouco mais lento em alguns cartuchos.</translation>
+    </message>
+    <message>
+        <location filename="../devicesession.cpp" line="680"/>
+        <source>no answer</source>
+        <translation>sem resposta</translation>
+    </message>
+    <message>
         <location filename="../devicesession.cpp" line="662"/>
         <source>The chip describes itself (CFI): %1, %2 command set. This is information only; writing still uses the standard AMD commands.</source>
         <translation>O chip se descreve (CFI): %1, conjunto de comandos %2. É só informação; a gravação continua usando os comandos AMD padrão.</translation>

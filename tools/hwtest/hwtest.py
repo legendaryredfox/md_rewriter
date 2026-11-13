@@ -95,7 +95,9 @@ def analyze_rom(data):
             out["computed_checksum"] = total
             out["checksum"] = (total == out["header_checksum"])
     cart = len(data)
-    while cart % 2 == 0 and cart > 0x80000 and data[:cart // 2] == data[cart // 2:cart]:
+    # An erased or empty cartridge is one repeated byte: halving it says nothing about the address lines.
+    uniform = len(data) > 0 and data.count(data[:1]) == len(data)
+    while not uniform and cart % 2 == 0 and cart > 0x80000 and data[:cart // 2] == data[cart // 2:cart]:
         cart //= 2
     out["cart"] = cart
     out["mirrored"] = cart < len(data)
@@ -171,6 +173,7 @@ def phase_host(rep, a):
     rep.check(a["mirrored"] and a["cart"] == 0x100000 and a["declared"] == 0x100000 and a["checksum"] is True,
               "analyze_rom: mirrored 2M read of a 1M game, good checksum")
     img[0x18E] ^= 1
+    rep.check(not analyze_rom(b"\xff" * 0x200000)["mirrored"], "analyze_rom: a blank 2M image is not reported as a mirror")
     rep.check(analyze_rom(bytes(img))["checksum"] is False and not analyze_rom(bytes(img))["mirrored"],
               "analyze_rom: wrong header checksum is reported, no mirror")
     r = run_cli(["chips"])
@@ -268,8 +271,14 @@ def phase_cart(rep, a):
             rep.info("header checksum", "MISMATCH: header 0x%04X, computed 0x%04X over 0x200..0x%X. Not proof of a bad read; compare with a reference dump"
                      % (an["header_checksum"], an["computed_checksum"], an["declared"]))
         if an["mirrored"]:
-            rep.check(an["cart"] == an["declared"], "mirror matches the header ROM size",
+            # The mirror period must not be shorter than the game the header describes (that would be a
+            # missing address line). A longer period is normal on a flash cartridge: the chip holds more
+            # than the game (stale data after a smaller write), so it is only reported.
+            rep.check(an["cart"] >= an["declared"], "mirror period covers the header ROM size",
                       "%d bytes read, cartridge image is %d, header says %d" % (len(data), an["cart"], an["declared"]))
+            if an["cart"] > an["declared"]:
+                rep.info("image larger than the header ROM size",
+                         "%d bytes of image for a %d byte game: normal on a flash cartridge that holds more than the game" % (an["cart"], an["declared"]))
     if an["mirrored"]:
         rep.info("mirror", "the %d byte read repeats a %d byte image (upper address lines not decoded: normal for a smaller cartridge)"
                  % (len(data), an["cart"]))

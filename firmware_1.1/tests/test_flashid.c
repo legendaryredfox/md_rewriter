@@ -72,9 +72,9 @@ int main(void)
 		printf("%s write buffer only for the S29GL064N\n", ok ? "PASS" : "FAIL");
 		if(!ok) failures++;
 	}
-	expect("S29GL064N model 03 (top boot)", gl03, 1, "S29GL064N", FLASH_LAYOUT_TOP_BOOT);
-	expect("S29GL064N model 04 (bottom boot)", gl04, 1, "S29GL064N", FLASH_LAYOUT_BOTTOM_BOOT);
-	expect("S29GL064N uniform", gl01, 1, "S29GL064N", FLASH_LAYOUT_NO_BOTTOM_BOOT);
+	expect("S29GL064N model 03 (top boot code): named, layout not trusted (NFW-20)", gl03, 1, "S29GL064N", FLASH_LAYOUT_UNKNOWN);
+	expect("S29GL064N model 04 (bottom boot code): named, layout not trusted (NFW-20)", gl04, 1, "S29GL064N", FLASH_LAYOUT_UNKNOWN);
+	expect("S29GL064N uniform code: named, layout not trusted (NFW-20)", gl01, 1, "S29GL064N", FLASH_LAYOUT_UNKNOWN);
 	expect("S29GL064N with odd cycle 3 is unknown layout", glodd, 1, "S29GL064N", FLASH_LAYOUT_UNKNOWN);
 	expect("SST39VF6401B", sst1, 1, "SST39VF6401B", FLASH_LAYOUT_NO_BOTTOM_BOOT);
 	expect("SST39VF6402B", sst2, 1, "SST39VF6402B", FLASH_LAYOUT_NO_BOTTOM_BOOT);

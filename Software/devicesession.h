@@ -145,12 +145,14 @@ private:
 
     // detect
     QString m_flashIdLine;
+    QString m_chipInfoLine;        // "CHIPINFO:ID=017E1000 CFIREG=02070020007F000001", firmware 1.1, for a chip whose table row has no layout
     QString m_cfiLine;             // "CFI:SIZE=8192KB CMDSET=2", sent by firmware 1.1 for a chip outside its table
     bool m_unlistedChip = false;   // kept across operations, cleared when connecting
     ChipDb::Match m_lastDetectedChip;
     bool m_lastDetectFirmwareRecognized = false;
     void reportChip(const QString &firmwareLine);
     void reportCfi();
+    void reportChipInfo();
 
     // erase by size
     int m_eraseSteps = 0;

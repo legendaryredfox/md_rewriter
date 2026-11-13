@@ -46,9 +46,12 @@ static void test_detects(void)
 {
 	hw_chip_config_t none = HW_MX29LV640EB;
 	test_detect(&HW_MX29LV640EB, "FLASHID:C2CB\r\n", "MX29LV640EB MD FLASH CART\r\n", "detect MX29LV640EB (line as in 1.0)");
-	test_detect(&HW_S29GL064N_03, "FLASHID:017E\r\n", "S29GL064N MD FLASH CART\r\n", "detect S29GL064N model 03");
-	test_detect(&HW_S29GL064N_04, "FLASHID:017E\r\n", "S29GL064N MD FLASH CART\r\n", "detect S29GL064N model 04");
-	test_detect(&HW_S29GL064N_01, "FLASHID:017E\r\n", "S29GL064N MD FLASH CART\r\n", "detect S29GL064N uniform");
+	test_detect(&HW_S29GL064N_03, "FLASHID:017E\r\nCHIPINFO:ID=017E0C01 CFIREG=027F00000107002000\r\n", "S29GL064N MD FLASH CART\r\n", "detect S29GL064N model 03");
+	test_detect(&HW_S29GL064N_04, "FLASHID:017E\r\nCHIPINFO:ID=017E0C00 CFIREG=02070020007F000001\r\n", "S29GL064N MD FLASH CART\r\n", "detect S29GL064N model 04");
+	test_detect(&HW_S29GL064N_01, "FLASHID:017E\r\nCHIPINFO:ID=017E1001 CFIREG=017F00000100000000\r\n", "S29GL064N MD FLASH CART\r\n", "detect S29GL064N uniform");
+	test_detect(&HW_S29GL064N_LIAR_U, "FLASHID:017E\r\nCHIPINFO:ID=017E1001 CFIREG=02070020007F000001\r\n", "S29GL064N MD FLASH CART\r\n", "detect S29GL064N with uniform codes and boot sectors: the CFI words are only reported");
+	test_detect(&HW_S29GL064N_LIAR_T, "FLASHID:017E\r\nCHIPINFO:ID=017E0C01 CFIREG=02070020007F000001\r\n", "S29GL064N MD FLASH CART\r\n", "detect S29GL064N with top boot codes and boot sectors: the CFI words are only reported");
+	test_detect(&HW_S29GL064N_NOCFI, "FLASHID:017E\r\nCHIPINFO:ID=017E1001 CFIREG=NONE\r\n", "S29GL064N MD FLASH CART\r\n", "detect S29GL064N without a CFI table: CFIREG=NONE");
 	test_detect(&HW_SST39VF6401B, "FLASHID:BF6D\r\n", "SST39VF6401B MD FLASH CART\r\n", "detect SST39VF6401B");
 	test_detect(&HW_SST39VF3201, "FLASHID:BF5B\r\n", "SST39VF3201 MD FLASH CART\r\n", "detect SST39VF3201");
 	test_detect(&HW_M29W640DT, "FLASHID:20DE\r\n", "M29W640DT MD FLASH CART\r\n", "detect M29W640DT");
@@ -79,8 +82,12 @@ static void test_layout_probe(void)
 {
 	hw_reset(&HW_MX29LV640EB);     check(flash_has_bottom_boot_sectors() == 1, "probe: MX29LV640EB has bottom boot sectors");
 	hw_reset(&HW_S29GL064N_04);    check(flash_has_bottom_boot_sectors() == 1, "probe: S29GL064N-04 has bottom boot sectors");
-	hw_reset(&HW_S29GL064N_03);    check(flash_has_bottom_boot_sectors() == 0, "probe: S29GL064N-03 (top boot) has none");
-	hw_reset(&HW_S29GL064N_01);    check(flash_has_bottom_boot_sectors() == 0, "probe: S29GL064N-01 (uniform) has none");
+	hw_reset(&HW_S29GL064N_03);    check(flash_has_bottom_boot_sectors() == 1, "probe: S29GL064N-03 keeps the 1.0 steps (neither the codes nor the CFI table decide, NFW-21)");
+	hw_reset(&HW_S29GL064N_01);    check(flash_has_bottom_boot_sectors() == 1, "probe: S29GL064N-01 keeps the 1.0 steps (neither the codes nor the CFI table decide, NFW-21)");
+	hw_reset(&HW_S29GL064N_LIAR_U); check(flash_has_bottom_boot_sectors() == 1, "probe: uniform codes, boot sectors: 1.0 steps");
+	hw_reset(&HW_S29GL064N_LIAR_T); check(flash_has_bottom_boot_sectors() == 1, "probe: top boot codes, boot sectors: 1.0 steps");
+	hw_reset(&HW_S29GL064N_NOCFI);  check(flash_has_bottom_boot_sectors() == 1, "probe: S29GL064N without a CFI table keeps the 1.0 steps");
+	{ uint8_t r[9]; hw_reset(&HW_S29GL064N_04); check(flash_cfi_regs(r) == 1 && r[0] == 2 && r[1] == 7 && r[3] == 0x20, "probe: CFI erase block words are kept for the PC"); hw_reset(&HW_S29GL064N_NOCFI); check(flash_cfi_regs(r) == 0, "probe: no CFI table, no words"); hw_reset(&HW_MX29LV640EB); check(flash_cfi_regs(r) == 0, "probe: a chip with a table layout is not asked"); }
 	hw_reset(&HW_M29W640DT);       check(flash_has_bottom_boot_sectors() == 0, "probe: M29W640DT has none");
 	hw_reset(&HW_SST39VF6401B);    check(flash_has_bottom_boot_sectors() == 0, "probe: SST39VF6401B has none");
 	hw_reset(&HW_MX29LV640EB);
@@ -182,7 +189,7 @@ static void test_erase(void)
 	check(ok, "bottom boot: whole range erased");
 	check_clean("erase_range bottom");
 
-	hw_reset(&HW_S29GL064N_03);
+	hw_reset(&HW_M29W640DT);
 	for(i = 0; i < 0x40000; i += 0x400) hw_set_word(i, 0);
 	address = 0;
 	check(erase_range(&address, 0x40000) == 1, "erase_range top boot done");
@@ -207,11 +214,26 @@ static void test_erase(void)
 			}
 	}
 
+	/* The S29GL064N family always gets the 1.0 steps (8 x 8 KiB, then 64 KiB each: 15 erases for 512K), because
+	 * the codes and the CFI table were wrong about two real cartridges (NFW-20, NFW-21). */
+	{
+		const hw_chip_config_t *chips[] = { &HW_S29GL064N_04, &HW_S29GL064N_LIAR_U, &HW_S29GL064N_LIAR_T, &HW_S29GL064N_NOCFI, &HW_S29GL064N_01, &HW_S29GL064N_03 };
+		const int want[6] = { 15, 15, 15, 15, 15, 15 };
+		unsigned n;
+		for(n = 0; n < 6; n++)
+			{
+				hw_reset(chips[n]);
+				address = 0;
+				erase_range(&address, 0x40000);
+				check(hw_sector_erases == want[n], "512K erase on the S29GL064N family: 8 KiB steps below 64 KiB whatever the codes and the CFI table say (15 erases)");
+			}
+	}
+
 	/* 4 MiB = 0x200000 words, every layout */
 	{
-		const hw_chip_config_t *chips[] = { &HW_MX29LV640EB, &HW_S29GL064N_03, &HW_S29GL064N_04, &HW_S29GL064N_01, &HW_SST39VF6401B };
+		const hw_chip_config_t *chips[] = { &HW_MX29LV640EB, &HW_S29GL064N_03, &HW_S29GL064N_04, &HW_S29GL064N_01, &HW_SST39VF6401B, &HW_S29GL064N_LIAR_U, &HW_S29GL064N_LIAR_T, &HW_S29GL064N_NOCFI };
 		unsigned n;
-		for(n = 0; n < 5; n++)
+		for(n = 0; n < 8; n++)
 			{
 				hw_reset(chips[n]);
 				for(i = 0; i < 0x200000; i += 0x800) hw_set_word(i, 0);

@@ -24,7 +24,7 @@ typedef struct {
 } hw_chip_config_t;
 
 /* Chips used by the tests. */
-extern const hw_chip_config_t HW_MX29LV640EB, HW_S29GL064N_03, HW_S29GL064N_04, HW_S29GL064N_01, HW_M29W640DT, HW_SST39VF6401B, HW_M29W320EB, HW_M29W320ET, HW_MX29L3211, HW_PA28F400B, HW_PA28F400T, HW_SST39VF3201, HW_UNKNOWN_CFI;
+extern const hw_chip_config_t HW_MX29LV640EB, HW_S29GL064N_03, HW_S29GL064N_04, HW_S29GL064N_01, HW_S29GL064N_LIAR_U, HW_S29GL064N_LIAR_T, HW_S29GL064N_NOCFI, HW_M29W640DT, HW_SST39VF6401B, HW_M29W320EB, HW_M29W320ET, HW_MX29L3211, HW_PA28F400B, HW_PA28F400T, HW_SST39VF3201, HW_UNKNOWN_CFI;
 
 void hw_reset(const hw_chip_config_t *chip);     /* new chip, fully erased (0xFFFF), clock at 0 */
 void hw_set_ssf2(int on);                        /* SSF2 mapper on the cartridge: $A130F3..$A130FF (/TIME + /LWR) page the windows $080000..$3FFFFF */

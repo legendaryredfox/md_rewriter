@@ -17,8 +17,14 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ST_FLASH="${ST_FLASH:-st-flash}"
 ST_INFO="${ST_INFO:-st-info}"
 FLASH_BASE=0x08000000
+# Accepted chips: id 0x410 = STM32F103xB, 128 KiB (what the PCB design says); id 0x414 = STM32F103xE,
+# 512 KiB (what the first unit on the bench really has, 2026-11-13). FLASH_SIZE is set by probe.
 FLASH_SIZE=131072
-CHIPID=0x410            # STM32F1 medium density (F103xB)
+CHIPID=0x410
+# The SWD link on the bench unit drops now and then (chip id 0x0, "Failed to connect"). Connection steps are
+# retried this many times, RETRY_SLEEP seconds apart. A retried write is safe: it is read back and compared.
+TRIES="${SWD_TRIES:-6}"
+RETRY_SLEEP="${SWD_RETRY_SLEEP:-1}"
 
 die() { echo "swd: $*" >&2; exit 1; }
 
@@ -32,33 +38,44 @@ blank() {
     return 1
 }
 
-# First word (initial SP) must point into the 20 KiB RAM, the reset vector into the flash.
+# First word (initial SP) must point into the RAM (20 or 64 KiB), the reset vector into the flash.
 vectors_ok() {
     local f="$1" sp rv
     sp=$(od -An -tx4 -j0 -N4 "$f" | tr -d ' ')
     rv=$(od -An -tx4 -j4 -N4 "$f" | tr -d ' ')
-    [[ "$sp" =~ ^2000[0-5][0-9a-f]{3}$ ]] || return 1
+    [[ "$sp" =~ ^200[01][0-9a-f]{4}$ ]] || return 1
     [[ "$rv" =~ ^0800[0-9a-f]{4}$ ]] || return 1
     return 0
 }
 
 probe() {
-    local out
-    out="$("$ST_INFO" --probe 2>&1)" || true
-    if ! grep -q "Found [1-9]" <<< "$out"; then
-        echo "$out" >&2
-        die "no ST-Link found (cable, USB port, or the clone needs a replug)"
-    fi
+    local out id size n
+    for n in $(seq 1 "$TRIES"); do
+        out="$("$ST_INFO" --probe 2>&1)" || true
+        grep -q "Found [1-9]" <<< "$out" || { echo "$out" >&2; die "no ST-Link found (cable, USB port, or the clone needs a replug)"; }
+        id=$(grep -iE "chipid:" <<< "$out" | head -1 | sed -E 's/.*chipid: *0x0*([0-9a-fA-F]+).*/\1/')
+        # chip id 0 with no flash: the link dropped, not a different chip. Try again.
+        if [ -n "$id" ] && [ "$id" != "0" ]; then break; fi
+        [ "$n" -lt "$TRIES" ] && sleep "$RETRY_SLEEP"
+    done
     echo "$out"
-    grep -qiE "chipid: *0x0*410" <<< "$out" || die "chip id is not $CHIPID (STM32F103 medium density): wrong target or wiring"
-    grep -q "flash: *$FLASH_SIZE" <<< "$out" || die "flash size is not $FLASH_SIZE bytes"
+    size=$(grep -E "flash:" <<< "$out" | head -1 | sed -E 's/.*flash: *([0-9]+).*/\1/')
+    case "$id:$size" in
+        410:131072) CHIPID=0x410; FLASH_SIZE=131072 ;;
+        414:524288) CHIPID=0x414; FLASH_SIZE=524288 ;;
+        *) die "chip id 0x$id with $size bytes of flash is not a known STM32F103 (0x410/128 KiB or 0x414/512 KiB): wrong target or wiring" ;;
+    esac
     echo "swd: probe ok ($CHIPID, $FLASH_SIZE bytes)"
 }
 
 read_flash() {  # file
-    rm -f "$1"
-    "$ST_FLASH" read "$1" "$FLASH_BASE" "$FLASH_SIZE" >/dev/null 2>&1 || return 1
-    [ "$(stat -c %s "$1")" -eq "$FLASH_SIZE" ]
+    local n
+    for n in $(seq 1 "$TRIES"); do
+        rm -f "$1"
+        if "$ST_FLASH" read "$1" "$FLASH_BASE" "$FLASH_SIZE" >/dev/null 2>&1 && [ "$(stat -c %s "$1")" -eq "$FLASH_SIZE" ]; then return 0; fi
+        [ "$n" -lt "$TRIES" ] && sleep "$RETRY_SLEEP"
+    done
+    return 1
 }
 
 check_backup() {  # file: size, sidecar hash, not blank, vectors
@@ -110,7 +127,12 @@ cmd_backup() {
 write_and_verify() {  # image
     local img="$1" tmp rb
     tmp="$(mktemp -d)"; rb="$tmp/readback.bin"
-    "$ST_FLASH" --reset write "$img" "$FLASH_BASE" 2>&1 | tail -3
+    local n w
+    for n in $(seq 1 "$TRIES"); do
+        w="$("$ST_FLASH" --reset write "$img" "$FLASH_BASE" 2>&1)"; echo "$w" | tail -3
+        grep -q "Failed to connect\|Failed to enter" <<< "$w" || break
+        echo "swd: link dropped before the write ($n/$TRIES), trying again"; sleep "$RETRY_SLEEP"
+    done
     if ! read_flash "$rb"; then rm -rf "$tmp"; die "read back failed after writing: the chip may be in an unknown state, run 'swd.sh restore'"; fi
     local n; n=$(stat -c %s "$img")
     if ! cmp -s -n "$n" "$img" "$rb"; then rm -rf "$tmp"; die "read back differs from the image: run 'swd.sh restore --backup ... --yes'"; fi
@@ -134,8 +156,8 @@ cmd_flash() {
     local sz; sz=$(stat -c %s "$img")
     [ "$sz" -gt 4096 ] && [ "$sz" -le "$FLASH_SIZE" ] || die "image size $sz is not plausible (4 KiB to $FLASH_SIZE)"
     vectors_ok "$img" || die "the image has no sane vector table"
-    check_backup "$backup"
     probe >/dev/null || exit 1
+    check_backup "$backup"
     # The chip must still hold the firmware that was backed up. A different content means the backup is of another unit.
     local now; now="$(mktemp)"
     read_flash "$now" || { rm -f "$now"; die "reading the chip before flashing failed"; }
@@ -159,8 +181,8 @@ cmd_restore() {
     done
     [ -n "$backup" ] || die "usage: swd.sh restore --backup FILE --yes"
     [ "$yes" -eq 1 ] || die "refusing: this overwrites the firmware, pass --yes"
-    check_backup "$backup"
     probe >/dev/null || exit 1
+    check_backup "$backup"
     echo "swd: restoring $backup"
     write_and_verify "$backup"
 }

@@ -49,43 +49,30 @@ static const flash_chip_t flash_chips[] = {
 };
 
 /* S29GL064N (Cypress/Infineon datasheet 001-98525, table "Autoselect Codes"): manufacturer 01,
- * cycle 1 low byte 7E. Cycle 2 is 0C (models 03/04, boot sector) or 10 (01/02/V1/V2, uniform).
- * For 03/04, cycle 3 is 00 (04, bottom boot) or 01 (03, top boot). The datasheet documents the
- * 16-word Write Buffer Programming command (25h/29h) for the whole family. Other chips of the GL family
- * share 01/7E with other cycle 2 values and are not accepted here. */
+ * cycle 1 low byte 7E. The datasheet gives cycle 2 = 0C (models 03/04, boot sector) or 10 (01/02/V1/V2,
+ * uniform), and for 03/04 cycle 3 = 00 (04, bottom boot) or 01 (03, top boot). The datasheet documents
+ * the 16-word Write Buffer Programming command (25h/29h) for the whole family. Other chips of the GL
+ * family share 01/7E with other cycle 2 values and are not accepted here.
+ *
+ * Neither these codes nor the chip's CFI table are used for the erase layout (NFW-20, NFW-21). Bench,
+ * 2026-11-13: a cartridge answering 01 7E 10 00 was taken for a chip without small sectors (one 30h at word
+ * 0), but only its first 8 KiB sector was erased; a second one answering 01 7E 10 01 erases 64 KiB with one
+ * 30h, yet both answer the CFI query with "eight 8 KiB sectors, then 64 KiB sectors". The layout stays
+ * UNKNOWN (the 1.0 way: eight 8 KiB steps, which on a uniform chip only erases the same 64 KiB sector
+ * again). */
 static int identify_s29gl064n(const uint8_t id[4], flash_info_t *out)
 {
 	if(id[0] != 0x01U || id[1] != 0x7EU)
 		return 0;
-	if(id[2] == 0x0CU)
-		{
-			out->name = "S29GL064N";
-			out->write_buffer = 1;
-			out->cmdset = FLASH_CMDSET_AMD_555;
-			out->words = 0;
-			out->erase_cmd = 0x30U;
-			if(id[3] == 0x00U)
-				out->layout = FLASH_LAYOUT_BOTTOM_BOOT;
-			else if(id[3] == 0x01U)
-				{
-					out->layout = FLASH_LAYOUT_TOP_BOOT;
-					out->words = 0x400000U;
-				}
-			else
-				out->layout = FLASH_LAYOUT_UNKNOWN;
-			return 1;
-		}
-	if(id[2] == 0x10U)
-		{
-			out->name = "S29GL064N";
-			out->write_buffer = 1;
-			out->cmdset = FLASH_CMDSET_AMD_555;
-			out->words = 0;
-			out->erase_cmd = 0x30U;
-			out->layout = FLASH_LAYOUT_NO_BOTTOM_BOOT;
-			return 1;
-		}
-	return 0;
+	if((id[2] != 0x0CU) && (id[2] != 0x10U))
+		return 0;
+	out->name = "S29GL064N";
+	out->write_buffer = 1;
+	out->cmdset = FLASH_CMDSET_AMD_555;
+	out->words = 0;
+	out->erase_cmd = 0x30U;
+	out->layout = FLASH_LAYOUT_UNKNOWN;
+	return 1;
 }
 
 int flash_cfi_decode(const uint8_t qry[3], uint8_t cmdset_lo, uint8_t size_exp, flash_cfi_t *out)

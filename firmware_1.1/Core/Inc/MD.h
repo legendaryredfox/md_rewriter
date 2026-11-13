@@ -115,6 +115,7 @@ void flash_probe(uint8_t id[4]);          /* picks the command set from the chip
 void flash_probe_forget(void);            /* the cartridge may have changed: probe again at the next use */
 uint8_t flash_cfi_info(flash_cfi_t *out);   /* 1: the last probe found a chip outside the table that answers the CFI query (information only) */
 uint8_t flash_has_bottom_boot_sectors(void);
+uint8_t flash_cfi_regs(uint8_t reg[9]);   /* 1: the cartridge answered the CFI query; reg = erase block region words 2Ch..34h (information only) */
 void checkheadermenu(void);
 uint8_t erase_sector(uint32_t sector_addr);
 uint8_t flash_wait_program(uint32_t addr, uint8_t lastLowByte);
