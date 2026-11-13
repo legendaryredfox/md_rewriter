@@ -60,6 +60,10 @@ def run_cli(args, timeout=300):
         raise Guard("command not allowed in the read-only suite: %r" % (args,))
     if any(a in FORBIDDEN_ARGS for a in args):
         raise Guard("--yes is not allowed in the read-only suite: %r" % (args,))
+    # Firmware 1.0 does not answer a connect that arrives right after the previous process closed the port
+    # (seen on the first bench run: detect, then read-rom started at once, failed with "no answer to connect").
+    # 0.3 s between invocations was enough in that test.
+    time.sleep(0.3)
     t0 = time.monotonic()
     p = subprocess.run([find_cli()] + args + ["--json", "-q"], capture_output=True, text=True, timeout=timeout)
     dt = time.monotonic() - t0
@@ -70,6 +74,37 @@ def run_cli(args, timeout=300):
     data["_seconds"] = round(dt, 2)
     data["_rc"] = p.returncode
     return data
+
+
+def analyze_rom(data):
+    """Facts about a dump that tell a cartridge fault from a normal ROM. Pure function, no device.
+
+    declared: ROM size from the header (0x1A4), None when absent or implausible.
+    cart: size of the real image. A read larger than the cartridge repeats it (the upper address lines
+          are not decoded), so a 2M read of a 1M game has two equal halves; that is a mirror, not a fault.
+    checksum: header word at 0x18E against the sum of the words from 0x200 to the declared end. A mismatch
+          is not proof of a bad read (licensed games exist with a wrong value); it needs a reference dump.
+    """
+    out = {"declared": None, "cart": len(data), "mirrored": False, "checksum": None, "run_blocks": {}}
+    if len(data) >= 0x1A8 and data[0x100:0x103] == b"SEG":
+        end = int.from_bytes(data[0x1A4:0x1A8], "big") + 1
+        if 0x200 < end <= len(data) and end % 2 == 0:
+            out["declared"] = end
+            out["header_checksum"] = int.from_bytes(data[0x18E:0x190], "big")
+            total = sum(int.from_bytes(data[i:i + 2], "big") for i in range(0x200, end, 2)) & 0xFFFF
+            out["computed_checksum"] = total
+            out["checksum"] = (total == out["header_checksum"])
+    cart = len(data)
+    while cart % 2 == 0 and cart > 0x80000 and data[:cart // 2] == data[cart // 2:cart]:
+        cart //= 2
+    out["cart"] = cart
+    out["mirrored"] = cart < len(data)
+    for name, byte in (("0x00", 0), ("0xFF", 0xFF)):
+        out["run_blocks"][name] = sum(1 for i in range(0, cart, 0x8000)
+                                     if data[i:i + 0x8000] == bytes([byte]) * len(data[i:i + 0x8000]))
+    out["distinct_blocks"] = len({data[i:i + 0x8000] for i in range(0, cart, 0x8000)})
+    out["blocks"] = (cart + 0x7FFF) // 0x8000
+    return out
 
 
 def sha256(path):
@@ -126,6 +161,18 @@ def phase_host(rep, a):
             rep.check(False, "guard refuses %s" % bad[0])
         except Guard:
             rep.check(True, "guard refuses %s" % " ".join(bad))
+    # analyze_rom on synthetic images: a mirrored 1M game read as 2M, and a bad checksum.
+    img = bytearray(b"\xff" * 0x100000)
+    img[0x100:0x110] = b"SEGA MEGA DRIVE "
+    img[0x1A4:0x1A8] = (0xFFFFF).to_bytes(4, "big")
+    img[0x200:0x204] = b"\x12\x34\x56\x78"
+    img[0x18E:0x190] = ((0x1234 + 0x5678 + 0xFFFF * ((0x100000 - 0x204) // 2)) & 0xFFFF).to_bytes(2, "big")
+    a = analyze_rom(bytes(img) * 2)
+    rep.check(a["mirrored"] and a["cart"] == 0x100000 and a["declared"] == 0x100000 and a["checksum"] is True,
+              "analyze_rom: mirrored 2M read of a 1M game, good checksum")
+    img[0x18E] ^= 1
+    rep.check(analyze_rom(bytes(img))["checksum"] is False and not analyze_rom(bytes(img))["mirrored"],
+              "analyze_rom: wrong header checksum is reported, no mirror")
     r = run_cli(["chips"])
     rep.check(r.get("ok") and len(r.get("chips", [])) >= 8, "cli runs, chip table", "%d chips" % len(r.get("chips", [])))
     r = run_cli(["ports"])
@@ -204,6 +251,24 @@ def phase_cart(rep, a):
              + data[0x100:0x110].decode("latin1", "replace"))
     name = data[0x120:0x150].decode("latin1", "replace").strip()
     rep.info("header domestic name", name)
+    an = analyze_rom(data)
+    if an["declared"]:
+        rep.info("header ROM size", "%d bytes (0x1A4)" % an["declared"])
+        if an["checksum"] is None:
+            pass
+        elif an["checksum"]:
+            rep.info("header checksum", "matches (0x%04X)" % an["header_checksum"])
+        else:
+            rep.info("header checksum", "MISMATCH: header 0x%04X, computed 0x%04X over 0x200..0x%X. Not proof of a bad read; compare with a reference dump"
+                     % (an["header_checksum"], an["computed_checksum"], an["declared"]))
+        if an["mirrored"]:
+            rep.check(an["cart"] == an["declared"], "mirror matches the header ROM size",
+                      "%d bytes read, cartridge image is %d, header says %d" % (len(data), an["cart"], an["declared"]))
+    if an["mirrored"]:
+        rep.info("mirror", "the %d byte read repeats a %d byte image (upper address lines not decoded: normal for a smaller cartridge)"
+                 % (len(data), an["cart"]))
+    rep.info("uniform 32 KiB blocks in the image", "%d of 0x00, %d of 0xFF (padding is normal; check where it sits)"
+             % (an["run_blocks"]["0x00"], an["run_blocks"]["0xFF"]))
     # A smaller read must be the prefix of a bigger one (same chip, no address-line fault).
     if sz != "512K":
         out = rep.outdir / "rom_512K.bin"
@@ -213,10 +278,9 @@ def phase_cart(rep, a):
     # verify uses the normal read path and only reads.
     r = run_cli(["verify", str(rep.outdir / ("rom_%s_1.bin" % sz)), "--size", sz] + pa, timeout=900)
     rep.check(r.get("ok"), "verify against the file just dumped (read only)")
-    # Address line check: a long run of identical 32 KiB blocks across the whole dump can hide a stuck line.
-    blocks = [data[i:i + 0x8000] for i in range(0, len(data), 0x8000)]
-    distinct = len(set(blocks))
-    rep.info("distinct 32 KiB blocks", "%d of %d (all equal would mean a stuck address line or a mirror)" % (distinct, len(blocks)))
+    # Address line check, on the real image (not the mirror): a stuck line shows as repeated blocks.
+    rep.info("distinct 32 KiB blocks", "%d of %d in the %d byte image (all equal would mean a stuck address line)"
+             % (an["distinct_blocks"], an["blocks"], an["cart"]))
     if a.save_size:
         hs = []
         for i in (1, 2):
