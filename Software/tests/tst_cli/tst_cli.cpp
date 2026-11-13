@@ -56,6 +56,18 @@ private slots:
         QCOMPARE(cli({"erase", "13M", "--yes"}).code, int(CliRunner::Usage));
     }
 
+    void timeoutOptionErrors()
+    {
+        Run r = cli({"info", "--timeout"});
+        QCOMPARE(r.code, int(CliRunner::Usage));
+        QVERIFY2(r.err.contains("needs a value"), qPrintable(r.err));      // the missing argument, not "seconds > 0"
+        r = cli({"info", "--timeout", "0"});
+        QCOMPARE(r.code, int(CliRunner::Usage));
+        QVERIFY2(r.err.contains("seconds > 0"), qPrintable(r.err));
+        r = cli({"info", "--timeout", "abc"});
+        QCOMPARE(r.code, int(CliRunner::Usage));
+    }
+
     void chipsJson()
     {
         const Run r = cli({"chips", "--json"});
@@ -148,9 +160,15 @@ private slots:
         fw.rom.fill(char(0xFF));   // the fake does not model the erased state
         const QByteArray image = randomBytes(0x20000, 9);
         writeFile(d.filePath("game.bin"), image);
+        fw.commands.clear();
         r = cli({"write-rom", d.filePath("game.bin"), "--yes", "--json", "-q"}, &fw);
         QVERIFY2(r.code == 0, qPrintable(r.err + r.out));
         QVERIFY(r.json().value("verified").toBool());
+        QCOMPARE(r.json().value("preflight").toString(), QString("compatible"));
+        QVERIFY(fw.commands.size() > 2);
+        QCOMPARE(static_cast<quint8>(fw.commands.at(0).at(0)), quint8(0x0C));
+        QCOMPARE(static_cast<quint8>(fw.commands.at(1).at(0)), quint8(0x0D));
+        QCOMPARE(static_cast<quint8>(fw.commands.at(2).at(0)), quint8(0x0B));
         QCOMPARE(fw.rom.left(image.size()), image);
 
         r = cli({"verify", d.filePath("game.bin")}, &fw);
@@ -158,6 +176,59 @@ private slots:
         writeFile(d.filePath("other.bin"), randomBytes(0x20000, 10));
         r = cli({"verify", d.filePath("other.bin")}, &fw);
         QCOMPARE(r.code, int(CliRunner::Failed));
+    }
+
+    // Bench, firmware 1.0: the firmware drops bytes that arrive within 100 ms of the detect answer, so a write block
+    // sent at once was never confirmed ("did not confirm block 1 of 2048").
+    void writeRightAfterDetectSurvivesDeafFirmware()
+    {
+        QTemporaryDir d;
+        FakeFirmware fw;
+        fw.deafAfterDetectMs = 100;
+        const QByteArray image = randomBytes(0x20000, 21);
+        writeFile(d.filePath("game.bin"), image);
+        fw.rom.fill(char(0xFF));
+        const Run r = cli({"write-rom", d.filePath("game.bin"), "--yes", "--json", "-q", "--timeout", "3"}, &fw);
+        QVERIFY2(r.code == 0, qPrintable(r.err + r.out));
+        QVERIFY(r.json().value("verified").toBool());
+        QCOMPARE(fw.droppedBytes, 0);
+        QCOMPARE(fw.rom.left(image.size()), image);
+    }
+
+    void writePreflightRejectsKnownIncompatibilitiesAndReportsUncertainty()
+    {
+        QTemporaryDir d;
+        const QString imagePath = d.filePath("game.bin");
+        FakeFirmware fw;
+        fw.flashId = "8970";                 // 512 KiB PA28F400
+        fw.chipLine = "NO FIND NGP CARD";
+        fw.rom = QByteArray(0x100000, char(0xFF));
+        writeFile(imagePath, randomBytes(0x100000, 22));
+        Run r = cli({"write-rom", imagePath, "--yes", "--json", "-q"}, &fw);
+        QCOMPARE(r.code, int(CliRunner::Failed));
+        QVERIFY(r.err.contains("capacity"));
+        QCOMPARE(fw.commands.size(), 2);       // connect + detect; no write command
+        QCOMPARE(static_cast<quint8>(fw.commands.last().at(0)), quint8(0x0D));
+
+        fw.commands.clear();
+        fw.flashId = "C2F9";                  // needs 5555h unlock, unavailable in firmware 1.0
+        writeFile(imagePath, randomBytes(0x20000, 23));
+        r = cli({"write-rom", imagePath, "--yes", "--json", "-q"}, &fw);
+        QCOMPARE(r.code, int(CliRunner::Failed));
+        QVERIFY(r.err.contains("newer firmware"));
+        QCOMPARE(fw.commands.size(), 2);
+        QCOMPARE(static_cast<quint8>(fw.commands.last().at(0)), quint8(0x0D));
+
+        fw.commands.clear();
+        fw.flashId = "1234";                  // unlisted: --yes is the explicit override
+        fw.rom = QByteArray(0x20000, char(0xFF));
+        r = cli({"write-rom", imagePath, "--yes", "--json", "-q"}, &fw);
+        QVERIFY2(r.code == 0, qPrintable(r.err + r.out));
+        QCOMPARE(r.json().value("preflight").toString(), QString("uncertain"));
+        QCOMPARE(static_cast<quint8>(fw.commands.at(0).at(0)), quint8(0x0C));
+        QCOMPARE(static_cast<quint8>(fw.commands.at(1).at(0)), quint8(0x0D));
+        QVERIFY(fw.commands.size() > 2);
+        QCOMPARE(static_cast<quint8>(fw.commands.at(2).at(0)), quint8(0x0B));
     }
 
     void badWriteIsReported()
@@ -169,6 +240,18 @@ private slots:
         writeFile(d.filePath("game.bin"), randomBytes(0x4000, 3));
         const Run r = cli({"write-rom", d.filePath("game.bin"), "--yes", "-q"}, &fw);
         QCOMPARE(r.code, int(CliRunner::Failed));
+    }
+
+    void connectRetriesOnceWhenFirstConnectIsIgnored()
+    {
+        FakeFirmware fw;
+        fw.ignoreConnects = 1;
+        const Run r = cli({"info", "--timeout", "1"}, &fw);
+        QCOMPARE(r.code, int(CliRunner::Ok));
+        FakeFirmware fw2;
+        fw2.ignoreConnects = 2;   // two silent connects: still reported as no device
+        const Run r2 = cli({"info", "--timeout", "1"}, &fw2);
+        QCOMPARE(r2.code, int(CliRunner::NoDevice));
     }
 
     void silentDeviceIsNoDevice()

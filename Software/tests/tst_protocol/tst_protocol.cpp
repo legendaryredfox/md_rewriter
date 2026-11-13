@@ -506,6 +506,21 @@ private slots:
         QCOMPARE(t[0].device, quint8(0xCB));
     }
 
+    // The capacity lives in the table: every chip must have one, and the ROM size limit must follow it.
+    void chipDbCapacity()
+    {
+        int n = 0;
+        const ChipDb::Chip *t = ChipDb::chips(&n);
+        for (int i = 0; i < n; ++i)
+            QVERIFY2(t[i].capacity >= 512u * 1024u && t[i].capacity <= 8u * 1024u * 1024u, t[i].name);
+        QCOMPARE(ChipDb::capacityBytes(ChipDb::identify("FLASHID:C2CB")), 8u * 1024u * 1024u);   // 64 Mbit
+        QCOMPARE(ChipDb::capacityBytes(ChipDb::identify("FLASHID:20CA")), 4u * 1024u * 1024u);   // 32 Mbit
+        QCOMPARE(ChipDb::capacityBytes(ChipDb::identify("FLASHID:8970")), 512u * 1024u);         // 4 Mbit Intel
+        QCOMPARE(ChipDb::capacityBytes(ChipDb::identify("FLASHID:17E")), 8u * 1024u * 1024u);    // unpadded 01/7E
+        QCOMPARE(ChipDb::capacityBytes(ChipDb::identify("FLASHID:FFFF")), 0u);                   // not in the table
+        QCOMPARE(ChipDb::capacityBytes(ChipDb::Match()), 0u);
+    }
+
     // ---------------------------------------------------------------- RomVerifier
 
     void verifierMatchesAndIgnoresTail()

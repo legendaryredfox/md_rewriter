@@ -192,6 +192,27 @@ private slots:
     }
 
     // ---- drift guards: what the guide quotes must exist in the program ----
+    // A string added to the code and not translated shows up in English in the pt_BR program.
+    void translationFileHasNoUnfinishedEntries()
+    {
+        QFile f(QStringLiteral(SRCDIR "/translations/MDRewriter_pt_BR.ts"));
+        QVERIFY(f.open(QIODevice::ReadOnly));
+        QDomDocument d;
+        QVERIFY(d.setContent(&f));
+        const QDomNodeList msgs = d.elementsByTagName(QStringLiteral("message"));
+        QVERIFY(msgs.size() > 100);
+        QStringList missing;
+        for (int i = 0; i < msgs.size(); ++i) {
+            const QDomElement e = msgs.at(i).toElement();
+            const QDomElement t = e.firstChildElement(QStringLiteral("translation"));
+            if (t.attribute(QStringLiteral("type")) == QLatin1String("obsolete") || t.attribute(QStringLiteral("type")) == QLatin1String("vanished"))
+                continue;
+            if (t.attribute(QStringLiteral("type")) == QLatin1String("unfinished") || t.text().isEmpty())
+                missing << e.firstChildElement(QStringLiteral("source")).text().left(70);
+        }
+        QVERIFY2(missing.isEmpty(), qPrintable(QStringLiteral("untranslated: ") + missing.join(QStringLiteral(" | "))));
+    }
+
     void quotedMessagesExistInTheProgram()
     {
         const QMap<QString, QString> ts = loadTs();

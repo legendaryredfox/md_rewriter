@@ -35,7 +35,7 @@ public:
     QIODevice *device() const { return m_io; }
 
     Op currentOp() const { return m_op; }
-    bool busy() const { return m_op != Op::None; }
+    bool busy() const { return m_op != Op::None || m_settling; }
     // Reads and writes can be stopped from the host side. Erase cannot: the firmware is busy.
     bool canCancel() const;
 
@@ -62,6 +62,8 @@ public:
     // Firmware 1.0 was written for one chip and does not wait for the chip to finish programming
     // a word, so writes to other chips need the read-back check.
     bool unlistedChipOnOldFirmware() const { return m_unlistedChip && m_fwVersion.isEmpty(); }
+    ChipDb::Match lastDetectedChip() const { return m_lastDetectedChip; }
+    bool lastDetectFirmwareRecognizedChip() const { return m_lastDetectFirmwareRecognized; }
 
     // Forget what the firmware announced (the port was closed).
     void resetFirmwareInfo();
@@ -115,6 +117,7 @@ private:
     Op m_reportOp = Op::None;     // what finished() reports: a verify belongs to its write
     bool m_cancelled = false;
     bool m_finishing = false;
+    bool m_settling = false;      // detect is done, the firmware is still busy (see kDetectSettleMs)
     int m_lastPercent = -2;
 
     // reads
@@ -144,6 +147,8 @@ private:
     QString m_flashIdLine;
     QString m_cfiLine;             // "CFI:SIZE=8192KB CMDSET=2", sent by firmware 1.1 for a chip outside its table
     bool m_unlistedChip = false;   // kept across operations, cleared when connecting
+    ChipDb::Match m_lastDetectedChip;
+    bool m_lastDetectFirmwareRecognized = false;
     void reportChip(const QString &firmwareLine);
     void reportCfi();
 

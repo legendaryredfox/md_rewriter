@@ -286,7 +286,7 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(combo->count(), 4, 3000);   // the entry goes away with the connection
     }
 
-    void writeRomAsksFirstAndDeclineSendsNothing()
+    void writeRomChecksChipBeforeConfirmationAndDeclineDoesNotWrite()
     {
         connectDevice();
         const QString f = m_dir.filePath("game.bin");
@@ -295,11 +295,13 @@ private slots:
         m_confirmAnswer = false;
         const int before = m_fw->commands.size();
         QTest::mouseClick(w<QPushButton>("writeRomButton"), Qt::LeftButton);
+        QTRY_COMPARE_WITH_TIMEOUT(m_confirms.size(), 1, 5000);
         QCOMPARE(m_confirms.size(), 1);
         QVERIFY(m_confirms[0].second.contains("game.bin"));
         QVERIFY(m_confirms[0].second.contains("overwritten"));
-        QTest::qWait(100);
-        QCOMPARE(m_fw->commands.size(), before);
+        QVERIFY(m_confirms[0].second.contains("Pre-flash check"));
+        QCOMPARE(m_fw->commands.size(), before + 1);
+        QCOMPARE(static_cast<quint8>(m_fw->commands[before].at(0)), quint8(0x0D));
         QVERIFY(enabled("readRomButton"));
     }
 
@@ -378,6 +380,7 @@ private slots:
         QTest::mouseClick(w<QPushButton>("writeRomButton"), Qt::LeftButton);
         QTRY_VERIFY_WITH_TIMEOUT(logText().contains("Game written"), 30000);
         QVERIFY(logText().contains("SEGA"));
+        QTRY_COMPARE_WITH_TIMEOUT(m_confirms.size(), 1, 5000);
         QCOMPARE(m_confirms.size(), 1);
         QVERIFY(m_confirms[0].second.contains("SEGA"));   // the warning is in the confirmation too
     }
@@ -400,14 +403,18 @@ private slots:
         QTest::mouseClick(w<QPushButton>("detectButton"), Qt::LeftButton);
         QTRY_VERIFY_WITH_TIMEOUT(logText().contains("S29GL064N"), 5000);
         QVERIFY(logText().contains("does not wait for the chip"));
+        // The session holds the next command back for a moment after detect (firmware 1.0 drops bytes in that window);
+        // the buttons come back with finished().
+        QTRY_VERIFY_WITH_TIMEOUT(w<QPushButton>("writeRomButton")->isEnabled(), 5000);
 
         m_fw->rom = QByteArray(0x40000, '\xFF');
         const QString f = m_dir.filePath("s29.bin");
         QVERIFY(writeFile(f, randomBytes(0x40000, 11)));
         m_nextOpen = f;
         QTest::mouseClick(w<QPushButton>("writeRomButton"), Qt::LeftButton);
+        QTRY_COMPARE_WITH_TIMEOUT(m_confirms.size(), 1, 5000);
         QCOMPARE(m_confirms.size(), 1);
-        QVERIFY(m_confirms[0].second.contains("does not wait for the chip"));
+        QVERIFY(m_confirms[0].second.contains("does not wait for this chip"));
         QTRY_VERIFY_WITH_TIMEOUT(logText().contains("Verified"), 30000);
     }
 
@@ -434,6 +441,57 @@ private slots:
         QVERIFY(m_confirms.isEmpty());
         QTest::qWait(50);
         QCOMPARE(m_fw->commands.size(), before);
+    }
+
+    void writeRomPreflightBlocksKnownCapacityMismatch()
+    {
+        m_fw->flashId = "8970";
+        m_fw->chipLine = "NO FIND NGP CARD";
+        connectDevice();
+        const QString f = m_dir.filePath("too-large.bin");
+        QVERIFY(writeFile(f, randomBytes(0x100000, 17)));
+        m_nextOpen = f;
+        const int before = m_fw->commands.size();
+        QTest::mouseClick(w<QPushButton>("writeRomButton"), Qt::LeftButton);
+        QTRY_VERIFY_WITH_TIMEOUT(logText().contains("smaller than this ROM"), 5000);
+        QVERIFY(m_confirms.isEmpty());
+        QCOMPARE(m_fw->commands.size(), before + 1);
+        QCOMPARE(static_cast<quint8>(m_fw->commands[before].at(0)), quint8(0x0D));
+    }
+
+    void writeRomPreflightBlocksUnsupportedFirmwareCommands()
+    {
+        m_fw->flashId = "C2F9";
+        m_fw->chipLine = "NO FIND NGP CARD";
+        connectDevice();
+        const QString f = m_dir.filePath("needs-new-fw.bin");
+        QVERIFY(writeFile(f, randomBytes(0x20000, 18)));
+        m_nextOpen = f;
+        const int before = m_fw->commands.size();
+        QTest::mouseClick(w<QPushButton>("writeRomButton"), Qt::LeftButton);
+        QTRY_VERIFY_WITH_TIMEOUT(logText().contains("needs newer firmware commands"), 5000);
+        QVERIFY(m_confirms.isEmpty());
+        QCOMPARE(m_fw->commands.size(), before + 1);
+        QCOMPARE(static_cast<quint8>(m_fw->commands[before].at(0)), quint8(0x0D));
+    }
+
+    void writeRomPreflightShowsUncertainChipBeforeUserDecision()
+    {
+        m_fw->flashId = "1234";
+        m_fw->chipLine = "NO FIND NGP CARD";
+        connectDevice();
+        const QString f = m_dir.filePath("unknown-chip.bin");
+        QVERIFY(writeFile(f, randomBytes(0x20000, 19)));
+        m_nextOpen = f;
+        m_confirmAnswer = false;
+        const int before = m_fw->commands.size();
+        QTest::mouseClick(w<QPushButton>("writeRomButton"), Qt::LeftButton);
+        QTRY_COMPARE_WITH_TIMEOUT(m_confirms.size(), 1, 5000);
+        QVERIFY(m_confirms[0].second.contains("Compatibility is uncertain"));
+        QVERIFY(m_confirms[0].second.contains("ID 1234"));         // the ID, not the raw firmware line
+        QVERIFY(!m_confirms[0].second.contains("FLASHID"));
+        QCOMPARE(m_fw->commands.size(), before + 1);
+        QCOMPARE(static_cast<quint8>(m_fw->commands[before].at(0)), quint8(0x0D));
     }
 
     void saveRoundTrip()

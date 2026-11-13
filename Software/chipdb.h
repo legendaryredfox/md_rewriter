@@ -23,6 +23,7 @@ struct Chip {
     const char *name;
     bool confirmed;   // false: ID taken from memory, not checked against a datasheet
     CommandSet commandSet = CommandSet::Amd555;
+    quint32 capacity = 0;   // bytes the chip holds; used to refuse a ROM that does not fit
 };
 
 struct Match {
@@ -35,6 +36,8 @@ struct Match {
 
 // `line` is a firmware line, normally "FLASHID:C2CB". Any other text gives parsed == false.
 Match identify(const QString &line);
+// Known byte capacity of a flash chip; zero when this ID is not listed.
+quint32 capacityBytes(const Match &match);
 
 // The whole table, for tests and for the guide.
 const Chip *chips(int *count);

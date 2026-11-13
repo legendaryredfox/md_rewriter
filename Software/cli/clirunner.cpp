@@ -61,10 +61,12 @@ Options parse(const QStringList &args)
         else if (a == QLatin1String("--timeout")) {
             QString t;
             value(&t);
-            bool ok = false;
-            const int sec = t.toInt(&ok);
-            if (!ok || sec <= 0) o.error = QStringLiteral("--timeout needs seconds > 0");
-            else o.timeoutMs = sec * 1000;
+            if (o.error.isEmpty()) {   // value() sets the error when the argument is missing
+                bool ok = false;
+                const int sec = t.toInt(&ok);
+                if (!ok || sec <= 0) o.error = QStringLiteral("--timeout needs seconds > 0");
+                else o.timeoutMs = sec * 1000;
+            }
         }
         else if (a == QLatin1String("--json")) o.json = true;
         else if (a == QLatin1String("--yes") || a == QLatin1String("-y")) o.yes = true;
@@ -131,7 +133,7 @@ QString CliRunner::usage()
         "  read-rom --mapper ssf2 --size 512K..32M --out <file>   dump an SSF2 bank-switched cartridge (firmware 1.1+, size in 512K steps)\n"
         "  read-save --size 8K|32K --out <file>               dump the save RAM\n"
         "  verify <file> [--size S]  read the cartridge back and compare with <file> (read only)\n"
-        "  write-rom <file> --yes    write a flash cartridge (erase it first: erase <size> --yes); reads it back unless --no-verify\n"
+        "  write-rom <file> --yes    check chip, then write (erase first: erase <size> --yes); reads back unless --no-verify\n"
         "  write-save <file> --yes   overwrite the save RAM\n"
         "  erase all|512K|1M|2M|4M|8M --yes   (8M = whole chip)\n"
         "\n"
@@ -402,8 +404,16 @@ int CliRunner::run(const QStringList &args, QIODevice *injected)
         return true;
     };
 
-    // Connect first, always.
+    // Connect first, always. Firmware 1.0 can ignore a connect that arrives right after the port was
+    // reopened (seen on the bench: `detect` and then `read-rom` as two processes in a row), so one retry.
     runOp([&] { return session.connectDevice(); });
+    if (started && !opOk && !opCancelled) {
+        const QString retryText = QStringLiteral("No answer to the first connect, trying once more.");
+        messages.append(QJsonObject{{QStringLiteral("severity"), QStringLiteral("warning")}, {QStringLiteral("text"), retryText}});
+        m_err << "warning: " << retryText << "\n";
+        m_err.flush();
+        runOp([&] { return session.connectDevice(); });
+    }
     if (!started || !opOk) {
         result.insert(QStringLiteral("messages"), messages);
         return finish(NoDevice, QStringLiteral("no answer to connect: wrong port, cable or firmware"));
@@ -467,9 +477,36 @@ int CliRunner::run(const QStringList &args, QIODevice *injected)
             }
         }
     } else if (o.command == QLatin1String("write-rom")) {
-        QBuffer buf(&image);
-        buf.open(QIODevice::ReadOnly);
-        check(runOp([&] { return session.writeRom(&buf, o.verify); }), QStringLiteral("write failed"));
+        check(runOp([&] { return session.detect(); }), QStringLiteral("cartridge pre-write detection failed"));
+        QString idLine;
+        for (const QString &l : deviceText.split('\n'))
+            if (l.startsWith(QLatin1String("FLASHID:"))) idLine = l.trimmed();
+        const ChipDb::Match match = ChipDb::identify(idLine);
+        const quint32 capacity = ChipDb::capacityBytes(match);
+        const bool firmwareRecognized = deviceText.contains(QLatin1String(" MD FLASH CART"));
+        result.insert(QStringLiteral("flashId"), match.idText);
+        result.insert(QStringLiteral("chip"), match.chip ? QString::fromLatin1(match.chip->name) : QString());
+        if (code == Ok && image.size() > 0x400000 && !session.canRead8M()) {
+            code = Failed;
+            err = QStringLiteral("this firmware cannot write ROMs larger than 4 MiB");
+        } else if (code == Ok && !match.parsed) {
+            code = Failed;
+            err = QStringLiteral("the device did not identify a flash chip; ROM was not written");
+        } else if (code == Ok && capacity && static_cast<quint64>(image.size()) > capacity) {
+            code = Failed;
+            err = QStringLiteral("ROM is larger than the detected flash chip capacity (%1 bytes)").arg(capacity);
+        } else if (code == Ok && match.chip && match.chip->commandSet != ChipDb::CommandSet::Amd555
+                   && session.firmwareVersion().isEmpty()) {
+            code = Failed;
+            err = QStringLiteral("the detected flash chip needs newer firmware commands");
+        }
+        if (code == Ok) {
+            result.insert(QStringLiteral("preflight"), match.chip && capacity && firmwareRecognized
+                              ? QStringLiteral("compatible") : QStringLiteral("uncertain"));
+            QBuffer buf(&image);
+            buf.open(QIODevice::ReadOnly);
+            check(runOp([&] { return session.writeRom(&buf, o.verify); }), QStringLiteral("write failed"));
+        }
         result.insert(QStringLiteral("verified"), o.verify && code == Ok);
     } else if (o.command == QLatin1String("write-save")) {
         QBuffer buf(&saveImage);

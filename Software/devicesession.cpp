@@ -8,6 +8,10 @@ using Protocol::LineKind;
 
 namespace {
 constexpr int kVersionGraceMs = 400;   // time to wait for "FWVER:" after the connect banner
+// The firmware answers detect and then waits 100 ms (HAL_Delay) before it clears its command buffer, so anything sent in
+// that window is lost. Seen on the bench with firmware 1.0: the first write block, sent the moment the answer arrived,
+// was never confirmed. The next command is held back for this long after the answer.
+constexpr int kDetectSettleMs = 250;
 }
 
 DeviceSession::DeviceSession(QObject *parent)
@@ -50,7 +54,7 @@ bool DeviceSession::canCancel() const
 
 bool DeviceSession::begin(Op op, int idleMs)
 {
-    if (m_op != Op::None) {
+    if (m_op != Op::None || m_settling) {
         emit message(Severity::Error, tr("Another operation is still running."));
         return false;
     }
@@ -112,6 +116,8 @@ bool DeviceSession::detect()
 {
     if (!begin(Op::Detect, 5000))
         return false;
+    m_lastDetectedChip = ChipDb::Match();
+    m_lastDetectFirmwareRecognized = false;
     setProgress(-1);
     return send(Protocol::buildCommand(Protocol::Detect));
 }
@@ -268,6 +274,14 @@ void DeviceSession::finish(bool ok, const QString &okMessage)
         emit message(Severity::Success, okMessage);
     if (ok)
         setProgress(100);
+    if (op == Op::Detect && ok && !cancelled) {
+        m_settling = true;
+        QTimer::singleShot(kDetectSettleMs, this, [this, op] {
+            m_settling = false;
+            emit finished(op, true, false);
+        });
+        return;
+    }
     emit finished(op, ok && !cancelled, cancelled);
 }
 
@@ -593,6 +607,8 @@ void DeviceSession::reportChip(const QString &firmwareLine)
 {
     const bool firmwareKnows = firmwareLine.contains(QLatin1String("MD FLASH CART"));
     const ChipDb::Match m = ChipDb::identify(m_flashIdLine);
+    m_lastDetectedChip = m;
+    m_lastDetectFirmwareRecognized = firmwareKnows;
     m_unlistedChip = !firmwareKnows && m.parsed;
     const bool oldFirmwareWarning = m_unlistedChip && m_fwVersion.isEmpty();
     const QString waitNote = tr("Firmware 1.0 does not wait for the chip to finish programming each word, and it was written for "

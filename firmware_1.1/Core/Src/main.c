@@ -480,7 +480,9 @@ int main(void)
 						sectoradd = 0x40000;	
 					}
 				uint8_t eraseok = 1;
-				if(cmdbuff[5] < 0x5){
+				/* Only code 5 is the whole chip. Any other unknown code erases 512K, as the text above
+				 * announces (1.0 erased the whole chip for every code from 5 up, under that same text). */
+				if(cmdbuff[5] != 0x5){
 						if(!erase_range(&address, sectoradd))
 							eraseok = 0;
 					}

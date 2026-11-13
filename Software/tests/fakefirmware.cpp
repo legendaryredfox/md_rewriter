@@ -38,6 +38,10 @@ qint64 FakeFirmware::writeData(const char *data, qint64 len)
 {
     if (!isOpen())
         return -1;
+    if (m_deaf && m_deafClock.elapsed() < deafAfterDetectMs) {
+        droppedBytes += static_cast<int>(len);
+        return len;
+    }
     m_rx.append(data, static_cast<int>(len));
     process();
     return len;
@@ -170,6 +174,10 @@ void FakeFirmware::handle(const QByteArray &cmd, const QByteArray &blockData)
     const quint8 c = static_cast<quint8>(cmd.at(0));
     switch (c) {
     case 0x0C:
+        if (ignoreConnects > 0) {
+            --ignoreConnects;
+            break;
+        }
         if (sendBanner)
             reply(QStringLiteral("FlashMaster MD Dumper is connected\r\n"));
         if (sendBanner && !fwVersion.isEmpty())
@@ -177,6 +185,10 @@ void FakeFirmware::handle(const QByteArray &cmd, const QByteArray &blockData)
         break;
     case 0x0D:
         reply(QStringLiteral("-- MD CART ID --\r\nFLASHID:%1\r\n%2\r\n").arg(flashId, chipLine));
+        if (deafAfterDetectMs > 0) {
+            m_deaf = true;
+            m_deafClock.start();
+        }
         break;
     case 0x0A:
         dump(rom, true, static_cast<quint8>(cmd.at(5)));

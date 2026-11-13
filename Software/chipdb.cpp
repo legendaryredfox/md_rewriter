@@ -11,31 +11,32 @@ namespace {
 //  - 20/DE and 20/DF: M29W640DT and M29W640DB, confirmed in the ST datasheet.
 //  - 01/7E: S29GL064N, confirmed in the Cypress datasheet 001-98525. The low byte 7E is shared with
 //    other GL parts, so the second ID cycle (not read by the firmware) would be needed to be sure.
+//    Seen on the bench (2026-11-13, firmware 1.0, PCB Ver1.4 cartridge S29GL064N90TFI03): FLASHID:17E.
 //  - BF/6D and BF/6C: SST39VF6401B and 6402B, confirmed in the Microchip datasheet DS20005008B (same
 //    555h/2AAh unlock as AMD, so the commands of the firmware apply).
 //  - the others come from memory and are marked as not confirmed.
 const Chip kChips[] = {
-    { 0xC2, 0xCB, "MX29LV640EB (Macronix, 64 Mbit, bottom boot)", true },
-    { 0xC2, 0xC9, "MX29LV640ET (Macronix, 64 Mbit, top boot)", false },
-    { 0x20, 0xDF, "M29W640DB (ST, 64 Mbit, bottom boot)", true },
-    { 0x20, 0xDE, "M29W640DT (ST, 64 Mbit, top boot)", true },
-    { 0x20, 0x7E, "M29W640G family (ST/Numonyx, 64 Mbit)", false },
-    { 0xBF, 0x6D, "SST39VF6401B (Microchip/SST, 64 Mbit, uniform 32 KWord blocks)", true },
-    { 0xBF, 0x6C, "SST39VF6402B (Microchip/SST, 64 Mbit, uniform 32 KWord blocks)", true },
+    { 0xC2, 0xCB, "MX29LV640EB (Macronix, 64 Mbit, bottom boot)", true, CommandSet::Amd555, 8 * 1024 * 1024 },
+    { 0xC2, 0xC9, "MX29LV640ET (Macronix, 64 Mbit, top boot)", false, CommandSet::Amd555, 8 * 1024 * 1024 },
+    { 0x20, 0xDF, "M29W640DB (ST, 64 Mbit, bottom boot)", true, CommandSet::Amd555, 8 * 1024 * 1024 },
+    { 0x20, 0xDE, "M29W640DT (ST, 64 Mbit, top boot)", true, CommandSet::Amd555, 8 * 1024 * 1024 },
+    { 0x20, 0x7E, "M29W640G family (ST/Numonyx, 64 Mbit)", false, CommandSet::Amd555, 8 * 1024 * 1024 },
+    { 0xBF, 0x6D, "SST39VF6401B (Microchip/SST, 64 Mbit, uniform 32 KWord blocks)", true, CommandSet::Amd555, 8 * 1024 * 1024 },
+    { 0xBF, 0x6C, "SST39VF6402B (Microchip/SST, 64 Mbit, uniform 32 KWord blocks)", true, CommandSet::Amd555, 8 * 1024 * 1024 },
     // 32 Mbit parts of KY / FlashKit MD carts (docs/KY_SUPPORT.md). IDs from MD_Dumper flashlist.csv.
-    { 0x20, 0xCA, "M29W320DT (ST, 32 Mbit, top boot)", false },
-    { 0x20, 0xCB, "M29W320DB (ST, 32 Mbit, bottom boot)", false },
-    { 0x20, 0x56, "M29W320ET (ST, 32 Mbit, top boot)", false },
-    { 0x20, 0x57, "M29W320EB (ST, 32 Mbit, bottom boot)", false },
-    { 0xC2, 0xA7, "MX29LV320T (Macronix, 32 Mbit, top boot)", false },
-    { 0xC2, 0xA8, "MX29LV320B (Macronix, 32 Mbit, bottom boot)", false },
+    { 0x20, 0xCA, "M29W320DT (ST, 32 Mbit, top boot)", false, CommandSet::Amd555, 4 * 1024 * 1024 },
+    { 0x20, 0xCB, "M29W320DB (ST, 32 Mbit, bottom boot)", false, CommandSet::Amd555, 4 * 1024 * 1024 },
+    { 0x20, 0x56, "M29W320ET (ST, 32 Mbit, top boot)", false, CommandSet::Amd555, 4 * 1024 * 1024 },
+    { 0x20, 0x57, "M29W320EB (ST, 32 Mbit, bottom boot)", false, CommandSet::Amd555, 4 * 1024 * 1024 },
+    { 0xC2, 0xA7, "MX29LV320T (Macronix, 32 Mbit, top boot)", false, CommandSet::Amd555, 4 * 1024 * 1024 },
+    { 0xC2, 0xA8, "MX29LV320B (Macronix, 32 Mbit, bottom boot)", false, CommandSet::Amd555, 4 * 1024 * 1024 },
     // Other command sets (new firmware only, docs/KY_SUPPORT.md). Firmware 1.0 cannot write them.
-    { 0xBF, 0x5B, "SST39VF3201 (Microchip/SST, 32 Mbit, uniform, block erase 50h)", false, CommandSet::Amd555Block50 },
-    { 0xBF, 0x5A, "SST39VF3202 (Microchip/SST, 32 Mbit, uniform, block erase 50h)", false, CommandSet::Amd555Block50 },
-    { 0xC2, 0xF9, "MX29L3211 (Macronix, 32 Mbit, unlock at 5555h)", false, CommandSet::Amd5555 },
-    { 0x89, 0x70, "PA28F400T (Intel, 4 Mbit, top boot)", false, CommandSet::Intel },
-    { 0x89, 0x71, "PA28F400B (Intel, 4 Mbit, bottom boot)", false, CommandSet::Intel },
-    { 0x01, 0x7E, "S29GL064N (Spansion/Cypress, 64 Mbit; other GL-N chips share this ID)", true },
+    { 0xBF, 0x5B, "SST39VF3201 (Microchip/SST, 32 Mbit, uniform, block erase 50h)", false, CommandSet::Amd555Block50, 4 * 1024 * 1024 },
+    { 0xBF, 0x5A, "SST39VF3202 (Microchip/SST, 32 Mbit, uniform, block erase 50h)", false, CommandSet::Amd555Block50, 4 * 1024 * 1024 },
+    { 0xC2, 0xF9, "MX29L3211 (Macronix, 32 Mbit, unlock at 5555h)", false, CommandSet::Amd5555, 4 * 1024 * 1024 },
+    { 0x89, 0x70, "PA28F400T (Intel, 4 Mbit, top boot)", false, CommandSet::Intel, 512 * 1024 },
+    { 0x89, 0x71, "PA28F400B (Intel, 4 Mbit, bottom boot)", false, CommandSet::Intel, 512 * 1024 },
+    { 0x01, 0x7E, "S29GL064N (Spansion/Cypress, 64 Mbit; other GL-N chips share this ID)", true, CommandSet::Amd555, 8 * 1024 * 1024 },
 };
 
 bool hex(const QString &s, int from, int len, quint8 *out)
@@ -107,6 +108,11 @@ Match identify(const QString &line)
         }
     }
     return r;
+}
+
+quint32 capacityBytes(const Match &match)
+{
+    return match.chip ? match.chip->capacity : 0;
 }
 
 } // namespace ChipDb

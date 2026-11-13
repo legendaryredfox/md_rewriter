@@ -227,6 +227,20 @@ private slots:
         QVERIFY(h.deviceText.contains("MX29LV640EB MD FLASH CART"));
     }
 
+    void nothingStartsInTheSettleWindowAfterDetect()
+    {
+        Harness h;
+        h.fw.deafAfterDetectMs = 100;
+        QVERIFY(h.s.detect());
+        QVERIFY(h.waitDone());
+        QVERIFY(h.done[0].ok);
+        QVERIFY(h.s.busy() == false);   // finished() is only emitted after the settle time
+        QVERIFY(h.s.connectDevice());
+        QVERIFY(h.waitDone(2));
+        QCOMPARE(h.fw.droppedBytes, 0);
+        QVERIFY(h.done[1].ok);
+    }
+
     void readRomAnyFragmentation_data()
     {
         QTest::addColumn<int>("maxChunk");

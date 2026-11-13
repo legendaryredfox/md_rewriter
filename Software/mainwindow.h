@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QSerialPort>
+#include <QStringList>
 #include <QTimer>
 
 #include <functional>
@@ -78,6 +79,7 @@ private:
     void log(DeviceSession::Severity severity, const QString &text);
     void closePort();
     void finishCompare(bool cancelled);
+    void continuePendingRomWrite();
     const Protocol::RomSize &selectedRomSize() const;
     void refreshRomSizes();
     const Protocol::SramSize &selectedSramSize() const;
@@ -95,6 +97,9 @@ private:
     std::unique_ptr<QBuffer> m_romBuffer;   // the prepared ROM image of a running write
     QByteArray m_romData;
     QString m_outPath;
+    QString m_pendingRomPath;
+    QStringList m_pendingRomWarnings;
+    bool m_romPreflightPending = false;
 
     // running comparison
     std::unique_ptr<QFile> m_cmpA;

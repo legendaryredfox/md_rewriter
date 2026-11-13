@@ -4,27 +4,27 @@
 <context>
     <name>DeviceSession</name>
     <message>
-        <location filename="../devicesession.cpp" line="53"/>
+        <location filename="../devicesession.cpp" line="54"/>
         <source>Another operation is still running.</source>
         <translation>Outra operação ainda está em andamento.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="57"/>
+        <location filename="../devicesession.cpp" line="58"/>
         <source>Device not connected.</source>
         <translation>Dispositivo não conectado.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="90"/>
+        <location filename="../devicesession.cpp" line="92"/>
         <source>Could not write to the device.</source>
         <translation>Não foi possível escrever no dispositivo.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="119"/>
+        <location filename="../devicesession.cpp" line="124"/>
         <source>The output file is not open for writing.</source>
         <translation>O arquivo de saída não está aberto para escrita.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="150"/>
+        <location filename="../devicesession.cpp" line="168"/>
         <source>The input file is not open for reading.</source>
         <translation>O arquivo de entrada não está aberto para leitura.</translation>
     </message>
@@ -33,216 +33,239 @@
         <translation type="vanished">O tamanho do arquivo (%1 bytes) não é suportado. Arquivos de ROM devem ter 512 KiB, 1 MiB, 2 MiB, 3 MiB ou 4 MiB.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="157"/>
         <source>The file size (%1 bytes) is not supported. A ROM must have an even size between 512 bytes and 4 MiB.</source>
-        <translation>O tamanho do arquivo (%1 bytes) não é suportado. Uma ROM deve ter tamanho par, entre 512 bytes e 4 MiB.</translation>
+        <translation type="vanished">O tamanho do arquivo (%1 bytes) não é suportado. Uma ROM deve ter tamanho par, entre 512 bytes e 4 MiB.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="158"/>
+        <location filename="../devicesession.cpp" line="176"/>
         <source>The file size (%1 bytes) is not supported. Save files must be 8 KiB or 32 KiB.</source>
         <translation>O tamanho do arquivo (%1 bytes) não é suportado. Arquivos de save devem ter 8 KiB ou 32 KiB.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="210"/>
+        <location filename="../devicesession.cpp" line="232"/>
         <source>Cancelling...</source>
         <translation>Cancelando...</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="267"/>
-        <location filename="../devicesession.cpp" line="272"/>
+        <location filename="../devicesession.cpp" line="289"/>
+        <location filename="../devicesession.cpp" line="294"/>
         <source>The device did not send the final confirmation, but all data was received.</source>
         <translation>O dispositivo não enviou a confirmação final, mas todos os dados foram recebidos.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="268"/>
-        <location filename="../devicesession.cpp" line="411"/>
+        <location filename="../devicesession.cpp" line="290"/>
+        <location filename="../devicesession.cpp" line="435"/>
         <source>Read complete: %1 bytes.</source>
         <translation>Leitura concluída: %1 bytes.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="286"/>
+        <location filename="../devicesession.cpp" line="308"/>
         <source>The device stopped answering after %1 of %2 bytes while verifying the write.</source>
         <translation>O dispositivo parou de responder após %1 de %2 bytes durante a verificação da gravação.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="290"/>
+        <location filename="../devicesession.cpp" line="312"/>
         <source>The device stopped answering after %1 of %2 bytes.</source>
         <translation>O dispositivo parou de responder após %1 de %2 bytes.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="294"/>
+        <location filename="../devicesession.cpp" line="316"/>
         <source>The device did not confirm block %1 of %2.</source>
         <translation>O dispositivo não confirmou o bloco %1 de %2.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="297"/>
+        <location filename="../devicesession.cpp" line="319"/>
         <source>The port opened, but the device did not answer. Check that this is the right port and that the firmware is installed.</source>
         <translation>A porta abriu, mas o dispositivo não respondeu. Verifique se esta é a porta certa e se o firmware está instalado.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="301"/>
+        <location filename="../devicesession.cpp" line="323"/>
         <source>The device did not answer.</source>
         <translation>O dispositivo não respondeu.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="338"/>
+        <location filename="../devicesession.cpp" line="360"/>
         <source>Could not write to the output file (disk full?).</source>
         <translation>Não foi possível escrever no arquivo de saída (disco cheio?).</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="354"/>
+        <location filename="../devicesession.cpp" line="376"/>
         <source>Unexpected data from the device after the dump: &quot;%1&quot;.</source>
         <translation>Dados inesperados do dispositivo após a leitura: &quot;%1&quot;.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="281"/>
-        <location filename="../devicesession.cpp" line="378"/>
+        <location filename="../devicesession.cpp" line="303"/>
+        <location filename="../devicesession.cpp" line="400"/>
         <source>Device identified.</source>
         <translation>Dispositivo identificado.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="136"/>
+        <location filename="../devicesession.cpp" line="141"/>
         <source>Reading 8 MiB needs firmware 1.1 or later; this device has firmware 1.0.</source>
         <translation>Ler 8 MiB exige firmware 1.1 ou posterior; este dispositivo tem a firmware 1.0.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="395"/>
+        <location filename="../devicesession.cpp" line="175"/>
+        <source>The file size (%1 bytes) is not supported. A ROM must have an even size between 512 bytes and 8 MiB.</source>
+        <translation>O tamanho do arquivo (%1 bytes) não é suportado. Uma ROM deve ter tamanho par entre 512 bytes e 8 MiB.</translation>
+    </message>
+    <message>
+        <location filename="../devicesession.cpp" line="180"/>
+        <source>Writing more than 4 MiB needs firmware 1.1 or later; this device has firmware 1.0.</source>
+        <translation>Gravar mais de 4 MiB exige o firmware 1.1 ou posterior; este dispositivo tem o firmware 1.0.</translation>
+    </message>
+    <message>
+        <location filename="../devicesession.cpp" line="419"/>
         <source>The data read back is incomplete or out of sync (%1 of %2 bytes), so the write could not be verified.</source>
         <translation>Os dados lidos de volta estão incompletos ou fora de sincronia (%1 de %2 bytes); a gravação não pôde ser verificada.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="408"/>
+        <location filename="../devicesession.cpp" line="432"/>
         <source>The data from the device is incomplete or out of sync (%1 of %2 bytes). The file was not saved.</source>
         <translation>Os dados do dispositivo estão incompletos ou fora de sincronia (%1 de %2 bytes). O arquivo não foi salvo.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="431"/>
-        <location filename="../devicesession.cpp" line="437"/>
+        <location filename="../devicesession.cpp" line="455"/>
+        <location filename="../devicesession.cpp" line="461"/>
         <source>Erase complete.</source>
         <translation>Apagamento concluído.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="433"/>
+        <location filename="../devicesession.cpp" line="457"/>
         <source>The cartridge did not finish erasing in time. It may be faulty or not a flash cartridge.</source>
         <translation>O cartucho não terminou de apagar a tempo. Ele pode estar com defeito ou não ser um cartucho flash.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="439"/>
+        <location filename="../devicesession.cpp" line="463"/>
         <source>A sector did not finish erasing in time. The cartridge may be faulty or not a flash cartridge.</source>
         <translation>Um setor não terminou de apagar a tempo. O cartucho pode estar com defeito ou não ser um cartucho flash.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="452"/>
+        <location filename="../devicesession.cpp" line="476"/>
         <source>Could not read block %1 from the file.</source>
         <translation>Não foi possível ler o bloco %1 do arquivo.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="465"/>
+        <location filename="../devicesession.cpp" line="489"/>
         <source>Ignoring an unexpected confirmation from the device.</source>
         <translation>Ignorando uma confirmação inesperada do dispositivo.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="482"/>
+        <location filename="../devicesession.cpp" line="506"/>
         <source>The cartridge did not finish programming a word (&quot;%1&quot;). It was probably not erased first, is not a flash cartridge, or the chip is not compatible. Erase it and try again.</source>
         <translation>O cartucho não terminou de gravar uma palavra (&quot;%1&quot;). Provavelmente não foi apagado antes, não é um cartucho flash ou o chip não é compatível. Apague-o e tente de novo.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="505"/>
+        <location filename="../devicesession.cpp" line="529"/>
         <source>Cancelled after %1 of %2 blocks. The cartridge now holds a partial image.</source>
         <translation>Cancelado após %1 de %2 blocos. O cartucho agora contém uma imagem parcial.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="509"/>
-        <location filename="../devicesession.cpp" line="512"/>
+        <location filename="../devicesession.cpp" line="533"/>
+        <location filename="../devicesession.cpp" line="536"/>
         <source>Game written: %1 blocks.</source>
         <translation>Jogo gravado: %1 blocos.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="513"/>
+        <location filename="../devicesession.cpp" line="537"/>
         <source>Save written: %1 blocks.</source>
         <translation>Save gravado: %1 blocos.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="528"/>
+        <location filename="../devicesession.cpp" line="554"/>
         <source>Could not start the verification of the write.</source>
         <translation>Não foi possível iniciar a verificação da gravação.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="531"/>
+        <location filename="../devicesession.cpp" line="557"/>
         <source>Verifying: reading the cartridge back (%1)...</source>
         <translation>Verificando: lendo o cartucho de volta (%1)...</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="554"/>
+        <location filename="../devicesession.cpp" line="580"/>
         <source>Verified: the %1 bytes read back match the file.</source>
         <translation>Verificado: os %1 bytes lidos de volta são iguais ao arquivo.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="557"/>
+        <location filename="../devicesession.cpp" line="583"/>
         <source>Verification failed: at offset 0x%1 the cartridge has 0x%2 but the file has 0x%3 (%4 bytes differ in total). The cartridge may not have been erased first, may not be a flash cartridge, or the chip may be too slow for the firmware. Erase it and write again.</source>
         <translation>A verificação falhou: no deslocamento 0x%1 o cartucho tem 0x%2, mas o arquivo tem 0x%3 (%4 bytes diferem no total). O cartucho pode não ter sido apagado antes, pode não ser um cartucho flash, ou o chip pode ser lento demais para o firmware. Apague-o e grave de novo.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="575"/>
+        <location filename="../devicesession.cpp" line="610"/>
+        <source>Flash chip: %1 (ID %2). This chip needs firmware 1.1 or newer: your firmware sends commands the chip does not take, so writing fails and a read may return ID or status words until the cartridge is power-cycled. Update the firmware before using this cartridge.</source>
+        <translation>Chip flash: %1 (ID %2). Este chip exige o firmware 1.1 ou mais novo: seu firmware envia comandos que o chip não aceita, então a gravação falha e a leitura pode devolver palavras de ID ou de status até o cartucho ser desligado e religado. Atualize o firmware antes de usar este cartucho.</translation>
+    </message>
+    <message>
+        <location filename="../devicesession.cpp" line="617"/>
         <source>Flash chip: %1 (ID %2). Supported.</source>
         <translation>Chip flash: %1 (ID %2). Suportado.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="580"/>
+        <location filename="../devicesession.cpp" line="622"/>
         <source>Flash chip: %1 (ID %2). Firmware 1.0 does not list this chip, but it uses the same commands, so reading is fine and writing should work (not tested on hardware).</source>
         <translation>Chip flash: %1 (ID %2). O firmware 1.0 não lista este chip, mas ele usa os mesmos comandos; a leitura funciona e a gravação deve funcionar (não testado em hardware).</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="577"/>
-        <location filename="../devicesession.cpp" line="583"/>
+        <location filename="../devicesession.cpp" line="619"/>
+        <location filename="../devicesession.cpp" line="625"/>
         <source>This ID is not confirmed against a datasheet.</source>
         <translation>Este ID não foi confirmado em um datasheet.</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="589"/>
+        <location filename="../devicesession.cpp" line="633"/>
         <source>Flash chip recognised by the firmware (ID %1).</source>
         <translation>Chip flash reconhecido pelo firmware (ID %1).</translation>
     </message>
     <message>
-        <location filename="../devicesession.cpp" line="594"/>
+        <location filename="../devicesession.cpp" line="638"/>
         <source>Chip not in the list (ID %1). It may be an original game cartridge (not flash), an empty slot, or a flash chip this program does not know. Reading works with original cartridges. Writing needs a flash chip that uses the standard AMD/JEDEC commands. &quot;NO FIND NGP CARD&quot; only means the firmware did not recognise the chip.</source>
         <translation>Chip fora da lista (ID %1). Pode ser um cartucho original (sem flash), um slot vazio ou um chip flash que este programa não conhece. A leitura funciona com cartuchos originais. A gravação exige um chip flash com os comandos AMD/JEDEC padrão. &quot;NO FIND NGP CARD&quot; só significa que o firmware não reconheceu o chip.</translation>
     </message>
     <message>
+        <location filename="../devicesession.cpp" line="150"/>
         <source>The SSF2 mapper has 1 to 64 pages of 512 KiB.</source>
         <translation>O mapper SSF2 tem de 1 a 64 páginas de 512 KiB.</translation>
     </message>
     <message>
+        <location filename="../devicesession.cpp" line="154"/>
         <source>Reading through the SSF2 mapper needs firmware 1.1 or later; this device has firmware 1.0.</source>
         <translation>Ler pelo mapper SSF2 exige o firmware 1.1 ou posterior; este dispositivo tem o firmware 1.0.</translation>
     </message>
     <message>
+        <location filename="../devicesession.cpp" line="662"/>
         <source>The chip describes itself (CFI): %1, %2 command set. This is information only; writing still uses the standard AMD commands.</source>
         <translation>O chip se descreve (CFI): %1, conjunto de comandos %2. É só informação; a gravação continua usando os comandos AMD padrão.</translation>
     </message>
     <message>
+        <location filename="../devicesession.cpp" line="658"/>
         <source>%1 MiB</source>
         <translation>%1 MiB</translation>
     </message>
     <message>
+        <location filename="../devicesession.cpp" line="658"/>
         <source>%1 KiB</source>
         <translation>%1 KiB</translation>
     </message>
     <message>
+        <location filename="../devicesession.cpp" line="659"/>
         <source>AMD/Fujitsu</source>
         <translation>AMD/Fujitsu</translation>
     </message>
     <message>
+        <location filename="../devicesession.cpp" line="660"/>
         <source>Intel/Sharp</source>
         <translation>Intel/Sharp</translation>
     </message>
     <message>
+        <location filename="../devicesession.cpp" line="660"/>
         <source>unknown</source>
         <translation>desconhecido</translation>
     </message>
     <message>
-        <source>Firmware 1.0 does not wait for the chip to finish programming each word, and it was written for the MX29LV640EB. Keep "Verify after writing" on; if verification fails, use the new firmware.</source>
-        <translation>O firmware 1.0 não espera o chip terminar de gravar cada palavra e foi escrito para o MX29LV640EB. Mantenha "Verificar após gravar" ligado; se a verificação falhar, use o firmware novo.</translation>
+        <location filename="../devicesession.cpp" line="602"/>
+        <source>Firmware 1.0 does not wait for the chip to finish programming each word, and it was written for the MX29LV640EB. Keep &quot;Verify after writing&quot; on; if verification fails, use the new firmware.</source>
+        <translation>O firmware 1.0 não espera o chip terminar de gravar cada palavra e foi escrito para o MX29LV640EB. Mantenha &quot;Verificar após gravar&quot; ligado; se a verificação falhar, use o firmware novo.</translation>
     </message>
 </context>
 <context>
@@ -307,7 +330,7 @@
     </message>
     <message>
         <location filename="../mainwindow.ui" line="53"/>
-        <location filename="../mainwindow.cpp" line="677"/>
+        <location filename="../mainwindow.cpp" line="757"/>
         <source>&amp;Connect</source>
         <translation>&amp;Conectar</translation>
     </message>
@@ -528,59 +551,126 @@
         <translation>A operação foi interrompida.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="429"/>
+        <location filename="../mainwindow.cpp" line="430"/>
         <source>Save the ROM as</source>
         <translation>Salvar a ROM como</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="429"/>
+        <location filename="../mainwindow.cpp" line="430"/>
         <source>ROM files (*.bin *.md *.gen);;All files (*)</source>
         <translation>Arquivos de ROM (*.bin *.md *.gen);;Todos os arquivos (*)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="434"/>
-        <location filename="../mainwindow.cpp" line="453"/>
+        <location filename="../mainwindow.cpp" line="435"/>
+        <location filename="../mainwindow.cpp" line="454"/>
         <source>Cannot create &quot;%1&quot;: %2</source>
         <translation>Não foi possível criar &quot;%1&quot;: %2</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="448"/>
+        <location filename="../mainwindow.cpp" line="449"/>
         <source>Save the save data as</source>
         <translation>Salvar os dados de save como</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="448"/>
-        <location filename="../mainwindow.cpp" line="509"/>
+        <location filename="../mainwindow.cpp" line="449"/>
+        <location filename="../mainwindow.cpp" line="577"/>
         <source>Save files (*.srm *.sav);;All files (*)</source>
         <translation>Arquivos de save (*.srm *.sav);;Todos os arquivos (*)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="466"/>
+        <location filename="../mainwindow.cpp" line="467"/>
         <source>Select the ROM file to write</source>
         <translation>Selecione o arquivo de ROM a gravar</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="466"/>
+        <location filename="../mainwindow.cpp" line="467"/>
         <source>ROM files (*.bin *.md *.smd *.gen);;All files (*)</source>
         <translation>Arquivos de ROM (*.bin *.md *.smd *.gen);;Todos os arquivos (*)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="471"/>
-        <location filename="../mainwindow.cpp" line="514"/>
+        <location filename="../mainwindow.cpp" line="472"/>
+        <location filename="../mainwindow.cpp" line="582"/>
         <source>Cannot open &quot;%1&quot;: %2</source>
         <translation>Não foi possível abrir &quot;%1&quot;: %2</translation>
     </message>
     <message>
+        <location filename="../mainwindow.cpp" line="477"/>
+        <source>The file is %1, larger than the 8 MiB this device can write.</source>
+        <translation>O arquivo tem %1, mais que os 8 MiB que este dispositivo consegue gravar.</translation>
+    </message>
+    <message>
         <location filename="../mainwindow.cpp" line="495"/>
+        <source>Checking the cartridge flash chip before writing…</source>
+        <translation>Verificando o chip flash do cartucho antes de gravar…</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="518"/>
+        <source>This firmware cannot write ROMs larger than 4 MiB. Update the firmware before writing.</source>
+        <translation>Este firmware não grava ROMs maiores que 4 MiB. Atualize o firmware antes de gravar.</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="521"/>
+        <source>The device could not identify a flash chip. Cartridge compatibility is unknown.</source>
+        <translation>O dispositivo não conseguiu identificar um chip flash. A compatibilidade do cartucho é desconhecida.</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="523"/>
+        <source>The detected %1 chip can hold %2, smaller than this ROM (%3).</source>
+        <translation>O chip %1 detectado comporta %2, menos que esta ROM (%3).</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="527"/>
+        <source>The detected %1 needs newer firmware commands. Update the firmware before writing.</source>
+        <translation>O %1 detectado exige comandos de um firmware mais novo. Atualize o firmware antes de gravar.</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="531"/>
+        <source>Detected %1 (%2). The firmware recognises this flash chip and it has enough capacity.</source>
+        <translation>%1 detectado (%2). O firmware reconhece este chip flash e ele tem capacidade suficiente.</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="534"/>
+        <source>Detected %1 (%2), but this firmware does not confirm it as supported. Compatibility is uncertain.</source>
+        <translation>%1 detectado (%2), mas este firmware não o confirma como suportado. A compatibilidade é incerta.</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="537"/>
+        <source>Flash chip ID %1 is not in the supported-chip list. Compatibility is uncertain.</source>
+        <translation>O ID %1 do chip flash não está na lista de chips suportados. A compatibilidade é incerta.</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="548"/>
+        <source>Pre-flash check: %1
+
+Write &quot;%2&quot; (%3) to the cartridge?
+
+The cartridge must be erased first. Anything already on it will be overwritten.</source>
+        <translation>Verificação prévia: %1
+
+Gravar &quot;%2&quot; (%3) no cartucho?
+
+O cartucho precisa ser apagado antes. Tudo o que já estiver nele será sobrescrito.</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="552"/>
+        <source>ROM warning:</source>
+        <translation>Aviso da ROM:</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="555"/>
+        <source>Firmware 1.0 does not wait for this chip to finish programming each word. Keep &quot;Verify after writing&quot; on and check the result.</source>
+        <translation>O firmware 1.0 não espera este chip terminar de gravar cada palavra. Mantenha &quot;Verificar após gravar&quot; ligado e confira o resultado.</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="562"/>
         <source>Write ROM</source>
         <translation>Gravar ROM</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="490"/>
         <source>Write &quot;%1&quot; (%2) to the cartridge?
 
 The cartridge must be erased first. Anything already on it will be overwritten.</source>
-        <translation>Gravar &quot;%1&quot; (%2) no cartucho?
+        <translation type="vanished">Gravar &quot;%1&quot; (%2) no cartucho?
 
 O cartucho precisa ser apagado antes. Tudo o que já estiver nele será sobrescrito.</translation>
     </message>
@@ -590,32 +680,30 @@ O cartucho precisa ser apagado antes. Tudo o que já estiver nele será sobrescr
         <translation>Firmware %1 detectada: a leitura de 8 MiB está disponível na lista de tamanho do cartucho.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="476"/>
         <source>The file is %1, larger than the 4 MiB this device can write.</source>
-        <translation>O arquivo tem %1, mais que os 4 MiB que este dispositivo consegue gravar.</translation>
+        <translation type="vanished">O arquivo tem %1, mais que os 4 MiB que este dispositivo consegue gravar.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="494"/>
         <source>Warning:</source>
-        <translation>Aviso:</translation>
+        <translation type="vanished">Aviso:</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="495"/>
+        <location filename="../mainwindow.cpp" line="562"/>
         <source>Write</source>
         <translation>Gravar</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="509"/>
+        <location filename="../mainwindow.cpp" line="577"/>
         <source>Select the save file to write</source>
         <translation>Selecione o arquivo de save a gravar</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="519"/>
+        <location filename="../mainwindow.cpp" line="587"/>
         <source>Write save</source>
         <translation>Gravar save</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="520"/>
+        <location filename="../mainwindow.cpp" line="588"/>
         <source>Replace the save data on the cartridge with &quot;%1&quot;?
 
 The saved games currently on the cartridge will be lost.</source>
@@ -624,17 +712,17 @@ The saved games currently on the cartridge will be lost.</source>
 Os jogos salvos atualmente no cartucho serão perdidos.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="522"/>
+        <location filename="../mainwindow.cpp" line="590"/>
         <source>Replace</source>
         <translation>Substituir</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="533"/>
+        <location filename="../mainwindow.cpp" line="601"/>
         <source>Erase by size</source>
         <translation>Apagar por tamanho</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="534"/>
+        <location filename="../mainwindow.cpp" line="602"/>
         <source>Erase the first %1 of the cartridge flash?
 
 All game data in that area will be lost.</source>
@@ -643,17 +731,17 @@ All game data in that area will be lost.</source>
 Todos os dados de jogo nessa área serão perdidos.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="536"/>
+        <location filename="../mainwindow.cpp" line="604"/>
         <source>Erase</source>
         <translation>Apagar</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="543"/>
+        <location filename="../mainwindow.cpp" line="611"/>
         <source>Erase all</source>
         <translation>Apagar tudo</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="544"/>
+        <location filename="../mainwindow.cpp" line="612"/>
         <source>Erase the entire flash chip and the save memory of the cartridge?
 
 Everything on the cartridge will be lost. This can take several minutes and cannot be interrupted.
@@ -664,78 +752,83 @@ Tudo no cartucho será perdido. Pode levar vários minutos e não pode ser inter
 Não desconecte o dispositivo enquanto isso roda.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="547"/>
+        <location filename="../mainwindow.cpp" line="615"/>
         <source>Erase everything</source>
         <translation>Apagar tudo</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="572"/>
+        <location filename="../mainwindow.cpp" line="644"/>
+        <source>Pre-flash cartridge check failed; the ROM was not written.</source>
+        <translation>A verificação prévia do cartucho falhou; a ROM não foi gravada.</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="652"/>
         <source>Saved to &quot;%1&quot;.</source>
         <translation>Salvo em &quot;%1&quot;.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="574"/>
+        <location filename="../mainwindow.cpp" line="654"/>
         <source>Could not save &quot;%1&quot;: %2</source>
         <translation>Não foi possível salvar &quot;%1&quot;: %2</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="577"/>
+        <location filename="../mainwindow.cpp" line="657"/>
         <source>Cancelled. The incomplete file was not saved.</source>
         <translation>Cancelado. O arquivo incompleto não foi salvo.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="578"/>
+        <location filename="../mainwindow.cpp" line="658"/>
         <source>The incomplete file was not saved.</source>
         <translation>O arquivo incompleto não foi salvo.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="604"/>
+        <location filename="../mainwindow.cpp" line="684"/>
         <source>Select the first file</source>
         <translation>Selecione o primeiro arquivo</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="604"/>
-        <location filename="../mainwindow.cpp" line="607"/>
+        <location filename="../mainwindow.cpp" line="684"/>
+        <location filename="../mainwindow.cpp" line="687"/>
         <source>All files (*)</source>
         <translation>Todos os arquivos (*)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="607"/>
+        <location filename="../mainwindow.cpp" line="687"/>
         <source>Select the second file</source>
         <translation>Selecione o segundo arquivo</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="613"/>
+        <location filename="../mainwindow.cpp" line="693"/>
         <source>Could not open both files.</source>
         <translation>Não foi possível abrir os dois arquivos.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="618"/>
+        <location filename="../mainwindow.cpp" line="698"/>
         <source>Comparing &quot;%1&quot; with &quot;%2&quot;...</source>
         <translation>Comparando &quot;%1&quot; com &quot;%2&quot;...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="642"/>
+        <location filename="../mainwindow.cpp" line="722"/>
         <source>Comparison cancelled.</source>
         <translation>Comparação cancelada.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="644"/>
+        <location filename="../mainwindow.cpp" line="724"/>
         <source>Could not read one of the files.</source>
         <translation>Não foi possível ler um dos arquivos.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="646"/>
+        <location filename="../mainwindow.cpp" line="726"/>
         <source>The two files are identical (%1 bytes).</source>
         <translation>Os dois arquivos são idênticos (%1 bytes).</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="650"/>
+        <location filename="../mainwindow.cpp" line="730"/>
         <source>The files have different sizes: %1 and %2 bytes.</source>
         <translation>Os arquivos têm tamanhos diferentes: %1 e %2 bytes.</translation>
     </message>
     <message numerus="yes">
-        <location filename="../mainwindow.cpp" line="652"/>
+        <location filename="../mainwindow.cpp" line="732"/>
         <source>%n difference(s) found.</source>
         <translation>
             <numerusform>%n diferença encontrada.</numerusform>
@@ -743,105 +836,106 @@ Não desconecte o dispositivo enquanto isso roda.</translation>
         </translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="655"/>
+        <location filename="../mainwindow.cpp" line="735"/>
         <source>  byte at offset %1 (0x%2) differs</source>
         <translation>  byte na posição %1 (0x%2) é diferente</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="658"/>
+        <location filename="../mainwindow.cpp" line="738"/>
         <source>Only the first %1 differences are listed.</source>
         <translation>Apenas as primeiras %1 diferenças são listadas.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="677"/>
+        <location filename="../mainwindow.cpp" line="757"/>
         <source>Dis&amp;connect</source>
         <translation>Des&amp;conectar</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="702"/>
+        <location filename="../mainwindow.cpp" line="782"/>
         <source>Connected to %1</source>
         <translation>Conectado a %1</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="702"/>
+        <location filename="../mainwindow.cpp" line="782"/>
         <source>Not connected</source>
         <translation>Não conectado</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="704"/>
+        <location filename="../mainwindow.cpp" line="784"/>
         <source> - comparing files</source>
         <translation> - comparando arquivos</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="708"/>
+        <location filename="../mainwindow.cpp" line="788"/>
         <source>connecting</source>
         <translation>conectando</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="709"/>
+        <location filename="../mainwindow.cpp" line="789"/>
         <source>detecting the cartridge</source>
         <translation>detectando o cartucho</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="710"/>
+        <location filename="../mainwindow.cpp" line="790"/>
         <source>reading the ROM</source>
         <translation>lendo a ROM</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="711"/>
+        <location filename="../mainwindow.cpp" line="791"/>
         <source>writing the ROM</source>
         <translation>gravando a ROM</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="712"/>
+        <location filename="../mainwindow.cpp" line="792"/>
         <source>verifying the written ROM</source>
         <translation>verificando a ROM gravada</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="713"/>
+        <location filename="../mainwindow.cpp" line="793"/>
         <source>reading the save data</source>
         <translation>lendo os dados de save</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="714"/>
+        <location filename="../mainwindow.cpp" line="794"/>
         <source>writing the save data</source>
         <translation>gravando os dados de save</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="715"/>
+        <location filename="../mainwindow.cpp" line="795"/>
         <source>erasing the cartridge</source>
         <translation>apagando o cartucho</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="716"/>
+        <location filename="../mainwindow.cpp" line="796"/>
         <source>erasing sectors</source>
         <translation>apagando setores</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="731"/>
+        <location filename="../mainwindow.cpp" line="811"/>
         <source>The cartridge is being erased. Closing now does not stop the erase, but you will not see the result.</source>
         <translation>O cartucho está sendo apagado. Fechar agora não interrompe o apagamento, mas você não verá o resultado.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="732"/>
+        <location filename="../mainwindow.cpp" line="812"/>
         <source>An operation is still running. Closing now will abort it; a partly written cartridge or an unsaved file will be left unfinished.</source>
         <translation>Uma operação ainda está em andamento. Fechar agora vai abortá-la; um cartucho parcialmente gravado ou um arquivo não salvo ficará incompleto.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="733"/>
+        <location filename="../mainwindow.cpp" line="813"/>
         <source>Operation in progress</source>
         <translation>Operação em andamento</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="733"/>
+        <location filename="../mainwindow.cpp" line="813"/>
         <source>Close anyway</source>
         <translation>Fechar mesmo assim</translation>
     </message>
     <message>
-        <source>This chip is not the one firmware 1.0 was written for, and the firmware does not wait for the chip while programming. Keep "Verify after writing" on and check the result.</source>
-        <translation>Este chip não é o do qual o firmware 1.0 foi escrito, e o firmware não espera o chip durante a gravação. Mantenha "Verificar após gravar" ligado e confira o resultado.</translation>
+        <source>This chip is not the one firmware 1.0 was written for, and the firmware does not wait for the chip while programming. Keep &quot;Verify after writing&quot; on and check the result.</source>
+        <translation type="vanished">Este chip não é o do qual o firmware 1.0 foi escrito, e o firmware não espera o chip durante a gravação. Mantenha &quot;Verificar após gravar&quot; ligado e confira o resultado.</translation>
     </message>
     <message>
+        <location filename="../mainwindow.cpp" line="558"/>
         <source>Verification is currently off.</source>
         <translation>A verificação está desligada agora.</translation>
     </message>
@@ -849,22 +943,22 @@ Não desconecte o dispositivo enquanto isso roda.</translation>
 <context>
     <name>Protocol</name>
     <message>
-        <location filename="../protocol.cpp" line="131"/>
+        <location filename="../protocol.cpp" line="132"/>
         <source>Cannot open %1: permission denied, or the port is already in use by another program. Close other programs that use it (for example ModemManager). On Linux, add your user to the &quot;dialout&quot; group (sudo usermod -aG dialout $USER, then log in again) or install the udev rule shipped with this application.</source>
         <translation>Não foi possível abrir %1: permissão negada, ou a porta já está em uso por outro programa. Feche outros programas que a usam (por exemplo o ModemManager). No Linux, adicione seu usuário ao grupo &quot;dialout&quot; (sudo usermod -aG dialout $USER, depois faça login novamente) ou instale a regra udev que acompanha este aplicativo.</translation>
     </message>
     <message>
-        <location filename="../protocol.cpp" line="137"/>
+        <location filename="../protocol.cpp" line="138"/>
         <source>Cannot open %1: the device is not there any more. Replug the cable and press Refresh.</source>
         <translation>Não foi possível abrir %1: o dispositivo não está mais lá. Reconecte o cabo e clique em Atualizar.</translation>
     </message>
     <message>
-        <location filename="../protocol.cpp" line="141"/>
+        <location filename="../protocol.cpp" line="142"/>
         <source>Cannot open %1: the port is already open.</source>
         <translation>Não foi possível abrir %1: a porta já está aberta.</translation>
     </message>
     <message>
-        <location filename="../protocol.cpp" line="144"/>
+        <location filename="../protocol.cpp" line="145"/>
         <source>Cannot open %1: %2</source>
         <translation>Não foi possível abrir %1: %2</translation>
     </message>
@@ -918,8 +1012,12 @@ Não desconecte o dispositivo enquanto isso roda.</translation>
     </message>
     <message>
         <location filename="../romimage.cpp" line="126"/>
+        <source>The ROM is %1. The largest size this device can write and read back is 8 MiB (the whole chip of a 64 Mbit cartridge; games above that need a bank-switching mapper the cartridge does not have).</source>
+        <translation>A ROM tem %1. O maior tamanho que este dispositivo consegue gravar e ler de volta é 8 MiB (o chip inteiro de um cartucho de 64 Mbit; jogos maiores precisam de um mapeador de bancos que o cartucho não tem).</translation>
+    </message>
+    <message>
         <source>The ROM is %1. The largest size this device can write and read back is 4 MiB (games above that need a bank-switching mapper the cartridge does not have).</source>
-        <translation>A ROM tem %1. O maior tamanho que este dispositivo consegue gravar e ler de volta é 4 MiB (jogos maiores precisam de um mapper de troca de bancos que o cartucho não tem).</translation>
+        <translation type="vanished">A ROM tem %1. O maior tamanho que este dispositivo consegue gravar e ler de volta é 4 MiB (jogos maiores precisam de um mapper de troca de bancos que o cartucho não tem).</translation>
     </message>
     <message>
         <location filename="../romimage.cpp" line="134"/>

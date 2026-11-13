@@ -488,22 +488,82 @@ void MainWindow::writeRom()
     for (const QString &warning : rom.warnings)
         log(Severity::Warning, warning);
 
-    QString text = tr("Write \"%1\" (%2) to the cartridge?\n\nThe cartridge must be erased first. "
+    m_romData = rom.data;
+    m_pendingRomPath = path;
+    m_pendingRomWarnings = rom.warnings;
+    m_romPreflightPending = true;
+    log(Severity::Info, tr("Checking the cartridge flash chip before writing…"));
+    if (!m_session.detect()) {
+        m_romPreflightPending = false;
+        m_pendingRomPath.clear();
+        m_pendingRomWarnings.clear();
+        m_romData.clear();
+    }
+}
+
+void MainWindow::continuePendingRomWrite()
+{
+    if (!m_romPreflightPending)
+        return;
+    m_romPreflightPending = false;
+
+    const ChipDb::Match match = m_session.lastDetectedChip();
+    const QString flashId = match.idText;
+    const bool firmwareRecognized = m_session.lastDetectFirmwareRecognizedChip();
+    const quint32 capacity = ChipDb::capacityBytes(match);
+    QString compatibility;
+    bool definitelyIncompatible = false;
+
+    if (m_romData.size() > 0x400000 && !m_session.canRead8M()) {
+        compatibility = tr("This firmware cannot write ROMs larger than 4 MiB. Update the firmware before writing.");
+        definitelyIncompatible = true;
+    } else if (!match.parsed) {
+        compatibility = tr("The device could not identify a flash chip. Cartridge compatibility is unknown.");
+    } else if (capacity && static_cast<quint64>(m_romData.size()) > capacity) {
+        compatibility = tr("The detected %1 chip can hold %2, smaller than this ROM (%3).")
+                            .arg(QString::fromLatin1(match.chip->name), humanSize(capacity), humanSize(m_romData.size()));
+        definitelyIncompatible = true;
+    } else if (match.chip && match.chip->commandSet != ChipDb::CommandSet::Amd555 && m_session.firmwareVersion().isEmpty()) {
+        compatibility = tr("The detected %1 needs newer firmware commands. Update the firmware before writing.")
+                            .arg(QString::fromLatin1(match.chip->name));
+        definitelyIncompatible = true;
+    } else if (match.chip && firmwareRecognized) {
+        compatibility = tr("Detected %1 (%2). The firmware recognises this flash chip and it has enough capacity.")
+                            .arg(QString::fromLatin1(match.chip->name), flashId);
+    } else if (match.chip) {
+        compatibility = tr("Detected %1 (%2), but this firmware does not confirm it as supported. Compatibility is uncertain.")
+                            .arg(QString::fromLatin1(match.chip->name), flashId);
+    } else {
+        compatibility = tr("Flash chip ID %1 is not in the supported-chip list. Compatibility is uncertain.").arg(flashId);
+    }
+
+    if (definitelyIncompatible) {
+        log(Severity::Error, compatibility);
+        m_pendingRomPath.clear();
+        m_pendingRomWarnings.clear();
+        m_romData.clear();
+        return;
+    }
+
+    QString text = tr("Pre-flash check: %1\n\nWrite \"%2\" (%3) to the cartridge?\n\nThe cartridge must be erased first. "
                       "Anything already on it will be overwritten.")
-                       .arg(QFileInfo(path).fileName(), humanSize(rom.data.size()));
-    if (!rom.warnings.isEmpty())
-        text += QStringLiteral("\n\n") + tr("Warning:") + QLatin1Char(' ') + rom.warnings.join(QStringLiteral("\n"));
+                       .arg(compatibility, QFileInfo(m_pendingRomPath).fileName(), humanSize(m_romData.size()));
+    if (!m_pendingRomWarnings.isEmpty())
+        text += QStringLiteral("\n\n") + tr("ROM warning:") + QLatin1Char(' ') + m_pendingRomWarnings.join(QStringLiteral("\n"));
     if (m_session.unlistedChipOnOldFirmware()) {
         text += QStringLiteral("\n\n")
-                + tr("This chip is not the one firmware 1.0 was written for, and the firmware does not wait for the chip while "
-                     "programming. Keep \"Verify after writing\" on and check the result.");
+                + tr("Firmware 1.0 does not wait for this chip to finish programming each word. Keep \"Verify after writing\" on "
+                     "and check the result.");
         if (!ui->verifyCheck->isChecked())
             text += QLatin1Char(' ') + tr("Verification is currently off.");
     }
-    if (!confirm(tr("Write ROM"), text, tr("Write")))
+    m_pendingRomPath.clear();
+    m_pendingRomWarnings.clear();
+    if (!confirm(tr("Write ROM"), text, tr("Write"))) {
+        m_romData.clear();
         return;
+    }
 
-    m_romData = rom.data;
     m_romBuffer = std::make_unique<QBuffer>(&m_romData);
     m_romBuffer->open(QIODevice::ReadOnly);
     if (!m_session.writeRom(m_romBuffer.get(), ui->verifyCheck->isChecked())) {
@@ -573,7 +633,19 @@ void MainWindow::onSessionStarted(DeviceSession::Op op)
 
 void MainWindow::onSessionFinished(DeviceSession::Op op, bool ok, bool cancelled)
 {
-    Q_UNUSED(op);
+    if (op == DeviceSession::Op::Detect && m_romPreflightPending) {
+        if (ok && !cancelled)
+            continuePendingRomWrite();
+        else {
+            m_romPreflightPending = false;
+            m_pendingRomPath.clear();
+            m_pendingRomWarnings.clear();
+            m_romData.clear();
+            log(Severity::Error, tr("Pre-flash cartridge check failed; the ROM was not written."));
+        }
+        updateUi();
+        return;
+    }
     if (m_outFile) {
         if (ok) {
             if (m_outFile->commit())

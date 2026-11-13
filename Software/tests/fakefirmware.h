@@ -2,6 +2,7 @@
 #define FAKEFIRMWARE_H
 
 #include <QByteArray>
+#include <QElapsedTimer>
 #include <QIODevice>
 #include <QRandomGenerator>
 #include <QStringList>
@@ -29,6 +30,9 @@ public:
     // Fault injection
     bool silent = false;           // never answer
     bool sendBanner = true;        // answer to Connect
+    int deafAfterDetectMs = 0;     // firmware 1.0/1.1: bytes received this long after the detect answer are dropped (HAL_Delay then cmdclear)
+    int droppedBytes = 0;          // bytes thrown away that way
+    int ignoreConnects = 0;        // firmware 1.0 seen on the bench: the first Connect after the port was reopened gets no answer
     QString fwVersion;             // new firmware: sent as "FWVER:<x>" after the banner and enables dump code 5 (8M)
     int dropDumpBlock = -1;        // old-firmware bug: this dump block is not sent
     int stopAfterDumpBlocks = -1;  // stop answering after this many dump blocks
@@ -68,6 +72,8 @@ private:
     void dump(const QByteArray &image, bool isRom, int sizeCode);
     void handle(const QByteArray &cmd, const QByteArray &blockData);
 
+    QElapsedTimer m_deafClock;
+    bool m_deaf = false;
     QByteArray m_rx;        // bytes from the app not yet consumed
     QByteArray m_pending;   // answers not yet delivered
     QByteArray m_ready;     // answers the app can read now
