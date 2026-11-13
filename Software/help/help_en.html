@@ -141,6 +141,9 @@
 <p>The firmware only recognises one chip, so it prints this for every other chip. Read the line the program adds below it: if it names a chip (for example M29W640DB or S29GL064N), the cartridge is probably fine; if it says "Chip not in the list", the cartridge may not be flash or may not be inserted properly. Reinsert, clean the contacts, press <b>Detect cartridge</b> again. Test a new flash cartridge by erasing, writing a small ROM with <b>Verify after writing</b> on and checking that it passes.</p>
 <p>With firmware 1.0 the program also warns that the firmware does not wait for the chip to finish programming each word, because it was written for the MX29LV640EB. Keep <b>Verify after writing</b> on: if the check fails, the new firmware (which does wait) is the fix, not a bad cartridge.</p>
 
+<h3 id="problem-2mib">A game larger than 2 MiB does not fit on my flash cartridge</h3>
+<p>Flash cartridges of the KY / FlashKit family hold at most 2 MiB of game, whatever the size of the chip (an S29GL064N is 8 MiB). The cartridge board selects the flash only for the lower 2 MiB and the save RAM for the upper 2 MiB, so erasing or writing above 2 MiB fails ("A sector did not finish erasing in time" after about 23 seconds), and a read of the upper half shows the save RAM, not flash. This comes from the cartridge, not from the program or from the dumper. Games up to 2 MiB are not affected. For larger games use a flash cartridge without that decoder (for example a plain 4 MiB one) or one with a bank mapper.</p>
+
 <h3 id="problem-closed">I closed the program or lost power during an operation</h3>
 <p>Reading: nothing was saved, just read again. Writing or erasing: the cartridge is in an unknown state. Erase it and write again. Saves: restore the save file you backed up.</p>
 

@@ -28,11 +28,12 @@ Gostou do projeto? Apoie: [Buy Me a Coffee](https://buymeacoffee.com/legendaryre
 - Faz backup de jogos de cartuchos de Mega Drive para o computador e grava jogos em cartuchos flash regraváveis de terceiros.
 - Lê e grava os dados de save (SRAM) do cartucho.
 - Compara dois arquivos byte a byte (por exemplo, uma leitura e a ROM original), sem precisar do dispositivo.
-- Grava ROMs de qualquer tamanho par até 8 MiB (acima de 4 MiB exige a firmware 1.1), converte arquivos `.smd` e verifica a gravação lendo o cartucho de volta.
+- Grava ROMs de qualquer tamanho par e converte arquivos `.smd`, e verifica a gravação lendo o cartucho de volta. **Nos cartuchos flash da família KY / FlashKit cabem no máximo 2 MiB de jogo** (limite da placa do cartucho, não do programa): veja o [guia passo a passo](docs/guide/pt-BR.md#8-o-limite-de-2-mib-dos-cartuchos-flash).
 - Interface que segue o tema do sistema (claro ou escuro), com confirmação antes de qualquer operação destrutiva e botão Cancelar para leituras e gravações.
 - Guia do usuário embutido (menu **Ajuda → Guia do usuário** ou **F1**): receitas de uso, o que cada mensagem do registro significa e solução de problemas, com busca. Disponível em português e inglês.
 - Linha de comando (`mdrewriter-cli`) com a mesma sessão do aplicativo, saída `--json` e códigos de saída fixos, pensada para scripts e agentes de IA: veja `docs/CLI.md`.
-- Firmware nova (`firmware_1.1/`) com suporte a chips de cartuchos KY/FlashKit (SST39VF3201/3202, MX29L3211, Intel PA28F400 e outros): lista em `docs/CART_SUPPORT.md`, ainda não testada em hardware.
+- Firmware nova (`firmware_1.1/`): grava cartuchos flash S29GL064N de uma vez só e verifica, e nomeia mais chips. Testada na primeira unidade (placa, cartucho original só para leitura, dois cartuchos flash); lista de chips em `docs/CART_SUPPORT.md`, resultados em `docs/HWTEST.md`.
+- **[Guia passo a passo, da caixa ao primeiro jogo](docs/guide/pt-BR.md)**: soldagem, montagem e desmontagem, instalação do firmware 1.1 com o ST-Link e todos os testes (interface gráfica e linha de comando).
 - Código aberto.
 
 ![Janela principal](docs/images/ui-main.png)
@@ -121,7 +122,7 @@ make -j"$(sysctl -n hw.ncpu)"
 ### Gravar um jogo em um cartucho flash
 
 1. **Apague o cartucho antes** se ele não estiver vazio (veja abaixo).
-2. Clique em **Gravar ROM…** e escolha o arquivo (`.bin`, `.md`, `.gen` ou `.smd`). Antes de gravar, o programa detecta o chip flash e compara sua capacidade e os comandos conhecidos com a ROM. Ele bloqueia incompatibilidades conhecidas e pede confirmação quando não consegue ter certeza. Qualquer ROM de tamanho par entre 512 bytes e 8 MiB é aceita (mais de 4 MiB exige o firmware 1.1) (256 KiB, 768 KiB, 1,5 MiB etc.): ela é gravada como está e o resto do chip fica em branco. Arquivos `.smd` são convertidos para ROM simples. O programa avisa, sem bloquear, se o cabeçalho parecer errado (sem `SEGA`, checksum ruim, arquivo truncado).
+2. Clique em **Gravar ROM…** e escolha o arquivo (`.bin`, `.md`, `.gen` ou `.smd`). Antes de gravar, o programa detecta o chip flash e compara sua capacidade e os comandos conhecidos com a ROM. Ele bloqueia incompatibilidades conhecidas e pede confirmação quando não consegue ter certeza. Qualquer ROM de tamanho par entre 512 bytes e 8 MiB é aceita (mais de 4 MiB exige o firmware 1.1) (256 KiB, 768 KiB, 1,5 MiB etc.): ela é gravada como está e o resto do chip fica em branco. Arquivos `.smd` são convertidos para ROM simples. O programa avisa, sem bloquear, se o cabeçalho parecer errado (sem `SEGA`, checksum ruim, arquivo truncado). **Atenção:** nos cartuchos flash da família KY / FlashKit só cabem 2 MiB; acima disso a gravação falha (guia, seção 8).
 3. Confirme o aviso. A barra mostra o progresso; **Cancelar** interrompe, mas deixa o cartucho com uma imagem parcial.
 4. Com **Verificar após gravar** marcado (padrão), o programa lê o cartucho de volta e compara com o arquivo; o registro mostra "Verified" ou o primeiro deslocamento que difere.
 
@@ -213,7 +214,7 @@ cd ../.. && tools/check-firmware.sh                      # verificação estáti
 
 O firmware não pôde ser testado em hardware real nestas alterações: veja `docs/SPEC.md` e `docs/PLAN.md`.
 
-Firmware novo (`firmware_1.1/`): `cd firmware_1.1 && make test && ./check.sh` roda os testes no PC (o `MD.c` real contra um modelo de chip flash) e a verificação estática. Nada do `firmware_1.1/` foi executado em hardware; estado, pendências e plano estão em `docs/NEW_FIRMWARE_PLAN.md` (tabela "Progress log") e `docs/NEW_FIRMWARE_SPEC.md`.
+Firmware novo (`firmware_1.1/`): `cd firmware_1.1 && make test && ./check.sh` roda os testes no PC (o `MD.c` real contra um modelo de chip flash) e a verificação estática. O firmware foi executado na primeira unidade (2026-11-13): resultados em `docs/HWTEST.md`; pendências e plano em `docs/NEW_FIRMWARE_PLAN.md` e `docs/NEW_FIRMWARE_SPEC.md`.
 
 Quando o hardware chegar: `tools/hwtest/hwtest.py` (`nocart`, `cart`) roda testes de bancada **somente de leitura** pela CLI, sem nunca gravar nem apagar o cartucho; veja `docs/HWTEST.md`.
 
@@ -247,11 +248,12 @@ Licença [MIT](LICENSE). O código de terceiros em `legacy_firmware/Drivers` e `
 - Резервное копирование игр с картриджей Mega Drive на компьютер и запись игр на сторонние перезаписываемые картриджи.
 - Чтение и запись сохранений (SRAM) картриджа.
 - Побайтовое сравнение двух файлов (например, дампа и оригинальной ROM) — устройство не нужно.
-- Записывает ROM любого чётного размера до 8 MiB (больше 4 MiB требует прошивку 1.1), преобразует файлы `.smd` и проверяет запись обратным чтением картриджа.
+- Записывает ROM любого чётного размера и преобразует файлы `.smd`, проверяет запись обратным чтением картриджа. **На flash-картриджи семейства KY / FlashKit помещается не более 2 МиБ игры** (ограничение платы картриджа, а не программы): см. [пошаговое руководство](docs/guide/ru.md#8-предел-2-миб-у-flash-картриджей).
 - Интерфейс использует системную тему (светлую или тёмную), запрашивает подтверждение перед любой разрушающей операцией, а чтение и запись можно отменить кнопкой «Cancel».
 - Встроенное руководство (меню **Help → User guide** или **F1**): сценарии использования, значение сообщений журнала и устранение неполадок, с поиском. Доступно на португальском и английском.
 - Командная строка (`mdrewriter-cli`) с той же сессией, что и в программе, вывод `--json` и фиксированные коды возврата — для скриптов и ИИ-агентов: см. `docs/CLI.md`.
-- Новая прошивка (`firmware_1.1/`) поддерживает микросхемы картриджей KY/FlashKit (SST39VF3201/3202, MX29L3211, Intel PA28F400 и другие): список в `docs/CART_SUPPORT.md`, на оборудовании ещё не проверена.
+- Новая прошивка (`firmware_1.1/`): записывает flash-картриджи S29GL064N за один проход с проверкой и называет больше микросхем. Проверена на первом устройстве (плата, оригинальный картридж только для чтения, два flash-картриджа); список микросхем в `docs/CART_SUPPORT.md`, результаты в `docs/HWTEST.md`.
+- **[Пошаговое руководство, от коробки до первой игры](docs/guide/ru.md)**: пайка, сборка и разборка, установка прошивки 1.1 через ST-Link и все тесты (графическая программа и командная строка).
 - Открытый исходный код.
 
 ![Главное окно](docs/images/ui-main.png)
@@ -340,7 +342,7 @@ make -j"$(sysctl -n hw.ncpu)"
 ### Запись игры на flash-картридж
 
 1. Если картридж не пуст, **сначала сотрите его** (см. ниже).
-2. Нажмите **Write ROM…** и выберите файл (`.bin`, `.md`, `.gen` или `.smd`). Перед записью программа определяет флеш-микросхему и сверяет её ёмкость и известные команды с ROM. Известные несовместимости она блокирует, а если не уверена, просит подтверждения. Принимается любой ROM чётного размера от 512 байт до 8 MiB (больше 4 MiB требует прошивку 1.1) (256 KiB, 768 KiB, 1,5 MiB и т. д.): он записывается как есть, остальная часть микросхемы остаётся чистой. Файлы `.smd` автоматически преобразуются в обычный ROM. Если заголовок выглядит неверно (нет `SEGA`, неверная контрольная сумма, файл обрезан), программа предупреждает, но запись не блокирует. С включённой опцией **Verify after writing** (по умолчанию) программа после записи читает картридж обратно и сравнивает с файлом.
+2. Нажмите **Write ROM…** и выберите файл (`.bin`, `.md`, `.gen` или `.smd`). Перед записью программа определяет флеш-микросхему и сверяет её ёмкость и известные команды с ROM. Известные несовместимости она блокирует, а если не уверена, просит подтверждения. Принимается любой ROM чётного размера от 512 байт до 8 MiB (больше 4 MiB требует прошивку 1.1) (256 KiB, 768 KiB, 1,5 MiB и т. д.): он записывается как есть, остальная часть микросхемы остаётся чистой. Файлы `.smd` автоматически преобразуются в обычный ROM. Если заголовок выглядит неверно (нет `SEGA`, неверная контрольная сумма, файл обрезан), программа предупреждает, но запись не блокирует. С включённой опцией **Verify after writing** (по умолчанию) программа после записи читает картридж обратно и сравнивает с файлом. **Внимание:** на flash-картриджи семейства KY / FlashKit помещается только 2 МиБ; больше записать не удастся (руководство, раздел 8).
 3. Подтвердите предупреждение. **Cancel** прервёт запись, но на картридже останется неполный образ.
 
 ### Стирание картриджа
@@ -430,7 +432,7 @@ cd ../.. && tools/check-firmware.sh                      # статическа�
 
 Изменения прошивки не проверялись на реальном оборудовании: см. `docs/SPEC.md` и `docs/PLAN.md`.
 
-Новая прошивка (`firmware_1.1/`): `cd firmware_1.1 && make test && ./check.sh` запускает тесты на ПК (настоящий `MD.c` против модели flash-микросхемы) и статическую проверку. Ничего из `firmware_1.1/` не запускалось на реальном оборудовании; состояние, незавершённое и план — в `docs/NEW_FIRMWARE_PLAN.md` (таблица "Progress log") и `docs/NEW_FIRMWARE_SPEC.md`.
+Новая прошивка (`firmware_1.1/`): `cd firmware_1.1 && make test && ./check.sh` запускает тесты на ПК (настоящий `MD.c` против модели flash-микросхемы) и статическую проверку. Прошивка запускалась на первом устройстве (13.11.2026): результаты в `docs/HWTEST.md`; незавершённое и план — в `docs/NEW_FIRMWARE_PLAN.md` и `docs/NEW_FIRMWARE_SPEC.md`.
 
 Когда оборудование будет под рукой: `tools/hwtest/hwtest.py` (`nocart`, `cart`) запускает стендовые тесты **только на чтение** через CLI и никогда не пишет и не стирает картридж; см. `docs/HWTEST.md`.
 
@@ -464,11 +466,12 @@ Epicjoy 官方速卖通店铺：[购买](https://s.click.aliexpress.com/e/_c314U
 - 将 MD 卡带中的游戏备份到电脑，或写入第三方可重复擦写的卡带。
 - 读取并备份卡带存档（SRAM），方便管理。
 - 逐字节比较两个文件（例如读出的文件与原始 ROM），无需连接设备。
-- 可写入最大 8 MiB 的任意偶数大小 ROM（超过 4 MiB 需要固件 1.1），自动转换 `.smd` 文件，并在写入后把卡带读回进行校验。
+- 可写入任意偶数大小的 ROM，自动转换 `.smd` 文件，并在写入后把卡带读回进行校验。**KY / FlashKit 系列闪存卡最多只能存放 2 MiB 的游戏**（这是卡带电路板的限制，不是程序的问题）：见[分步指南](docs/guide/zh-Hans.md#8-闪存卡的-2-mib-限制)。
 - 界面跟随系统主题（浅色或深色）；任何破坏性操作前都会确认，读写过程可点击“Cancel”取消。
 - 内置用户指南（菜单 **Help → User guide** 或按 **F1**）：使用场景、日志信息含义和故障排除，支持搜索。提供葡萄牙语和英语版本。
 - 命令行 `mdrewriter-cli`：与图形界面使用同一会话，支持 `--json` 输出和固定的退出码，适合脚本和 AI 代理，详见 `docs/CLI.md`。
-- 新固件（`firmware_1.1/`）支持 KY/FlashKit 卡带芯片（SST39VF3201/3202、MX29L3211、Intel PA28F400 等）：清单见 `docs/CART_SUPPORT.md`，尚未在硬件上测试。
+- 新固件（`firmware_1.1/`）：一次写好 S29GL064N 闪存卡并校验，识别更多芯片。已在第一台设备上测试（开发板、只读的原装卡带、两张闪存卡）；芯片清单见 `docs/CART_SUPPORT.md`，结果见 `docs/HWTEST.md`。
+- **[从开箱到第一个游戏的分步指南](docs/guide/zh-Hans.md)**：焊接、组装与拆卸、用 ST-Link 安装固件 1.1，以及全部测试（图形程序和命令行）。
 - 开源。
 
 ![主窗口](docs/images/ui-main.png)
@@ -557,7 +560,7 @@ make -j"$(sysctl -n hw.ncpu)"
 ### 向 Flash 卡带写入游戏
 
 1. 如果卡带不是空白的，请**先擦除**（见下文）。
-2. 点击 **Write ROM…** 并选择文件（`.bin`、`.md`、`.gen` 或 `.smd`）。写入前，程序会检测闪存芯片，并把它已知的容量和命令支持与 ROM 对照：已知不兼容时会阻止写入，无法确定时会请你确认。支持 512 字节到 8 MiB 之间任何偶数大小的 ROM（超过 4 MiB 需要固件 1.1）（256 KiB、768 KiB、1.5 MiB 等）：按原样写入，芯片其余部分保持空白。`.smd` 文件会自动转换为普通 ROM。如果文件头看起来不对（没有 `SEGA`、校验和错误、文件被截断），程序会提醒但不会阻止写入。勾选 **Verify after writing**（默认开启）后，写入结束时程序会把卡带读回并与文件比较。
+2. 点击 **Write ROM…** 并选择文件（`.bin`、`.md`、`.gen` 或 `.smd`）。写入前，程序会检测闪存芯片，并把它已知的容量和命令支持与 ROM 对照：已知不兼容时会阻止写入，无法确定时会请你确认。支持 512 字节到 8 MiB 之间任何偶数大小的 ROM（超过 4 MiB 需要固件 1.1）（256 KiB、768 KiB、1.5 MiB 等）：按原样写入，芯片其余部分保持空白。`.smd` 文件会自动转换为普通 ROM。如果文件头看起来不对（没有 `SEGA`、校验和错误、文件被截断），程序会提醒但不会阻止写入。勾选 **Verify after writing**（默认开启）后，写入结束时程序会把卡带读回并与文件比较。 **注意：**KY / FlashKit 系列闪存卡只能存放 2 MiB；超过这个大小写入会失败（指南第 8 节）。
 3. 确认提示。写入时可点 **Cancel** 中断，但卡带上会留下不完整的镜像。
 
 ### 擦除卡带
@@ -647,7 +650,7 @@ cd ../.. && tools/check-firmware.sh                      # 固件静态检查（
 
 固件的改动尚未在真实硬件上测试，详见 `docs/SPEC.md` 和 `docs/PLAN.md`。
 
-新固件（`firmware_1.1/`）：`cd firmware_1.1 && make test && ./check.sh` 在电脑上运行测试（真实的 `MD.c` 对照 Flash 芯片模型）和静态检查。`firmware_1.1/` 的内容尚未在真实硬件上运行；状态、待办和计划见 `docs/NEW_FIRMWARE_PLAN.md`（"Progress log" 表）和 `docs/NEW_FIRMWARE_SPEC.md`。
+新固件（`firmware_1.1/`）：`cd firmware_1.1 && make test && ./check.sh` 在电脑上运行测试（真实的 `MD.c` 对照 Flash 芯片模型）和静态检查。该固件已在第一台设备上运行（2026-11-13）：结果见 `docs/HWTEST.md`；待办和计划见 `docs/NEW_FIRMWARE_PLAN.md` 和 `docs/NEW_FIRMWARE_SPEC.md`。
 
 拿到硬件后：`tools/hwtest/hwtest.py`（`nocart`、`cart`）通过 CLI 运行**只读**的台架测试，绝不写入或擦除卡带，详见 `docs/HWTEST.md`。
 
@@ -681,11 +684,12 @@ Like the project? Support it: [Buy Me a Coffee](https://buymeacoffee.com/legenda
 - Back up MD cartridge games to your PC, or write games to third-party rewritable cartridges.
 - Read and back up the cartridge save data (SRAM).
 - Compare two files byte by byte (for example a dump and the original ROM), no device needed.
-- Writes ROMs of any even size up to 8 MiB (above 4 MiB needs firmware 1.1), converts `.smd` files and verifies the write by reading the cartridge back.
+- Writes ROMs of any even size, converts `.smd` files and verifies the write by reading the cartridge back. **Flash cartridges of the KY / FlashKit family hold at most 2 MiB of game** (a limit of the cartridge board, not of the program): see the [step-by-step guide](docs/guide/en.md#8-the-2-mib-limit-of-flash-cartridges).
 - Follows the system theme (light or dark), asks for confirmation before any destructive operation, and has a Cancel button for reads and writes.
 - Built-in user guide (menu **Help → User guide** or **F1**): usage recipes, what each log message means and troubleshooting, with search. Available in Portuguese and English.
 - Command line (`mdrewriter-cli`) on the same session as the app, with `--json` output and fixed exit codes, made for scripts and AI agents: see `docs/CLI.md`.
-- New firmware (`firmware_1.1/`) supports KY/FlashKit cartridge chips (SST39VF3201/3202, MX29L3211, Intel PA28F400 and others): list in `docs/CART_SUPPORT.md`, not yet tested on hardware.
+- New firmware (`firmware_1.1/`): writes S29GL064N flash cartridges in one pass with verification and names more chips. Tested on the first unit (board, an original cartridge read only, two flash cartridges); chip list in `docs/CART_SUPPORT.md`, results in `docs/HWTEST.md`.
+- **[Step-by-step guide, from the box to the first game](docs/guide/en.md)**: soldering, assembly and disassembly, installing firmware 1.1 with the ST-Link, and every test (graphical program and command line).
 - Open source.
 
 ![Main window](docs/images/ui-main.png)
@@ -774,7 +778,7 @@ make -j"$(sysctl -n hw.ncpu)"
 ### Write a game to a flash cartridge
 
 1. **Erase the cartridge first** if it is not blank (see below).
-2. Click **Write ROM…** and choose the file (`.bin`, `.md`, `.gen` or `.smd`). Before writing, the program detects the flash chip and checks its known capacity and command support against the ROM. It blocks known incompatibilities and asks for confirmation when compatibility is uncertain. Any ROM of even size between 512 bytes and 8 MiB is accepted (more than 4 MiB needs firmware 1.1) (256 KiB, 768 KiB, 1.5 MiB, ...): it is written as it is and the rest of the chip stays blank. `.smd` files are converted to a plain ROM. The program warns, without blocking, if the header looks wrong (no `SEGA`, bad checksum, truncated file). With **Verify after writing** ticked (the default) it reads the cartridge back and compares it with the file when the write ends.
+2. Click **Write ROM…** and choose the file (`.bin`, `.md`, `.gen` or `.smd`). Before writing, the program detects the flash chip and checks its known capacity and command support against the ROM. It blocks known incompatibilities and asks for confirmation when compatibility is uncertain. Any ROM of even size between 512 bytes and 8 MiB is accepted (more than 4 MiB needs firmware 1.1) (256 KiB, 768 KiB, 1.5 MiB, ...): it is written as it is and the rest of the chip stays blank. `.smd` files are converted to a plain ROM. The program warns, without blocking, if the header looks wrong (no `SEGA`, bad checksum, truncated file). With **Verify after writing** ticked (the default) it reads the cartridge back and compares it with the file when the write ends. **Note:** flash cartridges of the KY / FlashKit family hold only 2 MiB; a larger game cannot be written (guide, section 8).
 3. Confirm the warning. **Cancel** stops the write but leaves the cartridge holding a partial image.
 
 ### Erase the cartridge
@@ -864,7 +868,7 @@ cd ../.. && tools/check-firmware.sh                      # static firmware check
 
 The firmware changes could not be tested on real hardware: see `docs/SPEC.md` and `docs/PLAN.md`.
 
-New firmware (`firmware_1.1/`): `cd firmware_1.1 && make test && ./check.sh` runs the PC tests (the real `MD.c` against a flash chip model) and the static checks. Nothing in `firmware_1.1/` has run on hardware; status, open items and plan are in `docs/NEW_FIRMWARE_PLAN.md` (the "Progress log" table) and `docs/NEW_FIRMWARE_SPEC.md`.
+New firmware (`firmware_1.1/`): `cd firmware_1.1 && make test && ./check.sh` runs the PC tests (the real `MD.c` against a flash chip model) and the static checks. The firmware was run on the first unit (2026-11-13): results in `docs/HWTEST.md`; open items and plan in `docs/NEW_FIRMWARE_PLAN.md` and `docs/NEW_FIRMWARE_SPEC.md`.
 
 When the hardware is at hand: `tools/hwtest/hwtest.py` (`nocart`, `cart`) runs **read-only** bench tests through the CLI and never writes or erases the cartridge; see `docs/HWTEST.md`.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds a .deb of the desktop app (release build, installs under /usr).
+# Builds a .deb of the desktop app and the command line tool (release build, installs under /usr).
 # Usage: tools/package-deb.sh            -> build/dist/mdrewriter_<version>_<arch>.deb (+ .sha256)
 # Needs: qmake6 make g++ qt6-base-dev qt6-serialport-dev qt6-tools-dev qt6-l10n-tools dpkg-dev fakeroot
 # Variables: MAINTAINER ("Name <mail>", default: from git config), JOBS (default: nproc).
@@ -26,6 +26,12 @@ mkdir -p "$WORK/b" "$PKG" "$OUT"
 echo "==> build $VERSION (release, PREFIX=/usr)"
 (cd "$WORK/b" && qmake6 CONFIG+=release PREFIX=/usr "$ROOT/Software/MDRewriter.pro" && make -j"$JOBS" && make install INSTALL_ROOT="$PKG")
 strip "$PKG/usr/bin/MDRewriter"
+
+echo "==> build the command line tool"
+mkdir -p "$WORK/c"
+(cd "$WORK/c" && qmake6 CONFIG+=release "$ROOT/Software/cli/mdrewriter-cli.pro" && make -j"$JOBS")
+install -Dm755 "$WORK/c/mdrewriter-cli" "$PKG/usr/bin/mdrewriter-cli"
+strip "$PKG/usr/bin/mdrewriter-cli"
 
 mkdir -p "$PKG/DEBIAN" "$PKG/usr/share/doc/mdrewriter"
 install -m644 "$ROOT/LICENSE" "$PKG/usr/share/doc/mdrewriter/copyright"

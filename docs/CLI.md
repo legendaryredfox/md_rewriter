@@ -46,3 +46,5 @@ Exit codes: 0 ok, 1 operation failed (device error, verify mismatch, files diffe
 Example for an agent: `mdrewriter-cli detect --json`, then `mdrewriter-cli read-rom --size 4M --out game.bin --json`, then `mdrewriter-cli write-rom game.bin --yes --json` only after the user agreed.
 
 Tests: `Software/tests/tst_cli` (fake firmware).
+
+Flash cartridges of the KY / FlashKit family (the two tested: a KY cartridge and a second S29GL064N cartridge) hold at most 2 MiB of game. `erase 4M`, `erase 8M` and `write-rom` of a file larger than 2 MiB fail on them (`A sector did not finish erasing in time` after about 23 s) because the cartridge board selects the flash only for the lower 2 MiB. Reads above 2 MiB show the save RAM. Details and the other cartridge to use: `docs/HWTEST.md` ("Why nothing works above 2 MiB") and `docs/guide/en.md`, section 8.

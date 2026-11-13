@@ -141,6 +141,9 @@
 <p>O firmware só reconhece um chip, então mostra isto para todos os outros. Leia a linha que o programa acrescenta abaixo: se ela nomear um chip (por exemplo M29W640DB ou S29GL064N), o cartucho provavelmente está bem; se disser "Chip fora da lista", o cartucho pode não ser flash ou não estar bem encaixado. Reinsira, limpe os contatos e clique em <b>Detectar cartucho</b> de novo. Teste um cartucho flash novo apagando, gravando uma ROM pequena com <b>Verificar após gravar</b> ligado e conferindo que passa.</p>
 <p>Com o firmware 1.0 o programa também avisa que o firmware não espera o chip terminar de gravar cada palavra, porque foi escrito para o MX29LV640EB. Mantenha <b>Verificar após gravar</b> ligado: se a verificação falhar, a solução é o firmware novo (que espera o chip), não um cartucho ruim.</p>
 
+<h3 id="problem-2mib">Um jogo maior que 2 MiB não cabe no meu cartucho flash</h3>
+<p>Os cartuchos flash da família KY / FlashKit guardam no máximo 2 MiB de jogo, seja qual for o tamanho do chip (um S29GL064N tem 8 MiB). A placa do cartucho seleciona a flash só para os 2 MiB de baixo e a RAM de save para os 2 MiB de cima; por isso apagar ou gravar acima de 2 MiB falha ("A sector did not finish erasing in time" depois de uns 23 segundos), e uma leitura da metade de cima mostra a RAM de save, não a flash. Isso vem do cartucho, não do programa nem do dumper. Jogos de até 2 MiB não são afetados. Para jogos maiores use um cartucho flash sem esse decodificador (por exemplo um simples de 4 MiB) ou um com mapeador de bancos.</p>
+
 <h3 id="problem-closed">Fechei o programa ou faltou energia durante uma operação</h3>
 <p>Leitura: nada foi salvo, é só ler de novo. Gravação ou apagamento: o cartucho está em estado desconhecido. Apague e grave de novo. Saves: restaure o arquivo de save do seu backup.</p>
 
