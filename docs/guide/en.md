@@ -1,6 +1,6 @@
 # MD Rewriter: step-by-step guide, from the box to your first game
 
-**Languages:** [English](en.md) · [Português (Brasil)](pt-BR.md) · [Русский](ru.md) · [简体中文](zh-Hans.md)
+**Languages:** [English](en.md) · [Português (Brasil)](pt-BR.md) · [Русский](ru.md) · [简体中文](zh-Hans.md) · [हिन्दी](hi.md) · [اردو](ur.md)
 
 For people who just received the MD Rewriter board and know little about electronics. Everything here was done on a real unit on 2026-11-13; the results are in section 9. If something does not match what you see, stop and read section 10 before you go on.
 

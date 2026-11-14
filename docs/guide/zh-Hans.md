@@ -1,6 +1,6 @@
 # MD Rewriter：从开箱到第一个游戏的分步指南
 
-**语言：** [English](en.md) · [Português (Brasil)](pt-BR.md) · [Русский](ru.md) · [简体中文](zh-Hans.md)
+**语言：** [English](en.md) · [Português (Brasil)](pt-BR.md) · [Русский](ru.md) · [简体中文](zh-Hans.md) · [हिन्दी](hi.md) · [اردو](ur.md)
 
 写给刚拿到 MD Rewriter 开发板、对电子知识了解不多的人。这里的所有操作都在一台真实设备上完成（2026-11-13），结果见第 9 节。如果你看到的情况与文中不符，请先停下来，阅读第 10 节再继续。
 

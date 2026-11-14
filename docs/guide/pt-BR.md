@@ -1,6 +1,6 @@
 # MD Rewriter: guia passo a passo, da caixa ao primeiro jogo
 
-**Idiomas:** [English](en.md) · [Português (Brasil)](pt-BR.md) · [Русский](ru.md) · [简体中文](zh-Hans.md)
+**Idiomas:** [English](en.md) · [Português (Brasil)](pt-BR.md) · [Русский](ru.md) · [简体中文](zh-Hans.md) · [हिन्दी](hi.md) · [اردو](ur.md)
 
 Para quem acabou de receber a placa MD Rewriter e sabe pouco de eletrônica. Tudo aqui foi feito numa unidade real em 13/11/2026; os resultados estão na seção 9. Se algo não bater com o que você vê, pare e leia a seção 10 antes de continuar.
 
